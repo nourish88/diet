@@ -1,16 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import ClientService from "@/services/ClientService";
-
-// Fix: Use correct type imports from Next.js
-import type { Route } from "next";
+import { NextRequest, NextResponse } from 'next/server';
+import { ClientService } from '@/services/ClientService';
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } } // This is correct
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = await Promise.resolve(context.params.id);
-    const clientId = Number(id);
+    const clientId = Number(params.id);
 
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
