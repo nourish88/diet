@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = Number(params.id);
+    const id = await Promise.resolve(params.id);
+    const clientId = Number(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
@@ -33,7 +34,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = Number(params.id);
+    const id = await Promise.resolve(params.id);
+    const clientId = Number(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
@@ -63,7 +65,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = Number(params.id);
+    const id = await Promise.resolve(params.id);
+    const clientId = Number(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });

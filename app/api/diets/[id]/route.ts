@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const dietId = Number(params.id);
+    const id = await Promise.resolve(params.id);
+    const dietId = Number(id);
 
     if (isNaN(dietId)) {
       return NextResponse.json({ error: "Invalid diet ID" }, { status: 400 });
@@ -33,7 +34,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const dietId = Number(params.id);
+    const id = await Promise.resolve(params.id);
+    const dietId = Number(id);
 
     if (isNaN(dietId)) {
       return NextResponse.json({ error: "Invalid diet ID" }, { status: 400 });

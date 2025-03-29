@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "vercel-build": "npm install --legacy-peer-deps && prisma generate && prisma migrate deploy && next build"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
