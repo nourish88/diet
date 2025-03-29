@@ -6,7 +6,7 @@ import type { Route } from "next";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } } // Use context instead of destructuring directly
+  context: { params: { id: string } } // This is correct
 ) {
   try {
     const id = await Promise.resolve(context.params.id);
@@ -34,10 +34,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = await Promise.resolve(params.id);
+    const id = await Promise.resolve(context.params.id);
     const clientId = Number(id);
 
     if (isNaN(clientId)) {
@@ -65,10 +65,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = await Promise.resolve(params.id);
+    const id = await Promise.resolve(context.params.id);
     const clientId = Number(id);
 
     if (isNaN(clientId)) {
