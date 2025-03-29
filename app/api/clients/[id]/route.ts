@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import ClientService from "@/services/ClientService";
 
+// Fix: Use correct type imports from Next.js
+import type { Route } from "next";
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } } // Use context instead of destructuring directly
 ) {
   try {
-    const id = await Promise.resolve(params.id);
+    const id = await Promise.resolve(context.params.id);
     const clientId = Number(id);
 
     if (isNaN(clientId)) {
