@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model Client {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  name          String
+  surname       String
+  birthdate     DateTime?
+  phoneNumber   String?
+  notes         String?
+  
+  diets         Diet[]
+}
+
+model Diet {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tarih     DateTime?
+  su        String?
+  sonuc     String?
+  hedef     String?
+  fizik     String?
+  
+  oguns     Ogun[]
+  
+  clientId  Int
+  client    Client  @relation(fields: [clientId], references: [id])
+}
+
+model Ogun {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  name      String
+  time      String?
+  detail    String?
+  order     Int
+  
+  items     MenuItem[]
+  
+  dietId    Int
+  diet      Diet     @relation(fields: [dietId], references: [id], onDelete: Cascade)
+}
+
+model MenuItem {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  miktar    String?
+  
+  besinId   Int
+  besin     Besin    @relation(fields: [besinId], references: [id])
+  
+  birimId   Int?
+  birim     Birim?   @relation(fields: [birimId], references: [id])
+  
+  ogunId    Int
+  ogun      Ogun     @relation(fields: [ogunId], references: [id], onDelete: Cascade)
+}
+
+model Besin {
+  id        Int        @id @default(autoincrement())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  name      String     @unique
+  menuItems MenuItem[]
+}
+
+model Birim {
+  id        Int        @id @default(autoincrement())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  name      String     @unique
+  menuItems MenuItem[]
+}
