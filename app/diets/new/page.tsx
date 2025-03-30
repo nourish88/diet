@@ -1,12 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import DietForm from "@/components/DietForm";
 import { ChevronLeft } from "lucide-react";
 
-export default function NewDietPage() {
-  const router = useRouter();
+function DietPageContent() {
   const searchParams = useSearchParams();
   const clientId = searchParams.get("clientId");
 
@@ -36,5 +35,13 @@ export default function NewDietPage() {
         initialClientId={clientId ? parseInt(clientId, 10) : undefined}
       />
     </div>
+  );
+}
+
+export default function NewDietPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DietPageContent />
+    </Suspense>
   );
 }
