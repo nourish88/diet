@@ -3,10 +3,7 @@
 'use client'
 import { ZoomIn, ZoomOut } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import {useFontStore} from "@/store/store";
-
-
-
+import { useFontStore } from "@/store/store"
 
 export default function FontSizeController() {
     const { fontSize, increase, decrease } = useFontStore()

@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { useFontStore } from "@/components/DietForm";
+import { useFontStore } from "@/store/store";
 import { Plus, Minus, RotateCcw } from "lucide-react";
 
 const FontSizeControl = () => {
