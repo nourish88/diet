@@ -124,7 +124,7 @@ const ClientSelector = ({
     : "Danışan seçin";
 
   return (
-    <FormFieldWrapper form={{}} name="client" label="Danışan">
+    <FormFieldWrapper name="client" label="Danışan">
       {isLoading ? (
         <div className="flex items-center justify-center p-4">
           <Loader2 className="w-6 h-6 text-indigo-600 animate-spin mr-2" />
