@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Item } from "@/types/types";
 import {
   Command,
   CommandEmpty,
@@ -20,7 +21,6 @@ import { Input } from "./ui/input";
 import { Check, ChevronsUpDown, Trash } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Item } from "@/types/types";
 
 export const BESINS = [
   { value: "et", label: "Et" },

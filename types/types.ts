@@ -13,9 +13,11 @@ export interface Ogun {
   time: string;
   detail: string;
   order: number;
-  items: {
-    miktar: string;
-    birim: string;
-    besin: string;
-  }[];
+  items: Item[];
+}
+
+export interface Item {
+  miktar: string;
+  birim: string;
+  besin: string;
 }
