@@ -359,10 +359,13 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
                 form={form}
                 diet={diet}
                 setDiet={(newDiet) => {
-                  // Ensure date is stored as ISO string when updating
+                  // Instead of using instanceof, check if it's a Date object using a type guard
+                  const isDate = (value: any): value is Date => 
+                    value && Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value);
+
                   setDiet({
                     ...newDiet,
-                    Tarih: newDiet.Tarih instanceof Date ? newDiet.Tarih.toISOString() : newDiet.Tarih,
+                    Tarih: isDate(newDiet.Tarih) ? newDiet.Tarih.toISOString() : newDiet.Tarih,
                   });
                 }}
                 clientSelector={
