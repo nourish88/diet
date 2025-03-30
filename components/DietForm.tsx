@@ -86,6 +86,12 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       const selectedClient = clients.find((c) => c.id === selectedClientId);
       console.log("Selected client:", selectedClient);
 
+      // Update the AdSoyad in the diet when client changes
+      setDiet(prev => ({
+        ...prev,
+        AdSoyad: getClientFullName(selectedClientId)
+      }));
+
       // Load latest diet for this client
       loadLatestDiet();
     }
@@ -127,6 +133,7 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
     console.log("Converting DB diet to UI format:", dbDiet);
 
     return {
+      AdSoyad: getClientFullName(selectedClientId),
       Tarih: dbDiet.tarih ? new Date(Number(dbDiet.tarih)).toISOString() : null,
       Sonuc: dbDiet.sonuc || "",
       Hedef: dbDiet.hedef || "",
