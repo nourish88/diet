@@ -320,19 +320,19 @@ const SimplePDFGenerator = () => {
         const notes = ogun.notes || "";
 
         rows.push([
-          { text: name },
-          { text: time },
-          { text: menuText },
-          { text: notes },
+          { text: name, style: "tableCellValue" },
+          { text: time, style: "tableCellValue" },
+          { text: menuText, style: "tableCellValue" },
+          { text: notes, style: "tableCellValue" },
         ]);
       });
     } else {
       // Add an empty row if no meals data
       rows.push([
-        { text: "Veri yok" },
-        { text: "" },
-        { text: "" },
-        { text: "" },
+        { text: "Veri yok", style: "tableCellValue" },
+        { text: "", style: "tableCellValue" },
+        { text: "", style: "tableCellValue" },
+        { text: "", style: "tableCellValue" },
       ]);
     }
 
