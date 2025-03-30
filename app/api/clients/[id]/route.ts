@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ClientService } from '@/services/ClientService';
 
-type Props = {
-  params: {
-    id: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: Props
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const clientId = Number(params.id);
+    const { id } = await params;
+    const clientId = Number(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
@@ -36,19 +31,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = await Promise.resolve(context.params.id);
+    const { id } = await params;
     const clientId = Number(id);
-
+    
     if (isNaN(clientId)) {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
     const clientData = await request.json();
 
-    // Convert birthdate string to Date if present
     if (clientData.birthdate) {
       clientData.birthdate = new Date(clientData.birthdate);
     }
@@ -67,10 +61,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = await Promise.resolve(context.params.id);
+    const { id } = await params;
     const clientId = Number(id);
 
     if (isNaN(clientId)) {

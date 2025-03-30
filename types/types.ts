@@ -1,4 +1,4 @@
-export interface Diet {
+git export interface Diet {
   AdSoyad: string;
   Tarih: string;
   Sonuc: string;
