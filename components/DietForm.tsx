@@ -21,22 +21,7 @@ import useClientActions from "../hooks/useClientActions";
 import { ToastContainer } from "./ui/toast";
 import { useToast } from "./ui/use-toast";
 import ClientSelector from "./ClientSelector";
-
-export const useFontStore = create<{
-  fontSize: number;
-  increase: () => void;
-  decrease: () => void;
-}>(
-  (
-    set: (
-      updater: (state: { fontSize: number }) => { fontSize: number }
-    ) => void
-  ) => ({
-    fontSize: 16,
-    increase: () => set((state) => ({ fontSize: state.fontSize + 1 })),
-    decrease: () => set((state) => ({ fontSize: state.fontSize - 1 })),
-  })
-);
+import { useFontStore } from "@/store/store";
 
 interface DietFormProps {
   initialClientId?: number;
