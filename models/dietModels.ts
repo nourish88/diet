@@ -81,11 +81,10 @@ export const OGUN: Ogun[] = [
 ];
 
 export const initialDiet: Diet = {
-  Oguns: OGUN,
-  Diyetisyen: "Ezgi Evgin AKTAŞ",
-  Tarih: new Date(),
-  Fizik: "",
-  Hedef: "",
+  Tarih: new Date().toISOString(), // Store as ISO string
   Sonuc: "",
+  Hedef: "",
   Su: "",
+  Fizik: "",
+  Oguns: OGUN,
 };

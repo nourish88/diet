@@ -1,6 +1,6 @@
 git export interface Diet {
   AdSoyad: string;
-  Tarih: string;
+  Tarih: string | null;
   Sonuc: string;
   Hedef: string;
   Su: string;
@@ -11,12 +11,11 @@ git export interface Diet {
 export interface Ogun {
   name: string;
   time: string;
-  items: MenuItem[];
   detail: string;
-}
-
-export interface MenuItem {
-  besin: string;
-  miktar: string;
-  birim: string;
+  order: number;
+  items: {
+    miktar: string;
+    birim: string;
+    besin: string;
+  }[];
 }

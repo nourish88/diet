@@ -11,7 +11,7 @@ interface DietFormFieldsProps {
   clientSelector?: ReactNode;
 }
 
-const DietFormFields = ({
+const DietFormBasicFields = ({
   form,
   diet,
   setDiet,
@@ -118,4 +118,4 @@ const DietFormFields = ({
   );
 };
 
-export default DietFormFields;
+export default DietFormBasicFields;

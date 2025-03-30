@@ -124,32 +124,25 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
 
   // Function to convert database diet format to UI diet format
   const convertDbDietToUiDiet = (dbDiet: any): Diet => {
-    // Map database fields to UI fields
     console.log("Converting DB diet to UI format:", dbDiet);
 
     return {
-      Tarih: dbDiet.tarih ? new Date(Number(dbDiet.tarih)) : new Date(),
+      Tarih: dbDiet.tarih ? new Date(Number(dbDiet.tarih)).toISOString() : null,
       Sonuc: dbDiet.sonuc || "",
       Hedef: dbDiet.hedef || "",
       Su: dbDiet.su || "",
       Fizik: dbDiet.fizik || "",
-      Oguns:
-        dbDiet.oguns?.map((dbOgun: any) => {
-          // Create a valid ogun
-          const ogun: Ogun = {
-            name: dbOgun.name || "",
-            time: dbOgun.time || "",
-            detail: dbOgun.detail || "",
-            order: dbOgun.order || 0,
-            items:
-              dbOgun.items?.map((dbItem: any) => ({
-                miktar: dbItem.miktar || "",
-                birim: dbItem.birim?.name || "",
-                besin: dbItem.besin?.name || "",
-              })) || [],
-          };
-          return ogun;
-        }) || OGUN, // Use default OGUN if no meals in the database
+      Oguns: dbDiet.oguns?.map((dbOgun: any) => ({
+        name: dbOgun.name || "",
+        time: dbOgun.time || "",
+        detail: dbOgun.detail || "",
+        order: dbOgun.order || 0,
+        items: dbOgun.items?.map((dbItem: any) => ({
+          miktar: dbItem.miktar || "",
+          birim: dbItem.birim?.name || "",
+          besin: dbItem.besin?.name || "",
+        })) || [],
+      })) || OGUN,
     };
   };
 
@@ -358,7 +351,13 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
               <DietFormBasicFields
                 form={form}
                 diet={diet}
-                setDiet={setDiet}
+                setDiet={(newDiet) => {
+                  // Ensure date is stored as ISO string when updating
+                  setDiet({
+                    ...newDiet,
+                    Tarih: newDiet.Tarih instanceof Date ? newDiet.Tarih.toISOString() : newDiet.Tarih,
+                  });
+                }}
                 clientSelector={
                   <ClientSelector
                     onSelectClient={(clientId) => setSelectedClientId(clientId)}
