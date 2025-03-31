@@ -10,7 +10,7 @@ import {
 } from "@hello-pangea/dnd";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Diet, Ogun } from "@/types/types";
+import { Diet, Ogun, MenuItem } from "@/types/types";
 import MenuItem from "@/components/MenuItem";
 import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
