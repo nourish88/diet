@@ -6,17 +6,18 @@ const prisma = new PrismaClient();
 // GET /api/besinler/[id] - Get a specific besin
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
     const besin = await prisma.besin.findUnique({
-      where: { id },
+      where: { id: besinId },
       include: {
         group: true,
       },
@@ -39,12 +40,13 @@ export async function GET(
 // PUT /api/besinler/[id] - Update a besin
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
@@ -60,7 +62,7 @@ export async function PUT(
 
     // Check if besin exists
     const existingBesin = await prisma.besin.findUnique({
-      where: { id },
+      where: { id: besinId },
     });
 
     if (!existingBesin) {
@@ -83,7 +85,7 @@ export async function PUT(
 
     // Update besin
     const updatedBesin = await prisma.besin.update({
-      where: { id },
+      where: { id: besinId },
       data: {
         name: data.name,
         priority:
@@ -109,18 +111,19 @@ export async function PUT(
 // DELETE /api/besinler/[id] - Delete a besin
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
     // Check if besin exists
     const existingBesin = await prisma.besin.findUnique({
-      where: { id },
+      where: { id: besinId },
       include: {
         menuItems: true,
       },
@@ -144,7 +147,7 @@ export async function DELETE(
 
     // Delete besin
     await prisma.besin.delete({
-      where: { id },
+      where: { id: besinId },
     });
 
     return NextResponse.json({ success: true });
