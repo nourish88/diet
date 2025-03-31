@@ -1,23 +1,27 @@
 export interface Diet {
-  AdSoyad: string;
-  Tarih?: string | null; // ISO string format or null
-  Sonuc: string;
-  Hedef: string;
-  Su: string;
-  Fizik: string;
-  Oguns: Ogun[];
+  id?: string;
+  createdAt?: string;
+  weeklyResult?: string;
+  target?: string;
+  waterConsumption?: string;
+  physicalActivity?: string;
+  meals?: Meal[];
+  client?: {
+    fullName: string;
+    name?: string;
+    surname?: string;
+  };
 }
 
-export interface Ogun {
+export interface Meal {
   name: string;
   time: string;
-  items: MenuItem[];
-  detail: string;
-  order: number;
+  items?: MenuItem[];
+  notes?: string;
 }
 
 export interface MenuItem {
-  besin: string;
-  miktar: string;
-  birim: string;
+  name: string;
+  amount?: string;
+  unit?: string;
 }

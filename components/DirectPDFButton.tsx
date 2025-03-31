@@ -153,20 +153,22 @@ const DirectPDFButton = ({
     if (pdfData) return pdfData;
     if (!diet) return null;
 
+    const clientName = diet.client?.fullName || 
+      (diet.client?.name && diet.client?.surname 
+        ? `${diet.client.name} ${diet.client.surname}`.trim() 
+        : "Danışan Adı Belirtilmemiş");
+
     return {
-      fullName: diet.client?.fullName || "Danışan Adı Belirtilmemiş",
+      fullName: clientName,
       dietDate: diet.createdAt || new Date().toISOString(),
       weeklyResult: diet.weeklyResult || "Sonuç belirtilmemiş",
       target: diet.target || "Hedef belirtilmemiş",
-      ogunler:
-        diet.meals?.map((meal) => ({
-          name: meal.name || "Öğün Adı Belirtilmemiş",
-          time: meal.time || "Saat Belirtilmemiş",
-          menuItems: meal.items?.map((item) => item.name) || [
-            "Menü öğesi belirtilmemiş",
-          ],
-          notes: meal.notes || "",
-        })) || [],
+      ogunler: diet.meals?.map((meal) => ({
+        name: meal.name || "Öğün Adı Belirtilmemiş",
+        time: meal.time || "Saat Belirtilmemiş",
+        menuItems: meal.items?.map((item) => item.name) || ["Menü öğesi belirtilmemiş"],
+        notes: meal.notes || "",
+      })) || [],
       waterConsumption: diet.waterConsumption || "Belirtilmemiş",
       physicalActivity: diet.physicalActivity || "Belirtilmemiş",
     };

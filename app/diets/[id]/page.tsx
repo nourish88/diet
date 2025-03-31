@@ -201,28 +201,22 @@ export default function DietDetailPage() {
             <DirectPDFButton
               diet={diet}
               pdfData={{
-                fullName: diet.client
-                  ? `${diet.client.name} ${diet.client.surname}`.trim()
+                fullName: diet.client 
+                  ? (diet.client.fullName || `${diet.client.name || ''} ${diet.client.surname || ''}`.trim())
                   : "İsimsiz Danışan",
-                dietDate: diet.tarih
-                  ? formatDateTR(diet.tarih)
-                  : "Tarih Belirtilmemiş",
-                weeklyResult: diet.sonuc || diet.Sonuc || "",
-                target: diet.hedef || diet.Hedef || "",
-                ogunler: (diet.oguns || diet.Oguns || []).map((ogun: any) => ({
-                  name: ogun.name || "",
-                  time: ogun.time || "",
-                  menuItems: (ogun.items || [])
-                    .filter((item: any) => item.besin?.name || item.besin)
-                    .map((item: any) =>
-                      `${item.miktar || ""} ${
-                        item.birim?.name || item.birim || ""
-                      } ${item.besin?.name || item.besin || ""}`.trim()
-                    ),
-                  notes: ogun.detail || "",
+                dietDate: diet.createdAt || new Date().toISOString(),
+                weeklyResult: diet.weeklyResult || "",
+                target: diet.target || "",
+                ogunler: (diet.meals || []).map((meal) => ({
+                  name: meal.name || "",
+                  time: meal.time || "",
+                  menuItems: (meal.items || []).map((item) => 
+                    `${item.amount || ""} ${item.unit || ""} ${item.name || ""}`.trim()
+                  ),
+                  notes: meal.notes || "",
                 })),
-                waterConsumption: diet.su || diet.Su || "",
-                physicalActivity: diet.fizik || diet.Fizik || "",
+                waterConsumption: diet.waterConsumption || "",
+                physicalActivity: diet.physicalActivity || "",
               }}
               variant="outline"
               className="bg-white text-indigo-700 hover:bg-indigo-50"
