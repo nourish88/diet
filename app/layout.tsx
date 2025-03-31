@@ -6,8 +6,8 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Diet Management System",
-  description: "A system for managing diet plans",
+  title: "Diyet Danışmanlık Hizmetleri",
+  description: "Profesyonel diyet ve beslenme danışmanlığı hizmetleri",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <body className={`${inter.className} bg-gray-50 min-h-screen`}>
         <Navbar />
         <main className="pt-16">{children}</main>

@@ -37,21 +37,21 @@ export default function ClientsPage() {
       console.error("Error fetching clients:", error);
       toast({
         title: "Hata",
-        description: "Müşteriler yüklenirken bir hata oluştu.",
+        description: "Danışanlar yüklenirken bir hata oluştu.",
         variant: "destructive",
       });
     }
   };
 
   const handleDeleteClient = async (id: number) => {
-    if (confirm("Bu müşteriyi silmek istediğinize emin misiniz?")) {
+    if (confirm("Bu danışanı silmek istediğinize emin misiniz?")) {
       setIsDeleting(id);
       try {
         const success = await deleteClient(id);
         if (success) {
           toast({
             title: "Başarılı",
-            description: "Müşteri başarıyla silindi.",
+            description: "Danışan başarıyla silindi.",
             variant: "default",
           });
           fetchClients();
@@ -60,7 +60,7 @@ export default function ClientsPage() {
         console.error("Error deleting client:", error);
         toast({
           title: "Hata",
-          description: "Müşteri silinirken bir hata oluştu.",
+          description: "Danışan silinirken bir hata oluştu.",
           variant: "destructive",
         });
       } finally {
@@ -72,43 +72,43 @@ export default function ClientsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Müşteri Yönetimi</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Danışan Yönetimi</h1>
         <Button
           onClick={() => router.push("/clients/new")}
           className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
         >
           <UserPlus className="h-4 w-4 mr-2" />
-          Yeni Müşteri Ekle
+          Yeni Danışan Ekle
         </Button>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Müşteriler yükleniyor...</span>
+          <span className="ml-2 text-gray-600">Danışanlar yükleniyor...</span>
         </div>
       ) : clients.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <h3 className="text-lg font-medium text-gray-700 mb-2">
-            Henüz müşteri bulunmuyor
+            Henüz danışan bulunmuyor
           </h3>
           <p className="text-gray-500 mb-4">
-            İlk müşterinizi ekleyerek başlayın
+            İlk danışanınızı ekleyerek başlayın
           </p>
           <Button
             onClick={() => router.push("/clients/new")}
             className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            Yeni Müşteri Ekle
+            Yeni Danışan Ekle
           </Button>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white">
-            <h2 className="text-lg font-medium">Tüm Müşteriler</h2>
+            <h2 className="text-lg font-medium">Tüm Danışanlar</h2>
             <p className="text-sm text-blue-100 mt-1">
-              Toplam {clients.length} müşteri
+              Toplam {clients.length} danışan
             </p>
           </div>
           <div className="overflow-x-auto">

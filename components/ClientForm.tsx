@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
+import { Badge } from "@/components/ui/badge";
 
 interface ClientFormProps {
   initialData?: {
@@ -37,24 +38,82 @@ const ClientForm = ({
 }: ClientFormProps) => {
   const [formData, setFormData] = useState(initialData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const { createClient, updateClient } = useClientActions();
   const { toast, toasts, dismiss } = useToast();
   const router = useRouter();
+
+  const validatePhoneNumber = (phone: string) => {
+    // Remove any non-digit characters
+    const cleaned = phone.replace(/\D/g, "");
+
+    // If empty, that's fine (optional field)
+    if (!cleaned) {
+      setPhoneError("");
+      return true;
+    }
+
+    // Turkish mobile numbers start with 5 and have 10 digits
+    const isValid = cleaned.length === 10 && cleaned.startsWith("5");
+
+    if (!isValid) {
+      setPhoneError("Telefon 5 ile başlamalı ve 10 haneli olmalıdır");
+      return false;
+    }
+
+    setPhoneError("");
+    return true;
+  };
+
+  const formatPhoneNumber = (input: string) => {
+    // Remove all non-digits first
+    const cleaned = input.replace(/\D/g, "");
+
+    // First, ensure it starts with 5
+    if (cleaned.length > 0 && cleaned[0] !== "5" && cleaned[0] !== "") {
+      return cleaned.length > 1 ? "5" + cleaned.substring(1, 10) : "5";
+    }
+
+    // Then limit to 10 digits
+    return cleaned.substring(0, 10);
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    if (name === "phoneNumber") {
+      const formattedValue = formatPhoneNumber(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedValue,
+      }));
+      validatePhoneNumber(formattedValue);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleBirthdateChange = (date: Date | undefined) => {
     setFormData((prev) => ({
       ...prev,
       birthdate: date ? date.toISOString() : null,
+    }));
+  };
+
+  const handleBirthdateInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    // Store the raw input as a string in a temporary state
+    const dateString = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      birthdate: dateString || null,
     }));
   };
 
@@ -72,22 +131,60 @@ const ClientForm = ({
         return;
       }
 
+      // Validate phone if provided
+      if (formData.phoneNumber && !validatePhoneNumber(formData.phoneNumber)) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Process the birthdate before submission
+      const submissionData = { ...formData };
+
+      if (
+        typeof submissionData.birthdate === "string" &&
+        submissionData.birthdate.trim()
+      ) {
+        try {
+          // Try to parse the date in DD.MM.YYYY format
+          const parts = submissionData.birthdate.split(".");
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+            const year = parseInt(parts[2], 10);
+
+            const date = new Date(year, month, day);
+            if (!isNaN(date.getTime())) {
+              submissionData.birthdate = date.toISOString();
+            } else {
+              // Invalid date, set to null
+              submissionData.birthdate = null;
+            }
+          } else {
+            // Not in correct format, set to null
+            submissionData.birthdate = null;
+          }
+        } catch (error) {
+          console.error("Date parsing error:", error);
+          submissionData.birthdate = null;
+        }
+      }
+
       let client;
       if (isEdit && initialData.id) {
-        client = await updateClient(initialData.id, formData);
+        client = await updateClient(initialData.id, submissionData);
         if (client) {
           toast({
             title: "Başarılı",
-            description: "Müşteri bilgileri güncellendi.",
+            description: "Danışan bilgileri güncellendi.",
             variant: "default",
           });
         }
       } else {
-        client = await createClient(formData);
+        client = await createClient(submissionData);
         if (client) {
           toast({
             title: "Başarılı",
-            description: "Yeni müşteri başarıyla oluşturuldu.",
+            description: "Yeni danışan başarıyla oluşturuldu.",
             variant: "default",
           });
 
@@ -112,8 +209,8 @@ const ClientForm = ({
       toast({
         title: "Hata",
         description: isEdit
-          ? "Müşteri bilgileri güncellenirken bir hata oluştu."
-          : "Müşteri oluşturulurken bir hata oluştu.",
+          ? "Danışan bilgileri güncellenirken bir hata oluştu."
+          : "Danışan oluşturulurken bir hata oluştu.",
         variant: "destructive",
       });
     } finally {
@@ -125,12 +222,12 @@ const ClientForm = ({
     <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
       <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white">
         <h2 className="text-lg font-medium">
-          {isEdit ? "Müşteri Düzenle" : "Yeni Müşteri Ekle"}
+          {isEdit ? "Danışan Düzenle" : "Yeni Danışan Ekle"}
         </h2>
         <p className="text-sm text-blue-100 mt-1">
           {isEdit
-            ? "Müşteri bilgilerini güncelleyin"
-            : "Yeni müşteri kaydı oluşturun"}
+            ? "Danışan bilgilerini güncelleyin"
+            : "Yeni danışan kaydı oluşturun"}
         </p>
       </div>
 
@@ -152,7 +249,7 @@ const ClientForm = ({
               value={formData.name}
               onChange={handleChange}
               className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="Müşterinin ismi"
+              placeholder="Danışanın ismi"
             />
           </div>
 
@@ -172,7 +269,7 @@ const ClientForm = ({
               value={formData.surname}
               onChange={handleChange}
               className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="Müşterinin soyismi"
+              placeholder="Danışanın soyismi"
             />
           </div>
 
@@ -184,34 +281,26 @@ const ClientForm = ({
             >
               Doğum Tarihi
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal border border-gray-300 shadow-sm"
-                >
-                  <CalendarIcon className="h-4 w-4 mr-2" />
-                  {formData.birthdate ? (
-                    format(new Date(formData.birthdate), "PPP", { locale: tr })
-                  ) : (
-                    <span className="text-gray-500">Tarih seçin</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={
-                    formData.birthdate
-                      ? new Date(formData.birthdate)
-                      : undefined
-                  }
-                  onSelect={handleBirthdateChange}
-                  initialFocus
-                  locale={tr}
-                />
-              </PopoverContent>
-            </Popover>
+            <input
+              type="text"
+              id="birthdate"
+              name="birthdate"
+              placeholder="GG.AA.YYYY (örn: 01.05.1990)"
+              value={
+                typeof formData.birthdate === "string" ? formData.birthdate : ""
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  birthdate: value || null,
+                }));
+              }}
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Doğum tarihini GG.AA.YYYY formatında girin
+            </p>
           </div>
 
           {/* Phone field */}
@@ -228,9 +317,14 @@ const ClientForm = ({
               name="phoneNumber"
               value={formData.phoneNumber || ""}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="05XX XXX XX XX"
+              className={`w-full p-2 border ${
+                phoneError ? "border-red-500" : "border-gray-300"
+              } rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+              placeholder="5XXXXXXXXX"
             />
+            {phoneError && (
+              <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+            )}
           </div>
         </div>
 
@@ -249,7 +343,7 @@ const ClientForm = ({
             value={formData.notes || ""}
             onChange={handleChange}
             className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Müşteri hakkında notlar..."
+            placeholder="Danışan hakkında notlar..."
           ></textarea>
         </div>
 

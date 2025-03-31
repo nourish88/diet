@@ -66,7 +66,7 @@ export default function ClientDetailPage() {
       if (!clientData) {
         toast({
           title: "Hata",
-          description: "Müşteri bulunamadı",
+          description: "Danışan bulunamadı",
           variant: "destructive",
         });
         router.push("/clients");
@@ -77,7 +77,7 @@ export default function ClientDetailPage() {
       console.error("Error fetching client:", error);
       toast({
         title: "Hata",
-        description: "Müşteri bilgileri yüklenirken bir hata oluştu",
+        description: "Danışan bilgileri yüklenirken bir hata oluştu",
         variant: "destructive",
       });
     } finally {
@@ -117,7 +117,7 @@ export default function ClientDetailPage() {
           className="text-indigo-600 hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Müşteri Listesine Dön
+          Danışan Listesine Dön
         </Link>
       </div>
 
@@ -128,7 +128,7 @@ export default function ClientDetailPage() {
               {client.name} {client.surname}
             </h2>
             <p className="text-sm text-blue-100 mt-1">
-              Müşteri #{client.id} | Kayıt: {formatDate(client.createdAt)}
+              Danışan #{client.id} | Kayıt: {formatDate(client.createdAt)}
             </p>
           </div>
           <Button

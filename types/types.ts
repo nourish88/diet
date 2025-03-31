@@ -1,6 +1,6 @@
 export interface Diet {
   AdSoyad: string;
-  Tarih: string | null;
+  Tarih: string | null; // ISO string format or null
   Sonuc: string;
   Hedef: string;
   Su: string;

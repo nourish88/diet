@@ -252,7 +252,7 @@ export default function DietDetailPage() {
               <div className="space-y-4">
                 <div>
                   <span className="block text-sm font-medium text-gray-500">
-                    Müşteri
+                    Danışan
                   </span>
                   <Link
                     href={`/clients/${diet.clientId}`}

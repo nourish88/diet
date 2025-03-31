@@ -1,22 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
 import { Diet } from "@/types/types";
 import { FileText, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 
-// Helper function to format dates in Turkish format
 const formatDateTR = (dateString: string | null | undefined | Date) => {
   if (!dateString) return "Tarih Belirtilmemiş";
-  
+
   try {
-    // Try to parse the date string based on its type
-    const date = typeof dateString === 'string' 
-      ? new Date(dateString) 
-      : dateString instanceof Date 
-        ? dateString 
+    const date =
+      typeof dateString === "string"
+        ? new Date(dateString)
+        : dateString instanceof Date
+        ? dateString
         : new Date();
-        
+
     return format(date, "d MMMM yyyy", { locale: tr });
   } catch (error) {
     console.error("Date parsing error:", error);
@@ -44,277 +43,491 @@ interface DirectPDFButtonProps extends ButtonProps {
   pdfData?: PDFData;
 }
 
-const DirectPDFButton = ({ diet, pdfData, className, ...props }: DirectPDFButtonProps) => {
+const DirectPDFButton = ({
+  diet,
+  pdfData,
+  className,
+  ...props
+}: DirectPDFButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    const loadBackgroundImage = async () => {
+      try {
+        const response = await fetch("/ezgi_evgin.png");
+        if (!response.ok)
+          throw new Error(`HTTP error! status: ${response.status}`);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setBackgroundDataUrl(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error("Error loading background image:", error);
+      }
+    };
+    loadBackgroundImage();
+  }, []);
 
   const generatePDF = async () => {
     try {
       setIsLoading(true);
-      
-      // Check if we're running in a browser environment
-      if (typeof window === 'undefined') {
-        throw new Error("PDFs can only be generated in a browser environment");
+      if (typeof window === "undefined") {
+        throw new Error(
+          "PDF oluşturma işlemi yalnızca tarayıcı ortamında gerçekleştirilebilir"
+        );
       }
-      
-      console.log("Starting PDF generation process");
-      
-      // Load pdfmake and fonts from CDN
+
       await loadPdfMakeScripts();
+      if (!window.pdfMake) throw new Error("PDF oluşturma modülü yüklenemedi");
+      if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
 
-      if (!window.pdfMake) {
-        throw new Error("pdfMake is not available after loading scripts");
-      }
+      const pdfDataToUse = preparePdfData(diet, pdfData);
+      if (!pdfDataToUse) throw new Error("Beslenme programı verisi bulunamadı");
 
-      console.log("pdfMake loaded successfully");
-
-      // Use provided pdfData or create it from diet object
-      const pdfDataToUse = pdfData || (diet ? {
-        fullName: pdfData?.fullName || "İsimsiz Danışan",
-        dietDate: diet.Tarih ? formatDateTR(diet.Tarih) : "Tarih Belirtilmemiş",
-        weeklyResult: diet.Sonuc || "",
-        target: diet.Hedef || "",
-        ogunler: diet.Oguns.map((ogun) => ({
-          name: ogun.name || "",
-          time: ogun.time || "",
-          menuItems: ogun.items
-            .filter((item) => item.besin && item.besin.trim() !== "")
-            .map((item) =>
-              `${item.miktar || ""} ${item.birim || ""} ${
-                item.besin || ""
-              }`.trim()
-            ),
-          notes: ogun.detail || "",
-        })),
-        waterConsumption: diet.Su || "",
-        physicalActivity: diet.Fizik || "",
-      } : null);
-
-      if (!pdfDataToUse) {
-        throw new Error("No diet data provided");
-      }
-
-      console.log("PDF data prepared:", JSON.stringify(pdfDataToUse).substring(0, 200) + "...");
-      
-      // Add this logging to debug the fullName issue
-      console.log("Client fullName:", pdfDataToUse.fullName);
-      const fullNameToUse = pdfDataToUse.fullName && pdfDataToUse.fullName.trim() !== "" && pdfDataToUse.fullName !== "undefined undefined"
-        ? pdfDataToUse.fullName
-        : "İsimsiz Danışan";
-      console.log("Using fullName:", fullNameToUse);
-
-      // Process the dietDate to ensure it's formatted correctly if it's not already
-      const formattedDietDate = pdfDataToUse.dietDate ? 
-        (pdfDataToUse.dietDate.includes("Mart") || pdfDataToUse.dietDate.includes("Ocak") || 
-         pdfDataToUse.dietDate.includes("Şubat") || pdfDataToUse.dietDate === "Tarih Belirtilmemiş") ? 
-          pdfDataToUse.dietDate : formatDateTR(pdfDataToUse.dietDate) : "Tarih Belirtilmemiş";
-
-      // Create a basic document definition
-      const docDefinition = {
-        pageSize: "A4",
-        pageMargins: [40, 60, 40, 60],
-        content: [
-          {
-            text: "KİŞİYE ÖZEL BESLENME PROGRAMI",
-            style: "header",
-            alignment: "center",
-            margin: [0, 0, 0, 20],
-          },
-          {
-            text: `Danışan: ${fullNameToUse}`,
-            margin: [0, 0, 0, 10],
-          },
-          {
-            text: `Tarih: ${formattedDietDate}`,
-            margin: [0, 0, 0, 20],
-          },
-          {
-            table: {
-              headerRows: 1,
-              widths: ["auto", "auto", "*", "*"],
-              body: buildMealTableRows(pdfDataToUse),
-            },
-          },
-          {
-            text: `Su Tüketimi: ${pdfDataToUse.waterConsumption}`,
-            margin: [0, 20, 0, 10],
-          },
-          {
-            text: `Fiziksel Aktivite: ${pdfDataToUse.physicalActivity}`,
-            margin: [0, 0, 0, 10],
-          },
-        ],
-        styles: {
-          header: {
-            fontSize: 18,
-            bold: true,
-          },
-        },
-        defaultStyle: {
-          font: "Roboto"
-        },
-      };
-
-      console.log("About to create PDF");
-      
-      // Try downloading the PDF instead of opening it
-      window.pdfMake.createPdf(docDefinition).download("beslenme-programi.pdf");
-      
-      console.log("PDF download initiated");
+      const docDefinition = createDocDefinition(
+        pdfDataToUse,
+        backgroundDataUrl
+      );
+      const fileName = `Beslenme_Programi_${pdfDataToUse.fullName.replace(
+        /\s+/g,
+        "_"
+      )}_${formatDateForFileName(pdfDataToUse.dietDate)}.pdf`;
+      window.pdfMake.createPdf(docDefinition).download(fileName);
     } catch (error) {
-      console.error("Error generating PDF:", error);
-      let errorMessage = "Bilinmeyen bir hata oluştu";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      alert("PDF oluşturulurken bir hata oluştu: " + errorMessage);
+      console.error("PDF oluşturma hatası:", error);
+      alert(`PDF oluşturulamadı: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Helper function to load pdfMake scripts from CDN
+  const formatDateForFileName = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date instanceof Date && !isNaN(date.getTime())
+      ? format(date, "yyyy-MM-dd")
+      : "tarihsiz";
+  };
+
   const loadPdfMakeScripts = async () => {
-    // Only load if not already loaded
-    if (window.pdfMake) {
-      return;
-    }
+    if (window.pdfMake) return;
 
-    // Load pdfmake.min.js
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load pdfMake script"));
-      document.head.appendChild(script);
-    });
+    // Load pdfmake with fallback
+    try {
+      await loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"
+      );
+      await loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"
+      );
 
-    // Load vfs_fonts.js
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js";
-      script.onload = () => resolve();
-      script.onerror = () =>
-        reject(new Error("Failed to load vfs_fonts script"));
-      document.head.appendChild(script);
-    });
-
-    // Configure pdfMake with better font support for Turkish characters and emojis
-    if (window.pdfMake) {
-      console.log("Configuring fonts for pdfMake");
-      // Use standard fonts that are more reliable
+      // Configure fonts
       window.pdfMake.fonts = {
-        // Default font
         Roboto: {
-          normal: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf',
-          bold: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf',
-          italics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Italic.ttf',
-          bolditalics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-MediumItalic.ttf'
-        }
+          normal:
+            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf",
+          bold: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf",
+          italics:
+            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Italic.ttf",
+          bolditalics:
+            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-MediumItalic.ttf",
+        },
       };
-      
-      // Set defaultStyle to use Roboto
-      const originalCreatePdf = window.pdfMake.createPdf;
-      window.pdfMake.createPdf = function(docDefinition) {
-        // Make sure default style exists
-        docDefinition.defaultStyle = docDefinition.defaultStyle || {};
-        docDefinition.defaultStyle.font = 'Roboto';
-        
-        return originalCreatePdf.call(this, docDefinition);
-      };
+    } catch (error) {
+      console.error("Script loading failed:", error);
+      throw new Error("PDF kütüphaneleri yüklenemedi");
     }
   };
 
-  // Helper function to sanitize any text for the PDF
-  const sanitizeText = (text: string | null | undefined) => {
-    if (!text) return '';
-    // Basic sanitization to remove special characters
-    return text.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+  const loadScript = (url: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = url;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+      document.head.appendChild(script);
+    });
   };
 
-  // Helper function to build meal table rows - keep this simple
-  function buildMealTableRows(dietData: any) {
-    // First row is the header
+  const preparePdfData = (diet?: Diet, pdfData?: PDFData): PDFData | null => {
+    if (pdfData) return pdfData;
+    if (!diet) return null;
+
+    return {
+      fullName: diet.client?.fullName || "Danışan Adı Belirtilmemiş",
+      dietDate: diet.createdAt || new Date().toISOString(),
+      weeklyResult: diet.weeklyResult || "Sonuç belirtilmemiş",
+      target: diet.target || "Hedef belirtilmemiş",
+      ogunler:
+        diet.meals?.map((meal) => ({
+          name: meal.name || "Öğün Adı Belirtilmemiş",
+          time: meal.time || "Saat Belirtilmemiş",
+          menuItems: meal.items?.map((item) => item.name) || [
+            "Menü öğesi belirtilmemiş",
+          ],
+          notes: meal.notes || "",
+        })) || [],
+      waterConsumption: diet.waterConsumption || "Belirtilmemiş",
+      physicalActivity: diet.physicalActivity || "Belirtilmemiş",
+    };
+  };
+
+  const buildMealTableRows = (dietData: PDFData) => {
     const rows = [
       [
-        { text: "Öğün", style: "tableHeader" },
-        { text: "Saat", style: "tableHeader" },
-        { text: "Menü", style: "tableHeader" },
-        { text: "Açıklama", style: "tableHeader" },
+        { text: "ÖĞÜN", style: "tableHeader" },
+        { text: "SAAT", style: "tableHeader" },
+        { text: "MENÜ", style: "tableHeader" },
+        { text: "NOTLAR", style: "tableHeader" },
       ],
     ];
 
-    // Add rows for each meal from the diet data
-    if (dietData.ogunler && Array.isArray(dietData.ogunler) && dietData.ogunler.length > 0) {
-      dietData.ogunler.forEach((ogun: any) => {
-        // Simple sanitization for safety
-        const name = sanitizeText(ogun.name) || "";
-        const time = sanitizeText(ogun.time) || "";
-        const menuText = formatMenuItems(ogun.menuItems);
-        const notes = sanitizeText(ogun.notes) || "";
-
-        rows.push([
-          { text: name, style: "tableCell" },
-          { text: time, style: "tableCell" },
-          { text: menuText, style: "tableCell" },
-          { text: notes, style: "tableCell" },
-        ]);
-      });
-    } else {
-      // Add an empty row if no meals data
+    dietData.ogunler.forEach((ogun) => {
+      const menuText = ogun.menuItems.join("\n• ") || "Belirtilmemiş";
       rows.push([
-        { text: "Veri yok", style: "tableCell" },
-        { text: "", style: "tableCell" },
-        { text: "", style: "tableCell" },
-        { text: "", style: "tableCell" },
+        { text: ogun.name || "Belirtilmemiş", style: "tableCell" },
+        { text: ogun.time || "Belirtilmemiş", style: "tableCell" },
+        { text: `• ${menuText}`, style: "tableCell" },
+        {
+          text: ogun.notes || "-",
+          style: "tableCell",
+          italics: ogun.notes ? false : true,
+        },
       ]);
-    }
+    });
 
     return rows;
-  }
+  };
 
-  // Helper to format menu items in a simple way
-  function formatMenuItems(items: string[] | undefined) {
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return "";
-    }
+  const createDocDefinition = (pdfData: PDFData, logoUrl: string) => {
+    const primaryColor = "#2c3e50"; // Dark blue for professional look
+    const secondaryColor = "#7f8c8d"; // Gray for secondary elements
+    const accentColor = "#16a085"; // Teal for accents
+    const lightBg = "#f8f9fa"; // Light background
+    const borderColor = "#e0e0e0";
 
-    // Simple join with newlines
-    return items
-      .filter((item) => item && item.trim() !== "")
-      .map((item) => `- ${sanitizeText(item)}`)
-      .join("\n");
-  }
+    const formattedDietDate = formatDateTR(pdfData.dietDate);
+
+    return {
+      pageSize: "A4",
+      pageMargins: [40, 120, 40, 80],
+      header: {
+        stack: [
+          {
+            columns: [
+              {
+                image: logoUrl,
+                width: 80,
+                margin: [40, 20, 0, 0],
+                alignment: "left",
+              },
+              {
+                stack: [
+                  {
+                    text: "BESLENME PROGRAMI",
+                    fontSize: 18,
+                    bold: true,
+                    color: primaryColor,
+                    alignment: "right",
+                    margin: [0, 25, 40, 0],
+                  },
+                  {
+                    text: "Uzm. Dyt. Ezgi Evgin Aktaş",
+                    fontSize: 12,
+                    color: secondaryColor,
+                    alignment: "right",
+                    margin: [0, 5, 40, 0],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            canvas: [
+              {
+                type: "line",
+                x1: 40,
+                y1: 100,
+                x2: 555,
+                y2: 100,
+                lineWidth: 1,
+                lineColor: accentColor,
+                dash: { length: 5 },
+              },
+            ],
+          },
+        ],
+      },
+      footer: (currentPage: number, pageCount: number) => ({
+        stack: [
+          {
+            canvas: [
+              {
+                type: "line",
+                x1: 40,
+                y1: 0,
+                x2: 555,
+                y2: 0,
+                lineWidth: 1,
+                lineColor: accentColor,
+                dash: { length: 5 },
+              },
+            ],
+          },
+          {
+            columns: [
+              {
+                text: `Sayfa ${currentPage}/${pageCount}`,
+                fontSize: 9,
+                color: secondaryColor,
+                margin: [40, 10, 0, 0],
+              },
+              {
+                text: [
+                  "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA\n",
+                  "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com • Web: www.ezgievgin.com",
+                ],
+                alignment: "right",
+                fontSize: 9,
+                color: secondaryColor,
+                margin: [0, 10, 40, 0],
+              },
+            ],
+          },
+        ],
+        margin: [0, 20],
+      }),
+      content: [
+        // Client Information Section
+        {
+          stack: [
+            {
+              text: "DANIŞAN BİLGİLERİ",
+              style: "sectionHeader",
+              margin: [0, 0, 0, 10],
+            },
+            {
+              table: {
+                widths: ["50%", "50%"],
+                body: [
+                  [
+                    {
+                      text: `Ad Soyad: ${pdfData.fullName}`,
+                      style: "clientInfo",
+                      border: [false, false, false, false],
+                    },
+                    {
+                      text: `Hedef: ${pdfData.target}`,
+                      style: "clientInfo",
+                      border: [false, false, false, false],
+                    },
+                  ],
+                  [
+                    {
+                      text: `Tarih: ${formattedDietDate}`,
+                      style: "clientInfo",
+                      border: [false, false, false, false],
+                    },
+                    {
+                      text: `Sonuç: ${pdfData.weeklyResult}`,
+                      style: "clientInfo",
+                      border: [false, false, false, false],
+                    },
+                  ],
+                ],
+              },
+              layout: "noBorders",
+              margin: [0, 0, 0, 15],
+            },
+          ],
+          margin: [0, 20, 0, 20],
+        },
+
+        // Meals Section
+        {
+          text: "GÜNLÜK BESLENME PROGRAMI",
+          style: "sectionHeader",
+          margin: [0, 0, 0, 10],
+        },
+        {
+          table: {
+            headerRows: 1,
+            widths: ["15%", "15%", "45%", "25%"],
+            body: buildMealTableRows(pdfData),
+          },
+          layout: {
+            hLineWidth: (i: number, node: any) =>
+              i === 0 || i === node.table.body.length ? 1 : 0.5,
+            vLineWidth: () => 0,
+            hLineColor: (i: number) => (i === 0 ? accentColor : borderColor),
+            paddingTop: (i: number) => (i === 0 ? 8 : 5),
+            paddingBottom: (i: number, node: any) =>
+              i === node.table.body.length - 1 ? 8 : 5,
+          },
+          margin: [0, 0, 0, 20],
+        },
+
+        // Additional Information Section
+        {
+          stack: [
+            {
+              text: "GÜNLÜK TAKİP ÖNERİLERİ",
+              style: "sectionHeader",
+              margin: [0, 0, 0, 10],
+            },
+            {
+              columns: [
+                {
+                  width: "50%",
+                  stack: [
+                    {
+                      text: "SU TÜKETİMİ",
+                      style: "followUpHeader",
+                      margin: [0, 0, 0, 5],
+                    },
+                    {
+                      text: pdfData.waterConsumption,
+                      style: "followUpText",
+                      margin: [0, 0, 0, 15],
+                    },
+                  ],
+                },
+                {
+                  width: "50%",
+                  stack: [
+                    {
+                      text: "FİZİKSEL AKTİVİTE",
+                      style: "followUpHeader",
+                      margin: [0, 0, 0, 5],
+                    },
+                    {
+                      text: pdfData.physicalActivity,
+                      style: "followUpText",
+                      margin: [0, 0, 0, 15],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+
+        // Signature Area
+        {
+          stack: [
+            {
+              canvas: [
+                {
+                  type: "line",
+                  x1: 0,
+                  y1: 0,
+                  x2: 200,
+                  y2: 0,
+                  lineWidth: 1,
+                  lineColor: primaryColor,
+                },
+              ],
+              margin: [0, 30, 0, 5],
+            },
+            {
+              text: "Uzm. Dyt. Ezgi Evgin Aktaş",
+              style: "signatureText",
+              margin: [0, 0, 0, 0],
+            },
+          ],
+          alignment: "right",
+          margin: [0, 30, 40, 0],
+        },
+      ],
+      styles: {
+        sectionHeader: {
+          fontSize: 14,
+          bold: true,
+          color: primaryColor,
+          alignment: "left",
+        },
+        clientInfo: {
+          fontSize: 12,
+          color: primaryColor,
+          lineHeight: 1.5,
+        },
+        followUpHeader: {
+          fontSize: 12,
+          bold: true,
+          color: accentColor,
+        },
+        followUpText: {
+          fontSize: 12,
+          color: primaryColor,
+          lineHeight: 1.4,
+        },
+        tableHeader: {
+          fontSize: 11,
+          bold: true,
+          color: "#ffffff",
+          fillColor: accentColor,
+          alignment: "center",
+          margin: [0, 5, 0, 5],
+        },
+        tableCell: {
+          fontSize: 10,
+          color: primaryColor,
+          margin: [5, 3, 5, 3],
+          lineHeight: 1.3,
+        },
+        signatureText: {
+          fontSize: 12,
+          color: primaryColor,
+          italics: true,
+        },
+      },
+      defaultStyle: {
+        font: "Roboto",
+        lineHeight: 1.2,
+      },
+    };
+  };
 
   return (
     <Button
       type="button"
       onClick={generatePDF}
       disabled={isLoading}
-      className={`no-print bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors duration-200 shadow-sm flex items-center px-4 py-2 ${className}`}
+      className={`
+        no-print
+        bg-gradient-to-r from-blue-600 to-teal-600
+        hover:from-blue-700 hover:to-teal-700
+        text-white
+        rounded-md
+        transition-all
+        duration-200
+        shadow-md
+        hover:shadow-lg
+        flex
+        items-center
+        justify-center
+        px-6
+        py-2.5
+        min-w-[200px]
+        ${className}
+      `}
       {...props}
     >
       {isLoading ? (
         <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          PDF Yükleniyor...
+          <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+          <span className="font-medium">PDF Hazırlanıyor...</span>
         </>
       ) : (
         <>
-          <FileText className="w-4 h-4 mr-2" />
-          Direkt PDF Oluştur
+          <FileText className="w-5 h-5 mr-3" />
+          <span className="font-medium">PDF Oluştur</span>
         </>
       )}
     </Button>
   );
 };
 
-// Add this to make TypeScript happy with the global pdfMake
 declare global {
   interface Window {
     pdfMake: any;

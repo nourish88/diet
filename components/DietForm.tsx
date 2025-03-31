@@ -10,12 +10,9 @@ import jsPDF from "jspdf";
 import { formSchema } from "../schemas/formSchema";
 import { Diet, Ogun } from "../types/types";
 import { OGUN, initialDiet } from "../models/dietModels";
-
 import DietTable from "./DietTable";
-
 import DietFormActions from "./DietFormActions";
 import DietFormBasicFields from "./DietFormBasicFields";
-import { create } from "zustand";
 import { useDietActions } from "../hooks/useDietActions";
 import useClientActions from "../hooks/useClientActions";
 import { ToastContainer } from "./ui/toast";
@@ -87,9 +84,9 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       console.log("Selected client:", selectedClient);
 
       // Update the AdSoyad in the diet when client changes
-      setDiet(prev => ({
+      setDiet((prev) => ({
         ...prev,
-        AdSoyad: getClientFullName(selectedClientId)
+        AdSoyad: getClientFullName(selectedClientId),
       }));
 
       // Load latest diet for this client
@@ -132,9 +129,29 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
   const convertDbDietToUiDiet = (dbDiet: any): Diet => {
     console.log("Converting DB diet to UI format:", dbDiet);
 
+    let tarih = null;
+    try {
+      // Handle different date formats that might come from the database
+      if (dbDiet.tarih) {
+        if (typeof dbDiet.tarih === 'string') {
+          // If it's an ISO string
+          tarih = dbDiet.tarih;
+        } else if (typeof dbDiet.tarih === 'number') {
+          // If it's a timestamp
+          tarih = new Date(dbDiet.tarih).toISOString();
+        } else {
+          // If it's already a Date object
+          tarih = dbDiet.tarih.toISOString();
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      tarih = null;
+    }
+
     return {
       AdSoyad: getClientFullName(selectedClientId),
-      Tarih: dbDiet.tarih ? new Date(Number(dbDiet.tarih)).toISOString() : null,
+      Tarih: tarih,
       Sonuc: dbDiet.sonuc || "",
       Hedef: dbDiet.hedef || "",
       Su: dbDiet.su || "",
@@ -316,7 +333,13 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
     }
 
     try {
-      const result = await saveDiet(diet);
+      // Ensure the date is in the correct format before saving
+      const dietToSave = {
+        ...diet,
+        Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
+      };
+
+      const result = await saveDiet(dietToSave);
 
       if (result) {
         toast({
@@ -347,6 +370,9 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
     );
   };
 
+  // Add this helper function to check if form should be disabled
+  const isFormDisabled = !selectedClientId;
+
   return (
     <div className="container mx-auto px-4 max-w-7xl">
       <div style={{ fontSize: `${fontSize}px` }}>
@@ -354,70 +380,92 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <DietHeader />
 
-            <div className="mb-8">
-              <DietFormBasicFields
-                form={form}
-                diet={diet}
-                setDiet={(newDiet) => {
-                  // Instead of using instanceof, check if it's a Date object using a type guard
-                  const isDate = (value: any): value is Date => 
-                    value && Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value);
-
-                  setDiet({
-                    ...newDiet,
-                    Tarih: isDate(newDiet.Tarih) ? newDiet.Tarih.toISOString() : newDiet.Tarih,
-                  });
-                }}
-                clientSelector={
-                  <ClientSelector
-                    onSelectClient={(clientId) => setSelectedClientId(clientId)}
-                    selectedClientId={selectedClientId}
-                  />
-                }
+            {/* Client selector should always be enabled */}
+            <div className="mb-4">
+              <ClientSelector
+                onSelectClient={(clientId) => setSelectedClientId(clientId)}
+                selectedClientId={selectedClientId}
               />
             </div>
 
-            <div id="content" className="mb-8">
-              <DietTable
-                setDiet={setDiet}
-                diet={diet}
-                contextId={contextId}
-                fontSize={fontSize}
-                handleOgunChange={handleOgunChange}
-                handleRemoveOgun={handleRemoveOgun}
-                handleAddMenuItem={handleAddMenuItem}
-                handleMenuItemChange={handleMenuItemChange}
-              />
-            </div>
+            {/* Show a message when no client is selected */}
+            {isFormDisabled && (
+              <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
+                <p className="text-yellow-700">
+                  Lütfen diyet programı oluşturmak için önce bir danışan seçin
+                </p>
+              </div>
+            )}
 
-            <div className="flex space-x-4 mt-8">
-              <DietFormActions
-                onAddOgun={handleAddOgun}
-                onGeneratePDF={generatePDF}
-                dietData={{
-                  fullName: getClientFullName(selectedClientId),
-                  dietDate: diet.Tarih ? diet.Tarih.toString() : "",
-                  weeklyResult: diet.Sonuc,
-                  target: diet.Hedef,
-                  ogunler: diet.Oguns.map((ogun) => ({
-                    name: ogun.name,
-                    time: ogun.time,
-                    menuItems: ogun.items
-                      .filter((item) => item.besin && item.besin.trim() !== "")
-                      .map((item) =>
-                        `${item.miktar || ""} ${item.birim || ""} ${
-                          item.besin || ""
-                        }`.trim()
-                      ),
-                    notes: ogun.detail,
-                  })),
-                  waterConsumption: diet.Su,
-                  physicalActivity: diet.Fizik,
-                }}
-                diet={diet}
-                clientId={selectedClientId || undefined}
-                onSaveToDatabase={handleSaveToDB}
-              />
+            {/* Wrap the rest of the form in a div that can be disabled */}
+            <div className={isFormDisabled ? "opacity-50 pointer-events-none" : ""}>
+              <div className="mb-8">
+                <DietFormBasicFields
+                  form={form}
+                  diet={diet}
+                  setDiet={(newDiet) => {
+                    const isDate = (value: any): value is Date =>
+                      value &&
+                      Object.prototype.toString.call(value) === "[object Date]" &&
+                      !isNaN(value);
+
+                    setDiet({
+                      ...newDiet,
+                      Tarih: isDate(newDiet.Tarih)
+                        ? newDiet.Tarih.toISOString()
+                        : newDiet.Tarih,
+                    });
+                  }}
+                  selectedClientId={selectedClientId}
+                  onSelectClient={(clientId) => setSelectedClientId(clientId)}
+                  disabled={isFormDisabled}
+                />
+              </div>
+
+              <div id="content" className="mb-8">
+                <DietTable
+                  setDiet={setDiet}
+                  diet={diet}
+                  contextId={contextId}
+                  fontSize={fontSize}
+                  handleOgunChange={handleOgunChange}
+                  handleRemoveOgun={handleRemoveOgun}
+                  handleAddMenuItem={handleAddMenuItem}
+                  handleMenuItemChange={handleMenuItemChange}
+                  disabled={isFormDisabled}
+                />
+              </div>
+
+              <div className="flex space-x-4 mt-8">
+                <DietFormActions
+                  onAddOgun={handleAddOgun}
+                  onGeneratePDF={generatePDF}
+                  dietData={{
+                    fullName: getClientFullName(selectedClientId),
+                    dietDate: diet.Tarih ? diet.Tarih.toString() : "",
+                    weeklyResult: diet.Sonuc,
+                    target: diet.Hedef,
+                    ogunler: diet.Oguns.map((ogun) => ({
+                      name: ogun.name,
+                      time: ogun.time,
+                      menuItems: ogun.items
+                        .filter((item) => item.besin && item.besin.trim() !== "")
+                        .map((item) =>
+                          `${item.miktar || ""} ${item.birim || ""} ${
+                            item.besin || ""
+                          }`.trim()
+                        ),
+                      notes: ogun.detail,
+                    })),
+                    waterConsumption: diet.Su,
+                    physicalActivity: diet.Fizik,
+                  }}
+                  diet={diet}
+                  clientId={selectedClientId || undefined}
+                  onSaveToDatabase={handleSaveToDB}
+                  disabled={isFormDisabled}
+                />
+              </div>
             </div>
           </form>
         </Form>

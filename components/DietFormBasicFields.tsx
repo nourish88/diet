@@ -2,21 +2,22 @@ import { Diet } from "@/types/types";
 import FormFieldWrapper from "./CustomUI/FormFieldWrapper";
 import DatePicker from "./CustomUI/Datepicker";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ReactNode } from "react";
 
 interface DietFormFieldsProps {
   form: any;
   diet: Diet;
   setDiet: (diet: Diet) => void;
-  clientSelector?: ReactNode;
+  selectedClientId?: number | null;
+  onSelectClient?: (clientId: number) => void;
+  disabled?: boolean;
 }
 
-const DietFormBasicFields = ({
-  form,
-  diet,
-  setDiet,
-  clientSelector,
-}: DietFormFieldsProps) => {
+const DietFormBasicFields = ({ form, diet, setDiet }: DietFormFieldsProps) => {
+  const inputBaseClass =
+    "w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500";
+
   return (
     <div
       className="rounded-lg border-2 border-purple-700 bg-white shadow-sm overflow-hidden"
@@ -26,7 +27,7 @@ const DietFormBasicFields = ({
       }}
     >
       <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 border-b border-indigo-800 text-white">
-        <h3 className="text-lg font-medium">Danışan Bilgileri</h3>
+        <h3 className="text-lg font-medium">Diyet Bilgileri</h3>
         <p className="text-sm text-blue-100 mt-1">
           Lütfen beslenme programı için gereken bilgileri doldurunuz
         </p>
@@ -36,10 +37,8 @@ const DietFormBasicFields = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-4">
-            {clientSelector}
-
             <FormFieldWrapper form={form} name="dietDate" label="Diyet Tarihi">
-              <div className="w-full h-10 flex items-center px-3 border border-gray-300 rounded-md shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+              <div className="w-full">
                 <DatePicker
                   selected={diet.Tarih ? new Date(diet.Tarih) : null}
                   onSelect={(newDate) =>
@@ -60,12 +59,31 @@ const DietFormBasicFields = ({
               renderField={(field) => (
                 <Input
                   value={diet.Su}
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={inputBaseClass}
                   placeholder="Örn: 2-3 litre"
                   onChange={(e) => setDiet({ ...diet, Su: e.target.value })}
                 />
               )}
             />
+
+            {/* Moved Fiziksel Aktivite here with full width */}
+            <div className="md:col-span-2">
+              <FormFieldWrapper
+                form={form}
+                name="fizikselAktivite"
+                label="Fiziki Aktivite   "
+                renderField={(field) => (
+                  <Input
+                    value={diet.Fizik}
+                    className={inputBaseClass}
+                    placeholder="Örn: Günde 30dk yürüyüş, haftada 3 gün pilates..."
+                    onChange={(e) =>
+                      setDiet({ ...diet, Fizik: e.target.value })
+                    }
+                  />
+                )}
+              />
+            </div>
           </div>
 
           {/* Right Column */}
@@ -77,7 +95,7 @@ const DietFormBasicFields = ({
               renderField={(field) => (
                 <Input
                   value={diet.Sonuc}
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={inputBaseClass}
                   placeholder="Haftalık sonuç notları"
                   onChange={(e) => setDiet({ ...diet, Sonuc: e.target.value })}
                 />
@@ -91,23 +109,9 @@ const DietFormBasicFields = ({
               renderField={(field) => (
                 <Input
                   value={diet.Hedef}
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={inputBaseClass}
                   placeholder="Haftalık hedef notları"
                   onChange={(e) => setDiet({ ...diet, Hedef: e.target.value })}
-                />
-              )}
-            />
-
-            <FormFieldWrapper
-              form={form}
-              name="fizikselAktivite"
-              label="Fiziksel Aktivite"
-              renderField={(field) => (
-                <Input
-                  value={diet.Fizik}
-                  className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="Örn: Günde 30dk yürüyüş"
-                  onChange={(e) => setDiet({ ...diet, Fizik: e.target.value })}
                 />
               )}
             />

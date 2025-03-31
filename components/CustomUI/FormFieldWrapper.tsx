@@ -1,55 +1,37 @@
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { UseFormReturn, ControllerRenderProps } from "react-hook-form"
+import { ReactNode } from "react";
 
 interface FormFieldWrapperProps {
-    name: string
-    label: React.ReactNode
-    children?: React.ReactNode
-    form?: UseFormReturn<any>  // Make form optional by adding ?
-    renderField?: (field: ControllerRenderProps<any, any>) => React.ReactNode
-    className?: string
+  form: any;
+  name: string;
+  label: string;
+  children?: ReactNode;
+  renderField?: (field: any) => ReactNode;
 }
 
 const FormFieldWrapper = ({
-    form,
-    name,
-    label,
-    children,
-    renderField,
-    className = "mt-3 flex-col flex-2" // Keep the default className
+  form,
+  name,
+  label,
+  children,
+  renderField,
 }: FormFieldWrapperProps) => {
-    // If no form is provided, just render a basic wrapper
-    if (!form) {
-        return (
-            <div className="flex">
-                <div className="mt-3 mr-2 flex-col">
-                    <span className="font-bold text-xs">{label}</span>
-                </div>
-                <div className={className}>
-                    {children}
-                </div>
-            </div>
-        )
-    }
+  return (
+    <div className="form-field">
+      <div className="flex items-center">
+        <div className="w-32 flex-shrink-0"> {/* Fixed width for label */}
+          <label
+            htmlFor={name}
+            className="block text-sm font-medium text-gray-700"
+          >
+            {label}
+          </label>
+        </div>
+        <div className="flex-grow">
+          {children || (renderField && renderField(form.register(name)))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-    // If form is provided, use the full form field wrapper
-    return (
-        <FormField
-            control={form.control}
-            name={name}
-            render={({field}) => (
-                <FormItem className="flex">
-                    <FormLabel className="mt-3 mr-2 flex-col">
-                        <span className="font-bold text-xs">{label}</span>
-                    </FormLabel>
-                    <FormControl className={className}>
-                        {renderField ? renderField(field) : children}
-                    </FormControl>
-                    <FormMessage/>
-                </FormItem>
-            )}
-        />
-    )
-}
-
-export default FormFieldWrapper
+export default FormFieldWrapper;

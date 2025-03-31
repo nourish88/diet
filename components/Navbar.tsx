@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Users, ClipboardList, Home } from "lucide-react";
+import Image from "next/image";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,10 +32,21 @@ const Navbar = () => {
   return (
     <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
       <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
-        <Link href="/" className="flex items-center">
-          <span className="self-center text-xl font-semibold whitespace-nowrap text-indigo-600">
-            Diet Management
-          </span>
+        <Link href="/" className="flex items-center space-x-3">
+          <div className="relative ">
+            <Image
+              src="/ezgi_evgin.png"
+              alt="Diyet Danışmanlık Logo"
+              width={120}
+              height={120}
+              priority
+            />
+          </div>
+          <div>
+            <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
+              Diyet Danışmanlık Hizmetleri
+            </span>
+          </div>
         </Link>
 
         <div className="flex md:hidden">

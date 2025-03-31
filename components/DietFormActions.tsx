@@ -3,7 +3,7 @@ import DirectPDFButton from "./DirectPDFButton";
 import { Button } from "./ui/button";
 import dynamic from "next/dynamic";
 import { Diet } from "@/types/types";
-import { Plus, Save, FileText } from "lucide-react";
+import { Plus, Save, FileText, Loader2 } from "lucide-react";
 import { PDFData } from "./DirectPDFButton";
 import { useState } from "react";
 import { useToast } from "./ui/use-toast";
@@ -21,18 +21,21 @@ const PDFButton = dynamic(() => import("./PDFButton"), {
 interface DietFormActionsProps {
   onAddOgun: () => void;
   onGeneratePDF: () => void;
-  dietData: PDFData;
-  // For database saving
-  diet?: Diet;
+  dietData: any;
+  diet: Diet;
   clientId?: number;
-  onSaveToDatabase?: () => Promise<void>;
+  onSaveToDatabase: () => Promise<void>;
+  disabled?: boolean;
 }
 
 const DietFormActions = ({
   onAddOgun,
+  onGeneratePDF,
   dietData,
-  onSaveToDatabase,
+  diet,
   clientId,
+  onSaveToDatabase,
+  disabled = false,
 }: DietFormActionsProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -50,7 +53,7 @@ const DietFormActions = ({
     if (!clientId) {
       toast({
         title: "Uyarı",
-        description: "Müşteri seçilmeden kayıt yapılamaz.",
+        description: "Danışan seçilmeden kayıt yapılamaz.",
         variant: "destructive",
       });
       return;
@@ -84,16 +87,8 @@ const DietFormActions = ({
         onClick={onAddOgun}
         className="bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
       >
+        <Plus className="h-4 w-4 mr-2" />
         Öğün Ekle
-      </Button>
-
-      <Button
-        type="submit"
-        id="notPrintable"
-        className="no-print bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors duration-200 shadow-sm flex items-center px-4 py-2"
-      >
-        <Save className="w-4 h-4 mr-2" />
-        Diyeti Kaydet
       </Button>
 
       <div className="no-print">
@@ -112,7 +107,17 @@ const DietFormActions = ({
           disabled={isSaving || !clientId}
           className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white border-none"
         >
-          {isSaving ? "Kaydediliyor..." : "Veritabanına Kaydet"}
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Kaydediliyor...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Kaydet
+            </>
+          )}
         </Button>
       )}
     </div>

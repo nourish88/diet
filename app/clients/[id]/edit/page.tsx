@@ -22,7 +22,7 @@ export default function EditClientPage() {
     if (!clientId || isNaN(clientId)) {
       toast({
         title: "Hata",
-        description: "Geçersiz müşteri ID'si",
+        description: "Geçersiz danışan ID'si",
         variant: "destructive",
       });
       router.push("/clients");
@@ -39,7 +39,7 @@ export default function EditClientPage() {
       if (!clientData) {
         toast({
           title: "Hata",
-          description: "Müşteri bulunamadı",
+          description: "Danışan bulunamadı",
           variant: "destructive",
         });
         router.push("/clients");
@@ -50,7 +50,7 @@ export default function EditClientPage() {
       console.error("Error fetching client:", error);
       toast({
         title: "Hata",
-        description: "Müşteri bilgileri yüklenirken bir hata oluştu",
+        description: "Danışan bilgileri yüklenirken bir hata oluştu",
         variant: "destructive",
       });
     } finally {
@@ -68,7 +68,7 @@ export default function EditClientPage() {
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
           <span className="ml-2 text-gray-600">
-            Müşteri bilgileri yükleniyor...
+            Danışan bilgileri yükleniyor...
           </span>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function EditClientPage() {
           className="text-indigo-600 hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Müşteri Detaylarına Dön
+          Danışan Detaylarına Dön
         </Link>
       </div>
 

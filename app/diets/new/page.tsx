@@ -18,7 +18,7 @@ function DietPageContent() {
             className="text-indigo-600 hover:text-indigo-800 flex items-center"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Müşteri Detaylarına Dön
+            Danışan Detaylarına Dön
           </Link>
         ) : (
           <Link
@@ -26,7 +26,7 @@ function DietPageContent() {
             className="text-indigo-600 hover:text-indigo-800 flex items-center"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Müşteri Listesine Dön
+            Danışan Listesine Dön
           </Link>
         )}
       </div>
