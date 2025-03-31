@@ -1,16 +1,30 @@
 export interface Diet {
   id?: string;
   createdAt?: string;
-  weeklyResult?: string;
-  target?: string;
-  waterConsumption?: string;
-  physicalActivity?: string;
-  meals?: Meal[];
+  AdSoyad?: string;
+  Tarih?: string | null;
+  Sonuc?: string;
+  Hedef?: string;
+  Su?: string;
+  Fizik?: string;
+  Oguns: Ogun[];
   client?: {
     fullName: string;
     name?: string;
     surname?: string;
   };
+}
+
+export interface Ogun {
+  name: string;
+  time: string;
+  items: {
+    miktar: string;
+    birim: string;
+    besin: string;
+  }[];
+  detail: string;
+  order: number;
 }
 
 export interface Meal {
