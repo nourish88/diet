@@ -10,8 +10,8 @@ import {
 } from "@hello-pangea/dnd";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Diet, Ogun, MenuItem } from "@/types/types";
-import MenuItem from "@/components/MenuItem";
+import { Diet, Ogun, MenuItem as MenuItemType } from "@/types/types";
+import MenuItemComponent from "@/components/MenuItem";
 import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
@@ -265,7 +265,7 @@ const DietTable = ({
                               <div className="space-y-4 overflow-visible min-h-[120px]">
                                 {ogun.items.map((item, itemIndex) => (
                                   <div key={itemIndex} className="break-words">
-                                    <MenuItem
+                                    <MenuItemComponent
                                       item={item}
                                       index={itemIndex}
                                       ogunIndex={index}
