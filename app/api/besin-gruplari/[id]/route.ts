@@ -6,17 +6,18 @@ const prisma = new PrismaClient();
 // GET /api/besin-gruplari/[id] - Get a specific besin group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinGroupId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinGroupId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
     const besinGroup = await prisma.besinGroup.findUnique({
-      where: { id },
+      where: { id: besinGroupId },
       include: {
         besins: true,
       },
@@ -42,12 +43,13 @@ export async function GET(
 // PUT /api/besin-gruplari/[id] - Update a besin group
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinGroupId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinGroupId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
@@ -63,7 +65,7 @@ export async function PUT(
 
     // Check if besin group exists
     const existingGroup = await prisma.besinGroup.findUnique({
-      where: { id },
+      where: { id: besinGroupId },
     });
 
     if (!existingGroup) {
@@ -75,7 +77,7 @@ export async function PUT(
 
     // Update besin group
     const updatedGroup = await prisma.besinGroup.update({
-      where: { id },
+      where: { id: besinGroupId },
       data: {
         description: data.description,
       },
@@ -94,18 +96,19 @@ export async function PUT(
 // DELETE /api/besin-gruplari/[id] - Delete a besin group
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const { id } = await params;
+    const besinGroupId = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(besinGroupId)) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
 
     // Check if besin group exists
     const existingGroup = await prisma.besinGroup.findUnique({
-      where: { id },
+      where: { id: besinGroupId },
       include: {
         besins: true,
       },
@@ -121,14 +124,14 @@ export async function DELETE(
     // If there are besins in this group, update them to remove the group reference
     if (existingGroup.besins.length > 0) {
       await prisma.besin.updateMany({
-        where: { groupId: id },
+        where: { groupId: besinGroupId },
         data: { groupId: null },
       });
     }
 
     // Delete besin group
     await prisma.besinGroup.delete({
-      where: { id },
+      where: { id: besinGroupId },
     });
 
     return NextResponse.json({ success: true });
