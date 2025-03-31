@@ -1,6 +1,6 @@
 export interface Diet {
   AdSoyad: string;
-  Tarih: string | null; // ISO string format or null
+  Tarih?: string | null; // ISO string format or null
   Sonuc: string;
   Hedef: string;
   Su: string;
@@ -11,13 +11,12 @@ export interface Diet {
 export interface Ogun {
   name: string;
   time: string;
-  detail: string;
-  order: number;
-  items: Item[];
+  items: MenuItem[];
+  notes?: string;
 }
 
-export interface Item {
+export interface MenuItem {
+  besin: string;
   miktar: string;
   birim: string;
-  besin: string;
 }
