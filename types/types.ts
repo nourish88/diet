@@ -12,7 +12,8 @@ export interface Ogun {
   name: string;
   time: string;
   items: MenuItem[];
-  notes?: string;
+  detail: string;
+  order: number;
 }
 
 export interface MenuItem {

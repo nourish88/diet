@@ -179,7 +179,7 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       name: "",
       time: "",
       items: [],
-      detail: "",
+      detail: "",  // Now matches the interface
       order: diet.Oguns.length + 1,
     };
     setDiet((prev) => ({
