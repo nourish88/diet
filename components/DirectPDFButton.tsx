@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
-import { Diet } from "@/types/types";
+import { Diet, Ogun } from "@/types/types";
 import { FileText, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
@@ -153,24 +153,24 @@ const DirectPDFButton = ({
     if (pdfData) return pdfData;
     if (!diet) return null;
 
-    const clientName = diet.client?.fullName || 
-      (diet.client?.name && diet.client?.surname 
-        ? `${diet.client.name} ${diet.client.surname}`.trim() 
-        : "Danışan Adı Belirtilmemiş");
+    const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
 
     return {
       fullName: clientName,
-      dietDate: diet.createdAt || new Date().toISOString(),
-      weeklyResult: diet.weeklyResult || "Sonuç belirtilmemiş",
-      target: diet.target || "Hedef belirtilmemiş",
-      ogunler: diet.meals?.map((meal) => ({
-        name: meal.name || "Öğün Adı Belirtilmemiş",
-        time: meal.time || "Saat Belirtilmemiş",
-        menuItems: meal.items?.map((item) => item.name) || ["Menü öğesi belirtilmemiş"],
-        notes: meal.notes || "",
-      })) || [],
-      waterConsumption: diet.waterConsumption || "Belirtilmemiş",
-      physicalActivity: diet.physicalActivity || "Belirtilmemiş",
+      dietDate: diet.Tarih || new Date().toISOString(),
+      weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
+      target: diet.Hedef || "Hedef belirtilmemiş",
+      ogunler:
+        diet.Oguns?.map((meal: Ogun) => ({
+          name: meal.name || "Öğün Adı Belirtilmemiş",
+          time: meal.time || "Saat Belirtilmemiş",
+          menuItems: meal.items
+            ?.map((item) => `${item.miktar} ${item.birim} ${item.besin}`)
+            .filter(Boolean) || ["Menü öğesi belirtilmemiş"],
+          notes: meal.detail || "Not belirtilmemiş",
+        })) || [],
+      waterConsumption: diet.Su || "Belirtilmemiş",
+      physicalActivity: diet.Fizik || "Belirtilmemiş",
     };
   };
 
@@ -192,8 +192,7 @@ const DirectPDFButton = ({
         { text: `• ${menuText}`, style: "tableCell" },
         {
           text: ogun.notes || "-",
-          style: "tableCell",
-          italics: ogun.notes ? false : true,
+          style: ogun.notes ? "tableCell" : "tableCellItalic",
         },
       ]);
     });
@@ -476,6 +475,13 @@ const DirectPDFButton = ({
           color: primaryColor,
           margin: [5, 3, 5, 3],
           lineHeight: 1.3,
+        },
+        tableCellItalic: {
+          fontSize: 10,
+          color: primaryColor,
+          margin: [5, 3, 5, 3],
+          lineHeight: 1.3,
+          italics: true,
         },
         signatureText: {
           fontSize: 12,
