@@ -18,7 +18,7 @@ import { Resizable } from "react-resizable";
 import { Clock, Coffee, FileText, Menu, Trash } from "lucide-react";
 
 interface DietTableProps {
-  setDiet: (diet: Diet) => void;
+  setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
   diet: Diet;
   contextId: string;
   fontSize: number;
@@ -60,17 +60,21 @@ const DietTable = ({
   }, []);
 
   const handleDeleteMenuItem = (ogunIndex: number, itemIndex: number) => {
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: prev.Oguns.map((ogun, idx) =>
+    setDiet((prevDiet: Diet): Diet => {
+      const updatedOguns = prevDiet.Oguns.map((ogun, idx) =>
         idx === ogunIndex
           ? {
               ...ogun,
               items: ogun.items.filter((_, i) => i !== itemIndex),
             }
           : ogun
-      ),
-    }));
+      );
+
+      return {
+        ...prevDiet,
+        Oguns: updatedOguns,
+      };
+    });
   };
 
   const reorder = (list: Ogun[], startIndex: number, endIndex: number) => {
