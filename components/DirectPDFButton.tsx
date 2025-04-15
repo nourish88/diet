@@ -137,8 +137,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   const [importantDateMessage, setImportantDateMessage] = useState<string>("");
 
   console.log("DirectPDFButton - Initial props:", {
-    isImportantDateCelebrated: pdfData.isImportantDateCelebrated,
-    importantDateId: importantDateId
+    importantDateId,
+    isImportantDateCelebrated: pdfData?.isImportantDateCelebrated ?? false,
   });
 
   useEffect(() => {
@@ -162,7 +162,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     const fetchImportantDate = async () => {
       console.log("Starting fetchImportantDate with:", {
         importantDateId,
-        isImportantDateCelebrated: pdfData?.isImportantDateCelebrated
+        isImportantDateCelebrated: pdfData?.isImportantDateCelebrated,
       });
 
       if (!importantDateId || !pdfData?.isImportantDateCelebrated) {
@@ -171,25 +171,28 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       }
 
       try {
-        const response = await fetch(`/api/important-dates/${importantDateId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
+        const response = await fetch(
+          `/api/important-dates/${importantDateId}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log("Fetched important date data:", data);
-        
+
         if (data.message) {
           setImportantDateMessage(data.message);
         }
       } catch (error) {
-        console.error('Error fetching important date:', error);
+        console.error("Error fetching important date:", error);
       }
     };
 
@@ -344,6 +347,18 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     besin?: { name: string } | string;
   }
 
+  const formatMenuItem = (item: MenuItem | string): string => {
+    if (typeof item === "string") return item;
+
+    const miktar = item.miktar ?? "";
+    const birim =
+      typeof item.birim === "string" ? item.birim : item.birim?.name ?? "";
+    const besin =
+      typeof item.besin === "string" ? item.besin : item.besin?.name ?? "";
+
+    return `${miktar} ${birim} ${besin}`.trim();
+  };
+
   const preparePdfData = (
     diet: Diet | undefined,
     pdfData: PDFData | undefined
@@ -354,24 +369,17 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       // For pdfData case, ensure menu items are properly formatted
       const processedData: PDFData = {
         ...pdfData,
-        ogunler: pdfData.ogunler.map(ogun => ({
+        ogunler: pdfData.ogunler.map((ogun) => ({
           ...ogun,
-          menuItems: ogun.menuItems.map(item => {
-            if (typeof item === 'string') return item;
-            
-            // Format menu item if it's an object
-            const miktar = item.miktar || '';
-            const birim = typeof item.birim === 'string' ? item.birim : item.birim?.name || '';
-            const besin = typeof item.besin === 'string' ? item.besin : item.besin?.name || '';
-            
-            return `${miktar} ${birim} ${besin}`.trim();
-          }).filter(Boolean)
+          menuItems: ogun.menuItems
+            .map((item) => formatMenuItem(item))
+            .filter(Boolean),
         })),
         isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
         isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
-        importantDate: pdfData.isImportantDateCelebrated 
+        importantDate: pdfData.isImportantDateCelebrated
           ? { message: importantDateMessage }
-          : undefined
+          : undefined,
       };
 
       return processedData;
@@ -391,14 +399,10 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       ogunler: oguns.map((meal: any) => ({
         name: meal.name,
         time: meal.time,
-        menuItems: meal.items.map((item: any) => {
-          const miktar = item.miktar || '';
-          const birim = typeof item.birim === 'string' ? item.birim : item.birim?.name || '';
-          const besin = typeof item.besin === 'string' ? item.besin : item.besin?.name || '';
-          
-          return `${miktar} ${birim} ${besin}`.trim();
-        }).filter(Boolean),
-        notes: meal.detail || meal.notes || ""
+        menuItems: meal.items
+          .map((item: any) => formatMenuItem(item))
+          .filter(Boolean),
+        notes: meal.detail || meal.notes || "",
       })),
       waterConsumption: diet.Su || "Belirtilmemiş",
       physicalActivity: diet.Fizik || "Belirtilmemiş",
@@ -407,7 +411,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
       importantDate: diet.isImportantDateCelebrated
         ? { message: importantDateMessage }
-        : undefined
+        : undefined,
     };
   };
 
@@ -485,7 +489,10 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     }
 
     if (pdfData.isImportantDateCelebrated && pdfData.importantDate?.message) {
-      console.log("Adding important date celebration with message:", pdfData.importantDate.message);
+      console.log(
+        "Adding important date celebration with message:",
+        pdfData.importantDate.message
+      );
       celebrationsContent.push({
         text: `🎉 ${pdfData.importantDate.message}`,
         style: "celebration",
