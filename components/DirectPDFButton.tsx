@@ -584,9 +584,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     ];
 
     // Add Dietitian Note if exists
-
-    console.log(pdfData.dietitianNote, "pdfData.dietitianNote");
-
     if (pdfData.dietitianNote) {
       content.push(
         {
@@ -596,11 +593,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         },
         {
           text: pdfData.dietitianNote,
-          style: {
-            fontSize: 11,
-            color: secondaryColor,
-            lineHeight: 1.4,
-          },
+          style: "dietitianNote",
           margin: [0, 0, 0, 20],
         }
       );
@@ -623,7 +616,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         layout: {
           hLineWidth: () => 1,
           vLineWidth: () => 1,
-          hLineColor: () => "#e9d5ff",
+          hLineColor: () => borderColor,
           vLineColor: () => "#e9d5ff",
           fillColor: () => "#f3e8ff",
           paddingTop: () => 10,
@@ -737,6 +730,11 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           fontSize: 13, // Increased from 11
           color: "#374151",
           margin: [0, 2, 0, 2],
+        },
+        dietitianNote: {
+          fontSize: 11,
+          color: secondaryColor,
+          lineHeight: 1.4,
         },
       },
       header: {
