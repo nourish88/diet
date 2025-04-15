@@ -1,6 +1,5 @@
 import DirectPDFButton from "./DirectPDFButton";
 import { Button } from "./ui/button";
-import dynamic from "next/dynamic";
 import { Diet } from "@/types/types";
 import { Save, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
@@ -17,6 +16,7 @@ interface DietFormActionsProps {
   onSaveToDatabase: () => Promise<void>;
   disabled?: boolean;
   phoneNumber?: string;
+  importantDateId?: number | null;
 }
 
 const DietFormActions = ({
@@ -75,6 +75,11 @@ const DietFormActions = ({
     }
   };
 
+  console.log("DietFormActions - Received props:", {
+    isImportantDateCelebrated: diet.isImportantDateCelebrated,
+    importantDateId: diet.importantDateId
+  });
+
   return (
     <div className="flex flex-wrap gap-3 mt-6 justify-start">
       <Button
@@ -105,12 +110,12 @@ const DietFormActions = ({
         className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white border-none"
         phoneNumber={validPhoneNumber}
         dietId={diet?.id}
+        importantDateId={diet?.importantDateId}
         disabled={!diet?.id || !validPhoneNumber}
         onError={(error) => {
           toast({
             title: "Hata",
-            description:
-              error || "WhatsApp raporu gönderilirken bir hata oluştu",
+            description: error || "WhatsApp raporu gönderilirken bir hata oluştu",
             variant: "destructive",
           });
         }}

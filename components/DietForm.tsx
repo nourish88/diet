@@ -617,13 +617,14 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
               <div className="flex space-x-4 mt-8">
                 <DietFormActions
                   onAddOgun={handleAddOgun}
+                  importantDateId={diet.importantDateId}
                   onGeneratePDF={generatePDF}
                   dietData={{
                     fullName: getClientFullName(selectedClientId),
                     dietDate: diet.Tarih ? diet.Tarih.toString() : "",
                     weeklyResult: diet.Sonuc,
                     isBirthdayCelebration: diet.isBirthdayCelebration,
-
+                    isImportantDateCelebrated: diet.isImportantDateCelebrated,
                     target: diet.Hedef,
                     id: diet.id,
                     ogunler: diet.Oguns.map((ogun) => ({

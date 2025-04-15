@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = parseInt(params.id);
+    
+    const importantDate = await prisma.importantDate.findUnique({
+      where: { id },
+    });
+
+    if (!importantDate) {
+      return NextResponse.json(
+        { error: "Important date not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(importantDate);
+  } catch (error) {
+    console.error("Error fetching important date:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch important date" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
