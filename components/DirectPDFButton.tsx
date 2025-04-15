@@ -289,6 +289,12 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     });
   };
 
+  interface MenuItem {
+    miktar?: string;
+    birim?: { name: string } | string;
+    besin?: { name: string } | string;
+  }
+
   const preparePdfData = (
     diet: Diet | undefined,
     pdfData: PDFData | undefined
@@ -299,24 +305,29 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         ogunler: pdfData.ogunler.map((ogun) => {
           // Process menu items
           const processedMenuItems = ogun.menuItems
-            .map((item) => {
+            .map((item: MenuItem | string) => {
               if (typeof item === "string") return item;
 
-              const miktar = (item as { miktar?: string }).miktar || "";
-              const birim = (item as { birim?: string }).birim || "";
-              const besin = (item as { besin?: string }).besin || "";
+              const miktar = item.miktar || "";
+              // Handle birim object
+              const birim = typeof item.birim === "object" && item.birim !== null
+                ? item.birim.name
+                : (item.birim as string) || "";
+              // Handle besin object
+              const besin = typeof item.besin === "object" && item.besin !== null
+                ? item.besin.name
+                : (item.besin as string) || "";
 
               return [miktar, birim, besin].filter(Boolean).join(" ");
             })
             .filter(Boolean);
 
-          // Keep original notes/detail
           return {
             name: ogun.name,
             time: ogun.time,
             menuItems: processedMenuItems,
-            notes: ogun.notes || "", // Keep empty string if no notes
-            detail: ogun.notes || "", // Keep empty string if no detail
+            notes: ogun.notes || "",
+            detail: ogun.notes || "",
           };
         }),
       };
@@ -346,14 +357,14 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           time: meal.time || "Saat Belirtilmemiş",
           menuItems: (meal.items || [])
             .map((item: any) => {
-              const besinName =
-                typeof item.besin === "object"
-                  ? item.besin.name
-                  : item.besin || "";
-              const birimName =
-                typeof item.birim === "object"
-                  ? item.birim.name
-                  : item.birim || "";
+              // Handle besin object
+              const besinName = typeof item.besin === "object" && item.besin !== null
+                ? item.besin.name
+                : item.besin || "";
+              // Handle birim object
+              const birimName = typeof item.birim === "object" && item.birim !== null
+                ? item.birim.name
+                : item.birim || "";
               const menuItemText = [item.miktar, birimName, besinName]
                 .filter(Boolean)
                 .join(" ");
@@ -608,9 +619,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           body: [
             [
               {
-                text: celebrationsContent.map(c => c.text).join('\n'),
+                text: celebrationsContent.map((c) => c.text).join("\n"),
                 alignment: "center",
-                style: "celebration"
+                style: "celebration",
               },
             ],
           ],
@@ -620,9 +631,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineWidth: () => 1,
           hLineColor: () => borderColor,
           vLineColor: () => "#e9d5ff",
-          fillColor: () => "#f3e8ff",
-          paddingTop: () => 10,
-          paddingBottom: () => 10,
+          fillColor: () => "#2563eb",
+          paddingTop: () => 8,
+          paddingBottom: () => 8,
           paddingLeft: () => 10,
           paddingRight: () => 10,
         },
@@ -657,7 +668,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             {
               text: "Dyt. Ezgi Evgin Aktaş",
               style: "signatureText",
-              alignment: "center",
             },
           ],
         },
