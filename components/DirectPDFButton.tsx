@@ -351,30 +351,35 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     console.log("Starting preparePdfData with message:", importantDateMessage);
 
     if (pdfData) {
-      // Create a new object with all the existing data
+      // For pdfData case, ensure menu items are properly formatted
       const processedData: PDFData = {
         ...pdfData,
+        ogunler: pdfData.ogunler.map(ogun => ({
+          ...ogun,
+          menuItems: ogun.menuItems.map(item => {
+            if (typeof item === 'string') return item;
+            
+            // Format menu item if it's an object
+            const miktar = item.miktar || '';
+            const birim = typeof item.birim === 'string' ? item.birim : item.birim?.name || '';
+            const besin = typeof item.besin === 'string' ? item.besin : item.besin?.name || '';
+            
+            return `${miktar} ${birim} ${besin}`.trim();
+          }).filter(Boolean)
+        })),
         isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
         isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
         importantDate: pdfData.isImportantDateCelebrated 
-          ? { 
-              message: importantDateMessage // Directly use the state variable
-            }
+          ? { message: importantDateMessage }
           : undefined
       };
-
-      console.log("Final processed data:", {
-        isImportantDateCelebrated: processedData.isImportantDateCelebrated,
-        importantDateMessage,
-        importantDate: processedData.importantDate
-      });
 
       return processedData;
     }
 
     if (!diet) return null;
 
-    // Handle diet data
+    // Handle diet data case
     const oguns = diet.Oguns || [];
     const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
 
@@ -386,9 +391,13 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       ogunler: oguns.map((meal: any) => ({
         name: meal.name,
         time: meal.time,
-        menuItems: meal.items.map((item: any) => 
-          typeof item.besin === 'string' ? item.besin : item.besin?.name
-        ).filter(Boolean),
+        menuItems: meal.items.map((item: any) => {
+          const miktar = item.miktar || '';
+          const birim = typeof item.birim === 'string' ? item.birim : item.birim?.name || '';
+          const besin = typeof item.besin === 'string' ? item.besin : item.besin?.name || '';
+          
+          return `${miktar} ${birim} ${besin}`.trim();
+        }).filter(Boolean),
         notes: meal.detail || meal.notes || ""
       })),
       waterConsumption: diet.Su || "Belirtilmemiş",
@@ -397,9 +406,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       isBirthdayCelebration: diet.isBirthdayCelebration || false,
       isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
       importantDate: diet.isImportantDateCelebrated
-        ? {
-            message: importantDateMessage
-          }
+        ? { message: importantDateMessage }
         : undefined
     };
   };
