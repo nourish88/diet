@@ -19,7 +19,7 @@ export async function GET(
     const besin = await prisma.besin.findUnique({
       where: { id: besinId },
       include: {
-        group: true,
+        besinGroup: true,
       },
     });
 
@@ -94,7 +94,7 @@ export async function PUT(
           data.groupId !== undefined ? data.groupId : existingBesin.groupId,
       },
       include: {
-        group: true,
+        besinGroup: true,
       },
     });
 
