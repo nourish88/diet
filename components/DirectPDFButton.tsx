@@ -368,9 +368,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       physicalActivity: diet.Fizik || "Belirtilmemiş",
       dietitianNote: diet.dietitianNote || "",
       isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-      importantDate: diet.importantDate
+      importantDate: diet.importantDateName
         ? {
-            message: diet.importantDate.message,
+            message: diet.importantDateName,
           }
         : undefined,
     };
