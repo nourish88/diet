@@ -391,11 +391,7 @@ const DatabasePDFButton = ({
         },
         {
           text: pdfData.dietitianNote,
-          style: {
-            fontSize: 11,
-            color: secondaryColor,
-            lineHeight: 1.4,
-          },
+          style: "dietitianNote",
           margin: [0, 0, 0, 20],
         }
       );
@@ -555,6 +551,11 @@ const DatabasePDFButton = ({
           fontSize: 13, // Increased from 11
           color: "#374151",
           margin: [0, 2, 0, 2],
+        },
+        dietitianNote: {
+          fontSize: 11,
+          color: secondaryColor,
+          lineHeight: 1.4,
         },
       },
       defaultStyle: {
