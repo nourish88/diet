@@ -29,6 +29,8 @@ const toastVariants = cva(
         default: "border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
+        deleteAlert:
+          "bg-red-50 border-2 border-red-200 text-gray-800 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
       },
     },
     defaultVariants: {
@@ -126,5 +128,11 @@ export {
   ToastClose,
   ToastAction,
 };
+
+export interface ToastProps
+  extends React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>,
+    VariantProps<typeof toastVariants> {
+  variant?: "default" | "destructive" | "deleteAlert";
+}
 
 export type ToastActionElement = React.ReactElement<typeof ToastAction>;
