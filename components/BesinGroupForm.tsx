@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
-import { ToastContainer } from "./ui/toast";
+import { Toaster } from "./ui/toaster";
 
 interface BesinGroupFormProps {
   initialData?: {
@@ -168,7 +168,7 @@ const BesinGroupForm = ({
           </Button>
         </div>
       </form>
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 };

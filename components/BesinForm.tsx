@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "./ui/button";
 import { useToast } from "./ui/use-toast";
-import { ToastContainer } from "./ui/toast";
+
 import {
   Select,
   SelectContent,
@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Toaster } from "./ui/toaster";
 
 interface BesinGroup {
   id: number;
@@ -269,7 +270,7 @@ const BesinForm = ({
           </Button>
         </div>
       </form>
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ToastProvider = ToastPrimitives.Provider;
+const ToastContainer = ToastPrimitives.Root;
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
@@ -39,7 +40,8 @@ const toastVariants = cva(
 const variantClasses = {
   default: "bg-white border-l-4 border-green-500 text-gray-800",
   destructive: "bg-white border-l-4 border-red-500 text-gray-800",
-  deleteAlert: "bg-red-50 border-2 border-red-200 text-gray-800 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
+  deleteAlert:
+    "bg-red-50 border-2 border-red-200 text-gray-800 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
 };
 
 const Toast = React.forwardRef<
@@ -116,6 +118,7 @@ ToastDescription.displayName = ToastPrimitives.Description.displayName;
 
 export {
   ToastProvider,
+  ToastContainer,
   ToastViewport,
   Toast,
   ToastTitle,
