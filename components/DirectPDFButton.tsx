@@ -105,7 +105,13 @@ interface DirectPDFButtonProps {
   disabled?: boolean;
   onError?: (error: string) => void;
   className?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   onClick?: () => void;
 }
@@ -296,15 +302,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             .map((item) => {
               if (typeof item === "string") return item;
 
-              const miktar = item.miktar || "";
-              const birim =
-                typeof item.birim === "object"
-                  ? item.birim.name
-                  : item.birim || "";
-              const besin =
-                typeof item.besin === "object"
-                  ? item.besin.name
-                  : item.besin || "";
+              const miktar = (item as { miktar?: string }).miktar || "";
+              const birim = (item as { birim?: string }).birim || "";
+              const besin = (item as { besin?: string }).besin || "";
 
               return [miktar, birim, besin].filter(Boolean).join(" ");
             })
@@ -315,8 +315,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             name: ogun.name,
             time: ogun.time,
             menuItems: processedMenuItems,
-            notes: ogun.notes || ogun.detail || "", // Keep empty string if no notes
-            detail: ogun.detail || ogun.notes || "", // Keep empty string if no detail
+            notes: ogun.notes || "", // Keep empty string if no notes
+            detail: ogun.notes || "", // Keep empty string if no detail
           };
         }),
       };
