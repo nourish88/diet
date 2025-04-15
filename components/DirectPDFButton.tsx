@@ -603,12 +603,14 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     if (celebrationsContent.length > 0) {
       content.push({
         table: {
+          headerRows: 1,
           widths: ["*"],
           body: [
             [
               {
-                stack: celebrationsContent,
+                text: celebrationsContent.map(c => c.text).join('\n'),
                 alignment: "center",
+                style: "celebration"
               },
             ],
           ],
