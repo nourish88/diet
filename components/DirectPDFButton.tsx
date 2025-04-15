@@ -96,14 +96,18 @@ interface PDFData {
   dietitianNote?: string;
 }
 
-interface DirectPDFButtonProps extends ButtonProps {
+interface DirectPDFButtonProps {
   diet?: Diet;
   pdfData?: PDFData;
-  phoneNumber?: string; // Add this prop
+  phoneNumber?: string;
   isDietSaved?: boolean;
   dietId?: number;
   disabled?: boolean;
   onError?: (error: string) => void;
+  className?: string;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  onClick?: () => void;
 }
 
 const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
@@ -115,6 +119,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   dietId,
   disabled,
   onError,
+  variant = "outline",
+  size = "sm",
+  onClick,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
