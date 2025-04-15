@@ -65,8 +65,8 @@ export interface Meal {
 export interface MenuItem {
   id?: number;
   miktar: string;
-  birim: Birim;
-  besin: Besin;
+  birim: Birim | string;
+  besin: Besin | string;
   ogunId?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -78,12 +78,13 @@ export interface Besin {
   menuItems?: MenuItem[];
   createdAt?: Date;
   updatedAt?: Date;
+  group?: {
+    id: number;
+    description: string;
+  } | null;
 }
 
 export interface Birim {
   id?: number;
   name: string;
-  menuItems?: MenuItem[];
-  createdAt?: Date;
-  updatedAt?: Date;
 }

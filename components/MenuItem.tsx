@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Item } from "@/types/types";
+import { MenuItem as MenuItemType } from "@/types/types";
 import {
   Command,
   CommandEmpty,
@@ -52,7 +52,7 @@ interface GroupedBesins {
 }
 
 interface MenuItemProps {
-  item: Item;
+  item: MenuItemType;
   index: number;
   ogunIndex: number;
   onDelete: (index: number) => void;
