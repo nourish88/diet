@@ -245,7 +245,12 @@ const DatabasePDFButton = ({
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
     // Celebrations content - only create if they exist
-    const celebrationsContent = [];
+    const celebrationsContent: {
+      text: string;
+      style: string;
+      color: string;
+      margin: number[];
+    }[] = [];
 
     if (pdfData.isBirthdayCelebration) {
       celebrationsContent.push({
