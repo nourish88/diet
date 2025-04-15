@@ -42,12 +42,23 @@ export const ClientsTable = () => {
     error,
     refetch,
     isRefetching,
-  } = useQuery<Client[]>({
-    queryKey: ["clients"],
-    queryFn: fetchClients,
+  } = useQuery({
+    queryKey: ["clients"] as const,
+    queryFn: async () => {
+      const response = await fetchClients();
+      return response.map((client) => ({
+        ...client,
+        birthdate: client.birthdate?.toString() || null,
+        createdAt: client.createdAt.toString(),
+      })) as Client[];
+    },
   });
 
-  const handleDeleteClient = (client: { id: number; name: string; surname: string }) => {
+  const handleDeleteClient = (client: {
+    id: number;
+    name: string;
+    surname: string;
+  }) => {
     toast({
       title: "Danışanı Sil",
       description: (
@@ -56,7 +67,8 @@ export const ClientsTable = () => {
             <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-amber-900">
-                {client.name} {client.surname} isimli danışanı silmek istediğinize emin misiniz?
+                {client.name} {client.surname} isimli danışanı silmek
+                istediğinize emin misiniz?
               </p>
               <p className="mt-1 text-sm text-amber-800">
                 Bu işlem geri alınamaz ve danışana ait tüm veriler silinecektir.
@@ -163,8 +175,10 @@ export const ClientsTable = () => {
                     className="bg-white/10 border-white/20 text-white hover:bg-white/20 
                       hover:border-white/30 transition-colors"
                   >
-                    <RefreshCcw 
-                      className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} 
+                    <RefreshCcw
+                      className={`h-4 w-4 ${
+                        isRefetching ? "animate-spin" : ""
+                      }`}
                     />
                   </Button>
                 </TooltipTrigger>
@@ -180,13 +194,22 @@ export const ClientsTable = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Ad Soyad
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Telefon
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 Kayıt Tarihi
               </th>
               <th scope="col" className="relative px-6 py-3">
@@ -203,11 +226,13 @@ export const ClientsTable = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{client.phoneNumber}</div>
+                  <div className="text-sm text-gray-500">
+                    {client.phoneNumber}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">
-                    {new Date(client.createdAt).toLocaleDateString('tr-TR')}
+                    {new Date(client.createdAt).toLocaleDateString("tr-TR")}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -269,11 +294,13 @@ export const ClientsTable = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteClient({
-                              id: client.id,
-                              name: client.name,
-                              surname: client.surname
-                            })}
+                            onClick={() =>
+                              handleDeleteClient({
+                                id: client.id,
+                                name: client.name,
+                                surname: client.surname,
+                              })
+                            }
                             disabled={isDeleting === client.id}
                             className="h-8 px-2 text-red-600 hover:text-red-900 bg-red-50 border-red-200"
                           >
