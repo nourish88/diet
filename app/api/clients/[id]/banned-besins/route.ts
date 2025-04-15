@@ -9,9 +9,9 @@ export async function GET(
 ) {
   try {
     const clientId = parseInt(params.id);
-    const bannedBesins = await prisma.bannedBesin.findMany({
+    const bannedBesins = await prisma.bannedFood.findMany({
       where: { clientId },
-      include: { besin: true }
+      include: { besin: true },
     });
     return NextResponse.json(bannedBesins);
   } catch (error) {
@@ -30,13 +30,13 @@ export async function POST(
     const clientId = parseInt(params.id);
     const { besinId, reason } = await request.json();
 
-    const bannedBesin = await prisma.bannedBesin.create({
+    const bannedBesin = await prisma.bannedFood.create({
       data: {
         clientId,
         besinId,
-        reason
+        reason,
       },
-      include: { besin: true }
+      include: { besin: true },
     });
 
     return NextResponse.json(bannedBesin, { status: 201 });
@@ -55,15 +55,15 @@ export async function DELETE(
   try {
     const clientId = parseInt(params.id);
     const searchParams = new URL(request.url).searchParams;
-    const besinId = parseInt(searchParams.get('besinId') || '');
+    const besinId = parseInt(searchParams.get("besinId") || "");
 
-    await prisma.bannedBesin.delete({
+    await prisma.bannedFood.delete({
       where: {
         clientId_besinId: {
           clientId,
-          besinId
-        }
-      }
+          besinId,
+        },
+      },
     });
 
     return NextResponse.json({ success: true });
