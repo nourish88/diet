@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 
-export const registerFonts = (doc: PDFDocument) => {
+export const registerFonts = (doc: typeof PDFDocument) => {
   doc.registerFont('Roboto', path.join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf'));
   doc.registerFont('Roboto-Bold', path.join(process.cwd(), 'public', 'fonts', 'Roboto-Bold.ttf'));
   doc.registerFont('Roboto-Italic', path.join(process.cwd(), 'public', 'fonts', 'Roboto-Italic.ttf'));
