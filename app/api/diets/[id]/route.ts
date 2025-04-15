@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET(
@@ -8,43 +8,42 @@ export async function GET(
   try {
     const diet = await prisma.diet.findUnique({
       where: {
-        id: Number(params.id)
+        id: Number(params.id),
       },
       include: {
         client: {
           select: {
             id: true,
             name: true,
-            surname: true
-          }
+            surname: true,
+          },
         },
         oguns: {
           orderBy: {
-            order: 'asc'
+            order: "asc",
           },
           include: {
             items: {
               include: {
                 besin: true,
-                birim: true
-              }
-            }
-          }
+                birim: true,
+              },
+            },
+          },
         },
         importantDate: {
           select: {
             id: true,
-            message: true
-          }
-        }
-      }
+            message: true,
+          },
+        },
+      },
     });
 
     if (!diet) {
-      return new NextResponse(
-        JSON.stringify({ error: "Diet not found" }), 
-        { status: 404 }
-      );
+      return new NextResponse(JSON.stringify({ error: "Diet not found" }), {
+        status: 404,
+      });
     }
 
     return NextResponse.json({ diet });
@@ -70,7 +69,7 @@ export async function DELETE(
     }
 
     await prisma.diet.delete({
-      where: { id: dietId }
+      where: { id: dietId },
     });
 
     return NextResponse.json(
