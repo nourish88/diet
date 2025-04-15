@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Select } from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tag, X } from 'lucide-react';
 
 interface BannedBesinManagerProps {
@@ -21,6 +21,23 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
   const [selectedBesin, setSelectedBesin] = useState('');
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [availableBesins, setAvailableBesins] = useState<Array<{ id: number; name: string }>>([]);
+
+  useEffect(() => {
+    const fetchBesins = async () => {
+      try {
+        const response = await fetch('/api/besinler');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableBesins(data);
+        }
+      } catch (error) {
+        console.error('Error fetching besins:', error);
+      }
+    };
+
+    fetchBesins();
+  }, []);
 
   const handleAdd = async () => {
     try {
@@ -65,13 +82,19 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
     <div className="space-y-4">
       <h3 className="text-lg font-medium">Yasaklı Besinler</h3>
       <div className="flex gap-2">
-        <Select
-          value={selectedBesin}
-          onChange={(e) => setSelectedBesin(e.target.value)}
-          className="flex-1"
-        >
-          <option value="">Besin Seçin</option>
-          {/* Add besin options here */}
+        <Select value={selectedBesin} onValueChange={setSelectedBesin}>
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Besin Seçin" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Besin Seçin</SelectItem>
+            {/* Add besin options here */}
+            {availableBesins.map((besin: { id: number; name: string }) => (
+              <SelectItem key={besin.id} value={besin.id.toString()}>
+                {besin.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
         <Input
           placeholder="Yasak Nedeni"
