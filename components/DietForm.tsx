@@ -376,9 +376,17 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
     value: string
   ) => {
     if (field === "besin" && selectedClientId) {
+      // Type the banned foods properly
+      interface BannedFood {
+        besin: {
+          name: string;
+          [key: string]: any;
+        };
+      }
+
       // Check if the selected food is banned for this client
       const isBanned = clientData.bannedFoods.some(
-        (banned) => banned.besin.name === value
+        (banned: BannedFood) => banned.besin.name === value
       );
       if (isBanned) {
         toast({
@@ -624,7 +632,7 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
                       notes: ogun.detail,
                       menuItems: ogun.items.filter((item) => {
                         if (typeof item.besin === "string") {
-                          return item.besin && item.besin.trim() !== "";
+                          return item.besin && item.besin !== "";
                         } else if (
                           typeof item.besin === "object" &&
                           item.besin
