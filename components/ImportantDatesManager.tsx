@@ -50,7 +50,8 @@ export default function ImportantDatesManager() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this important date?")) return;
+    if (!confirm("Are you sure you want to delete this important date?"))
+      return;
 
     setIsDeleting(id);
     try {
@@ -89,7 +90,12 @@ export default function ImportantDatesManager() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDate.name || !newDate.message || !newDate.startDate || !newDate.endDate) {
+    if (
+      !newDate.name ||
+      !newDate.message ||
+      !newDate.startDate ||
+      !newDate.endDate
+    ) {
       toast({
         title: "Validation Error",
         description: "Please fill all required fields",
@@ -113,7 +119,10 @@ export default function ImportantDatesManager() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || `Failed to ${editingDate ? 'update' : 'create'} important date`);
+        throw new Error(
+          error.message ||
+            `Failed to ${editingDate ? "update" : "create"} important date`
+        );
       }
 
       setNewDate({
@@ -123,17 +132,22 @@ export default function ImportantDatesManager() {
         endDate: null,
       });
       setEditingDate(null);
-      
+
       toast({
         title: "Success",
-        description: `Important date ${editingDate ? 'updated' : 'created'} successfully`,
+        description: `Important date ${
+          editingDate ? "updated" : "created"
+        } successfully`,
       });
-      
+
       fetchImportantDates();
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : `Failed to ${editingDate ? 'update' : 'create'} important date`,
+        description:
+          error instanceof Error
+            ? error.message
+            : `Failed to ${editingDate ? "update" : "create"} important date`,
         variant: "destructive",
       });
     } finally {
@@ -157,7 +171,9 @@ export default function ImportantDatesManager() {
               </label>
               <Input
                 value={newDate.name}
-                onChange={(e) => setNewDate({ ...newDate, name: e.target.value })}
+                onChange={(e) =>
+                  setNewDate({ ...newDate, name: e.target.value })
+                }
                 placeholder="Önemli tarih başlığını giriniz"
                 disabled={isLoading}
                 required
@@ -171,7 +187,9 @@ export default function ImportantDatesManager() {
               </label>
               <Textarea
                 value={newDate.message}
-                onChange={(e) => setNewDate({ ...newDate, message: e.target.value })}
+                onChange={(e) =>
+                  setNewDate({ ...newDate, message: e.target.value })
+                }
                 placeholder="Önemli tarih mesajını giriniz"
                 disabled={isLoading}
                 required
@@ -186,9 +204,12 @@ export default function ImportantDatesManager() {
                 </label>
                 <DatePicker
                   selected={newDate.startDate}
-                  onSelect={(date) => setNewDate({ ...newDate, startDate: date || null })}
+                  onChange={(date) =>
+                    setNewDate({ ...newDate, startDate: date })
+                  }
                   placeholder="Başlangıç tarihi seçin"
-                  disabled={isLoading}
+                  dateFormat="dd.MM.yyyy"
+                  className="w-full"
                 />
               </div>
 
@@ -198,10 +219,10 @@ export default function ImportantDatesManager() {
                 </label>
                 <DatePicker
                   selected={newDate.endDate}
-                  onSelect={(date) => setNewDate({ ...newDate, endDate: date || null })}
+                  onChange={(date) => setNewDate({ ...newDate, endDate: date })}
                   placeholder="Bitiş tarihi seçin"
-                  disabled={isLoading}
-                  minDate={newDate.startDate || undefined}
+                  dateFormat="dd.MM.yyyy"
+                  className="w-full"
                 />
               </div>
             </div>
@@ -226,8 +247,8 @@ export default function ImportantDatesManager() {
                   İptal
                 </Button>
               )}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
               >
@@ -236,8 +257,10 @@ export default function ImportantDatesManager() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {editingDate ? "Güncelleniyor..." : "Oluşturuluyor..."}
                   </>
+                ) : editingDate ? (
+                  "Güncelle"
                 ) : (
-                  editingDate ? "Güncelle" : "Ekle"
+                  "Ekle"
                 )}
               </Button>
             </div>
@@ -254,8 +277,8 @@ export default function ImportantDatesManager() {
         <CardContent>
           <div className="space-y-4">
             {importantDates.map((date) => (
-              <div 
-                key={date.id} 
+              <div
+                key={date.id}
                 className="border border-gray-200 p-4 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex justify-between items-start">
@@ -263,8 +286,8 @@ export default function ImportantDatesManager() {
                     <h4 className="font-medium text-gray-900">{date.name}</h4>
                     <p className="text-sm text-gray-600 mt-1">{date.message}</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      {new Date(date.startDate).toLocaleDateString('tr-TR')} -{" "}
-                      {new Date(date.endDate).toLocaleDateString('tr-TR')}
+                      {new Date(date.startDate).toLocaleDateString("tr-TR")} -{" "}
+                      {new Date(date.endDate).toLocaleDateString("tr-TR")}
                     </p>
                   </div>
                   <div className="flex gap-2">

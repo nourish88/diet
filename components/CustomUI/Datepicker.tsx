@@ -70,7 +70,7 @@ const DatePicker = ({
       <PopoverContent className="w-auto p-0">
         <Calendar
           mode="single"
-          selected={selected || undefined}
+          selected={selected!}
           onSelect={(day: Date | undefined) => onChange(day || null)}
           initialFocus
           locale={tr}
