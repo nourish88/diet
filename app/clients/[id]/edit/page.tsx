@@ -13,11 +13,11 @@ export default function EditClientPage() {
   const [client, setClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { getClient } = useClientActions();
-  const { toast, toasts, dismiss } = useToast();
+  const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
 
-  const clientId = Number(params.id);
+  const clientId = params?.id ? Number(params.id) : null;
 
   useEffect(() => {
     if (!clientId || isNaN(clientId)) {
@@ -36,7 +36,7 @@ export default function EditClientPage() {
   const fetchClient = async () => {
     setIsLoading(true);
     try {
-      const clientData = await getClient(clientId);
+      const clientData = await getClient(clientId!);
       if (!clientData) {
         toast({
           title: "Hata",
