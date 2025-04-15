@@ -1,28 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
   try {
     const clients = await prisma.client.findMany({
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
       select: {
         id: true,
         name: true,
         surname: true,
-        phoneNumber: true,  // Changed from phone to phoneNumber
+        phoneNumber: true, // Changed from phone to phoneNumber
         birthdate: true,
         createdAt: true,
         // Remove email as it doesn't exist in the schema
-      }
+      },
     });
 
     return NextResponse.json(clients);
   } catch (error) {
-    console.error('Database error:', error);
+    console.error("Database error:", error);
     return NextResponse.json(
-      { error: 'Veritabanı bağlantısında bir hata oluştu' },
+      { error: "Veritabanı bağlantısında bir hata oluştu" },
       { status: 500 }
     );
   }
@@ -77,11 +77,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ client }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating client:", error);
-    
+
     // Return a proper JSON response for all errors
     return NextResponse.json(
-      { 
-        error: error.message || "Danışan oluşturulurken bir hata oluştu" 
+      {
+        error: error.message || "Danışan oluşturulurken bir hata oluştu",
       },
       { status: 500 }
     );
