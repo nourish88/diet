@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
+import { Client } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
-export const ClientService = {
+const ClientService = {
   // Create a new client
   async createClient(clientData: {
     name: string;
@@ -10,6 +9,8 @@ export const ClientService = {
     birthdate?: Date | null;
     phoneNumber?: string;
     notes?: string;
+    illness?: string;
+    gender?: number | null;
   }) {
     try {
       const client = await prisma.client.create({
@@ -19,6 +20,8 @@ export const ClientService = {
           birthdate: clientData.birthdate,
           phoneNumber: clientData.phoneNumber,
           notes: clientData.notes,
+          illness: clientData.illness,
+          gender: clientData.gender,
         },
       });
 
@@ -38,6 +41,11 @@ export const ClientService = {
           diets: {
             orderBy: { createdAt: "desc" },
           },
+          bannedFoods: {
+            include: {
+              besin: true
+            }
+          }
         },
       });
 
@@ -55,11 +63,26 @@ export const ClientService = {
         orderBy: {
           surname: "asc",
         },
+        include: {
+          bannedFoods: {
+            include: {
+              besin: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       return clients;
-    } catch (error) {
-      console.error("Error getting all clients:", error);
+    } catch (error: any) {
+      // Avoid using console.error with the error object directly
+      console.error(
+        "Error getting all clients: " + (error.message || "Unknown error")
+      );
       throw error;
     }
   },
@@ -73,15 +96,54 @@ export const ClientService = {
       birthdate?: Date | null;
       phoneNumber?: string;
       notes?: string;
+      gender?: number;
+      illness?: string;
+      bannedBesins?: { besinId: number; reason?: string | null }[];
     }
   ) {
     try {
+      const { bannedBesins, ...otherData } = clientData;
+
+      // First update the client's basic information
       const client = await prisma.client.update({
         where: { id },
-        data: clientData,
+        data: {
+          ...otherData,
+          // If birthdate is a string, convert it to Date
+          birthdate: otherData.birthdate ? new Date(otherData.birthdate) : null,
+        },
       });
 
-      return client;
+      // If bannedBesins is provided, update them
+      if (bannedBesins) {
+        // First, remove all existing banned besins
+        await prisma.bannedBesin.deleteMany({
+          where: { clientId: id },
+        });
+
+        // Then create new ones
+        if (bannedBesins.length > 0) {
+          await prisma.bannedBesin.createMany({
+            data: bannedBesins.map(ban => ({
+              clientId: id,
+              besinId: ban.besinId,
+              reason: ban.reason
+            }))
+          });
+        }
+      }
+
+      // Return the updated client with banned besins
+      return await prisma.client.findUnique({
+        where: { id },
+        include: {
+          bannedBesins: {
+            include: {
+              besin: true
+            }
+          }
+        }
+      });
     } catch (error) {
       console.error("Error updating client:", error);
       throw error;
@@ -96,11 +158,41 @@ export const ClientService = {
       });
 
       return client;
-    } catch (error) {
-      console.error("Error deleting client:", error);
+    } catch (error: any) {
+      // Avoid using console.error with the error object directly
+      console.error(
+        "Error deleting client: " + (error.message || "Unknown error")
+      );
       throw error;
     }
   },
 };
 
 export default ClientService;
+
+export const fetchClients = async (): Promise<Client[]> => {
+  try {
+    const response = await fetch('/api/clients', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store' // Disable caching for now to help with debugging
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid data format received from server');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in fetchClients:', error);
+    throw error;
+  }
+};

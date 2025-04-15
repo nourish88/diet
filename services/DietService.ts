@@ -5,7 +5,6 @@ export const DietService = {
   // Create a new diet with all related data
   async createDiet(clientId: number, dietData: DietType) {
     try {
-      // Create the diet first
       const diet = await prisma.diet.create({
         data: {
           clientId,
@@ -14,6 +13,11 @@ export const DietService = {
           sonuc: dietData.Sonuc,
           hedef: dietData.Hedef,
           fizik: dietData.Fizik,
+          isBirthdayCelebration: dietData.isBirthdayCelebration || false,
+          isImportantDateCelebrated:
+            dietData.isImportantDateCelebrated || false,
+          importantDateId: dietData.importantDateId || null,
+          importantDateName: dietData.importantDateName || null,
           // Create the oguns and menu items in a nested create
           oguns: {
             create: dietData.Oguns.map((ogun) => ({
@@ -21,20 +25,17 @@ export const DietService = {
               time: ogun.time,
               detail: ogun.detail,
               order: ogun.order,
-              // Create menu items for each ogun
               items: {
                 create: ogun.items
                   .filter((item) => item.besin && item.besin.trim() !== "")
                   .map((item) => ({
                     miktar: item.miktar,
-                    // Connect or create the besin
                     besin: {
                       connectOrCreate: {
                         where: { name: item.besin },
                         create: { name: item.besin },
                       },
                     },
-                    // Connect or create the birim if it exists
                     ...(item.birim && item.birim.trim() !== ""
                       ? {
                           birim: {
@@ -79,7 +80,9 @@ export const DietService = {
         where: { id },
         include: {
           oguns: {
-            orderBy: { order: "asc" },
+            orderBy: {
+              id: "asc", // Now this will work
+            },
             include: {
               items: {
                 include: {
@@ -108,7 +111,9 @@ export const DietService = {
         orderBy: { createdAt: "desc" },
         include: {
           oguns: {
-            orderBy: { order: "asc" },
+            orderBy: {
+              id: "asc", // Now this will work
+            },
             include: {
               items: {
                 include: {

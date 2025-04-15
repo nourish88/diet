@@ -2,62 +2,27 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ToastContainer } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  ChevronLeft,
-  Loader2,
-  Printer,
-  Download,
-  Trash2,
-  User,
-} from "lucide-react";
+import { ChevronLeft, Loader2, Printer, Trash2, User } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
-import DirectPDFButton from "@/components/DirectPDFButton";
+import DatabasePDFButton from "@/components/DatabasePDFButton";
+import { Toaster } from "@/components/ui/toaster";
 
 // Placeholder for the diet detail view
 // This would be replaced with the actual DietView component that shows the diet plan
-const DietDetailPlaceholder = () => (
-  <div className="animate-pulse space-y-4">
-    <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-    <div className="space-y-2">
-      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-    </div>
-    <div className="h-64 bg-gray-200 rounded"></div>
-  </div>
-);
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
-const formatDateTR = (dateString: string | null | undefined | Date) => {
-  if (!dateString) return "Tarih Belirtilmemiş";
-
-  try {
-    // Try to parse the date string based on its type
-    const date =
-      typeof dateString === "string"
-        ? new Date(dateString)
-        : dateString instanceof Date
-        ? dateString
-        : new Date();
-
-    return format(date, "d MMMM yyyy", { locale: tr });
-  } catch (error) {
-    console.error("Date parsing error:", error);
-    return "Geçersiz Tarih";
-  }
-};
 
 export default function DietDetailPage() {
   const [diet, setDiet] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast, toasts, dismiss } = useToast();
+  const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
 
-  const dietId = Number(params.id);
+  const dietId = Number(params!.id);
 
   useEffect(() => {
     if (!dietId || isNaN(dietId)) {
@@ -77,23 +42,49 @@ export default function DietDetailPage() {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/diets/${dietId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch diet");
-      }
       const data = await response.json();
-      setDiet(data.diet);
+
+      if (!data.diet) {
+        toast({
+          title: "Hata",
+          description: "Diyet bulunamadı",
+          variant: "destructive",
+        });
+        router.push("/diets");
+        return;
+      }
+
+      console.log("Fetched diet data:", data.diet);
+
+      // Process the diet data with all required properties
+      const processedDiet = {
+        ...data.diet,
+        client: data.diet.client || null,
+        oguns:
+          data.diet.oguns?.map((ogun) => ({
+            ...ogun,
+            items:
+              ogun.items?.map((item) => ({
+                ...item,
+                besin: item.besin || {},
+                birim: item.birim || {},
+              })) || [],
+          })) || [],
+      };
+
+      console.log("Processed diet data:", processedDiet);
+      setDiet(processedDiet);
     } catch (error) {
       console.error("Error fetching diet:", error);
       toast({
         title: "Hata",
-        description: "Beslenme programı yüklenirken bir hata oluştu",
+        description: "Diyet bilgileri yüklenirken bir hata oluştu",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleDeleteDiet = async () => {
     if (!confirm("Bu beslenme programını silmek istediğinize emin misiniz?")) {
       return;
@@ -198,32 +189,14 @@ export default function DietDetailPage() {
             </p>
           </div>
           <div className="flex space-x-2">
-            <DirectPDFButton
+            <DatabasePDFButton
               diet={diet}
-              pdfData={{
-                fullName: diet.client 
-                  ? (diet.client.fullName || `${diet.client.name || ''} ${diet.client.surname || ''}`.trim())
-                  : "İsimsiz Danışan",
-                dietDate: diet.createdAt || new Date().toISOString(),
-                weeklyResult: diet.weeklyResult || "",
-                target: diet.target || "",
-                ogunler: (diet.meals || []).map((meal) => ({
-                  name: meal.name || "",
-                  time: meal.time || "",
-                  menuItems: (meal.items || []).map((item) => 
-                    `${item.amount || ""} ${item.unit || ""} ${item.name || ""}`.trim()
-                  ),
-                  notes: meal.notes || "",
-                })),
-                waterConsumption: diet.waterConsumption || "",
-                physicalActivity: diet.physicalActivity || "",
-              }}
               variant="outline"
               className="bg-white text-indigo-700 hover:bg-indigo-50"
             >
               <Printer className="h-4 w-4 mr-2" />
               Yazdır
-            </DirectPDFButton>
+            </DatabasePDFButton>
             <Button
               variant="outline"
               className="bg-white text-red-600 hover:bg-red-50"
@@ -264,21 +237,21 @@ export default function DietDetailPage() {
                   <span className="mt-1">{formatDate(diet.tarih)}</span>
                 </div>
 
-                {diet.Su && (
+                {diet.su && (
                   <div>
                     <span className="block text-sm font-medium text-gray-500">
                       Su Tüketimi
                     </span>
-                    <span className="mt-1">{diet.Su}</span>
+                    <span className="mt-1">{diet.su}</span>
                   </div>
                 )}
 
-                {diet.Fizik && (
+                {diet.fizik && (
                   <div>
                     <span className="block text-sm font-medium text-gray-500">
                       Fiziksel Aktivite
                     </span>
-                    <span className="mt-1">{diet.Fizik}</span>
+                    <span className="mt-1">{diet.fizik}</span>
                   </div>
                 )}
               </div>
@@ -290,21 +263,21 @@ export default function DietDetailPage() {
               </h3>
 
               <div className="space-y-4">
-                {diet.Hedef && (
+                {diet.hedef && (
                   <div>
                     <span className="block text-sm font-medium text-gray-500">
                       Hedef
                     </span>
-                    <span className="mt-1">{diet.Hedef}</span>
+                    <span className="mt-1">{diet.hedef}</span>
                   </div>
                 )}
 
-                {diet.Sonuc && (
+                {diet.sonuc && (
                   <div>
                     <span className="block text-sm font-medium text-gray-500">
                       Sonuç
                     </span>
-                    <span className="mt-1">{diet.Sonuc}</span>
+                    <span className="mt-1">{diet.sonuc}</span>
                   </div>
                 )}
               </div>
@@ -403,7 +376,7 @@ export default function DietDetailPage() {
           </div>
         </div>
       </div>
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 }

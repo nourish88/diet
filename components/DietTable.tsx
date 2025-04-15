@@ -15,7 +15,7 @@ import MenuItemComponent from "@/components/MenuItem";
 import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
-import { Clock, Coffee, FileText, Menu, Trash } from "lucide-react";
+import { Clock, Coffee, FileText, Menu, Plus, Trash } from "lucide-react";
 
 interface DietTableProps {
   setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
@@ -25,8 +25,15 @@ interface DietTableProps {
   handleOgunChange: (index: number, field: keyof Ogun, value: string) => void;
   handleRemoveOgun: (index: number) => void;
   handleAddMenuItem: (ogunIndex: number) => void;
-  handleMenuItemChange: (ogunIndex: number, itemIndex: number, field: string, value: string) => void;
+  handleMenuItemChange: (
+    ogunIndex: number,
+    itemIndex: number,
+    field: string,
+    value: string
+  ) => void;
   disabled?: boolean;
+  bannedFoods?: Array<{ besin: { id: number; name: string } }>;
+  onAddOgun: () => void;
 }
 
 const DietTable = ({
@@ -39,6 +46,8 @@ const DietTable = ({
   handleAddMenuItem,
   handleMenuItemChange,
   disabled = false,
+  bannedFoods = [],
+  onAddOgun,
 }: DietTableProps) => {
   const [windowWidth, setWindowWidth] = useState(0);
   const [columnWidths, setColumnWidths] = useState({
@@ -48,6 +57,13 @@ const DietTable = ({
     aciklama: 30,
   });
   const [isBrowser, setIsBrowser] = useState(false);
+
+  const isFoodBanned = (besinId: number) => {
+    return (
+      Array.isArray(bannedFoods) &&
+      bannedFoods.some((banned) => banned.besin && banned.besin.id === besinId)
+    );
+  };
 
   useEffect(() => {
     setIsBrowser(true);
@@ -123,8 +139,22 @@ const DietTable = ({
     return 100;
   };
 
+  const renderBirimValue = (item: any) => {
+    if (typeof item.birim === "object" && item.birim && item.birim.name) {
+      return item.birim.name;
+    }
+    return item.birim || "";
+  };
+
+  const renderBesinValue = (item: any) => {
+    if (typeof item.besin === "object" && item.besin && item.besin.name) {
+      return item.besin.name;
+    }
+    return item.besin || "";
+  };
+
   return (
-    <div className={disabled ? 'opacity-50 pointer-events-none' : ''}>
+    <div className={disabled ? "opacity-50 pointer-events-none" : ""}>
       <div className="overflow-x-auto border-2 border-purple-700 rounded-lg">
         {isBrowser ? (
           <DragDropContext onDragEnd={onDragEnd}>
@@ -239,7 +269,11 @@ const DietTable = ({
                                 type="text"
                                 value={ogun.name}
                                 onChange={(e) =>
-                                  handleOgunChange(index, "name", e.target.value)
+                                  handleOgunChange(
+                                    index,
+                                    "name",
+                                    e.target.value
+                                  )
                                 }
                                 className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                               />
@@ -253,7 +287,11 @@ const DietTable = ({
                                 type="text"
                                 value={ogun.time}
                                 onChange={(e) =>
-                                  handleOgunChange(index, "time", e.target.value)
+                                  handleOgunChange(
+                                    index,
+                                    "time",
+                                    e.target.value
+                                  )
                                 }
                                 className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                               />
@@ -328,6 +366,33 @@ const DietTable = ({
                     ))}
                     {provided.placeholder}
                   </tbody>
+                  <tfoot className="border-t-2 border-purple-700 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <tr>
+                      <td colSpan={5} className="p-6">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={onAddOgun}
+                          className="
+                            bg-white 
+                            text-purple-700 
+                            border-2 
+                            border-purple-700 
+                            hover:bg-purple-50 
+                            hover:text-purple-800 
+                            transition-all 
+                            duration-200 
+                            shadow-sm 
+                            hover:shadow-md
+                            font-medium
+                          "
+                        >
+                          <Plus className="h-5 w-5 mr-2" />
+                          Öğün Ekle
+                        </Button>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </Droppable>

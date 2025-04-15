@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { ToastContainer } from "@/components/ui/toast";
+
 import {
   Loader2,
   PlusCircle,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+import { Toaster } from "@/components/ui/toaster";
 
 // Simplified Diet type for the listing
 interface Diet {
@@ -275,7 +276,7 @@ export default function DietsPage() {
           </div>
         </div>
       )}
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 }

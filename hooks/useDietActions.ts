@@ -1,150 +1,91 @@
-import { useState } from "react";
-import { Diet } from "@/types/types";
+import { useState } from 'react';
+import { Diet } from '@/types/types';
 
-export const useDietActions = (clientId: number) => {
+export function useDietActions() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedDiet, setSavedDiet] = useState<any | null>(null);
-
+  
   const saveDiet = async (dietData: Diet) => {
     setIsLoading(true);
-    setError(null);
-
+    
     try {
-      const response = await fetch("/api/diets", {
-        method: "POST",
+      // Prepare the data for the API
+      const apiData = {
+        clientId: dietData.clientId || 0,
+        tarih: dietData.Tarih,
+        sonuc: dietData.Sonuc || '',
+        hedef: dietData.Hedef || '',
+        su: dietData.Su || '',
+        fizik: dietData.Fizik || '',
+        dietitianNote: dietData.dietitianNote || '',
+        oguns: dietData.Oguns
+          .filter(ogun => ogun) // Filter out any null/undefined oguns
+          .map(ogun => {
+            // Use proper function body with explicit return
+            return {
+              name: ogun.name || '',
+              time: ogun.time || '',
+              detail: ogun.detail || '',
+              order: ogun.order || 0,
+              items: ogun.items
+                .filter(item => item) // Filter out any null/undefined items
+                .map(item => {
+                  // Handle besin - could be string or object
+                  let besinValue;
+                  if (typeof item.besin === 'string') {
+                    besinValue = item.besin;
+                  } else if (typeof item.besin === 'object' && item.besin) {
+                    besinValue = item.besin.name || '';
+                  } else {
+                    besinValue = '';
+                  }
+                  
+                  // Handle birim - could be string or object
+                  let birimValue;
+                  if (typeof item.birim === 'string') {
+                    birimValue = item.birim;
+                  } else if (typeof item.birim === 'object' && item.birim) {
+                    birimValue = item.birim.name || '';
+                  } else {
+                    birimValue = '';
+                  }
+                  
+                  return {
+                    miktar: item.miktar || '',
+                    birim: birimValue,
+                    besin: besinValue
+                  };
+                })
+            };
+          })
+      };
+      
+      // Make the API call
+      const response = await fetch('/api/diets', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          clientId,
-          dietData,
-        }),
+        body: JSON.stringify(apiData),
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save diet");
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
-      const data = await response.json();
-      setSavedDiet(data.diet);
-      return data.diet;
-    } catch (err: any) {
-      console.error("Error saving diet:", err);
-      setError(err.message || "An error occurred while saving the diet");
-      return null;
-    } finally {
+      
+      const result = await response.json();
+      
       setIsLoading(false);
+      return result.diet;
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Error saving diet:', error);
+      throw error;
     }
   };
-
-  const getClientDiets = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/diets?clientId=${clientId}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get diets");
-      }
-
-      const data = await response.json();
-      return data.diets;
-    } catch (err: any) {
-      console.error("Error getting diets:", err);
-      setError(err.message || "An error occurred while getting diets");
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Get the latest diet for a client
-  const getClientLatestDiet = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // First get all diets for this client
-      const diets = await getClientDiets();
-
-      // Return the first one (as they're ordered by createdAt DESC)
-      if (diets && diets.length > 0) {
-        return diets[0];
-      }
-
-      return null;
-    } catch (err: any) {
-      console.error("Error getting latest diet:", err);
-      setError(
-        err.message || "An error occurred while getting the latest diet"
-      );
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getDiet = async (dietId: number) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/diets/${dietId}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get diet");
-      }
-
-      const data = await response.json();
-      return data.diet;
-    } catch (err: any) {
-      console.error("Error getting diet:", err);
-      setError(err.message || "An error occurred while getting the diet");
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deleteDiet = async (dietId: number) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/diets/${dietId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete diet");
-      }
-
-      return true;
-    } catch (err: any) {
-      console.error("Error deleting diet:", err);
-      setError(err.message || "An error occurred while deleting the diet");
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  
   return {
     saveDiet,
-    getClientDiets,
-    getDiet,
-    deleteDiet,
-    getClientLatestDiet,
-    isLoading,
-    error,
-    savedDiet,
+    isLoading
   };
-};
-
-export default useDietActions;
+}

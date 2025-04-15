@@ -11,9 +11,10 @@ import {
   Trash2,
   List,
 } from "lucide-react";
-import { ToastContainer } from "@/components/ui/toast";
+
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Toaster } from "@/components/ui/toaster";
 
 interface BesinGroup {
   id: number;
@@ -228,7 +229,7 @@ export default function BesinlerPage() {
           </div>
         </div>
       )}
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 }

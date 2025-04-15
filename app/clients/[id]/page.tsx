@@ -3,29 +3,32 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import useClientActions from "@/hooks/useClientActions";
-import useDietActions from "@/hooks/useDietActions";
 import { Button } from "@/components/ui/button";
-import { ToastContainer } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  ChevronLeft,
   Pencil,
   CalendarRange,
-  Phone,
-  FileText,
   ClipboardList,
   PlusCircle,
+  Phone,
+  FileText,
+  User,
+  ChevronLeft,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 
+// Update the Client interface to match the actual data structure
 interface Client {
   id: number;
   name: string;
   surname: string;
-  birthdate?: string | null;
+  birthdate: string | null;
   phoneNumber?: string | null;
   notes?: string | null;
+  illness?: string | null;
+  gender?: number | null;
   createdAt: string;
   updatedAt: string;
   diets: Array<{
@@ -33,13 +36,21 @@ interface Client {
     createdAt: string;
     tarih?: string | null;
   }>;
+  bannedFoods: Array<{
+    id: number;
+    besin: {
+      id: number;
+      name: string;
+    };
+    reason?: string;
+  }>;
 }
 
 export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { getClient } = useClientActions();
-  const { toast, toasts, dismiss } = useToast();
+  const { toast, toasts, dismiss } = useToast(); // Destructure all needed properties
   const params = useParams();
   const router = useRouter();
 
@@ -62,8 +73,11 @@ export default function ClientDetailPage() {
   const fetchClient = async () => {
     setIsLoading(true);
     try {
-      const clientData = await getClient(clientId);
-      if (!clientData) {
+      // Make sure the API endpoint includes diets in the response
+      const response = await fetch(`/api/clients/${clientId}`);
+      const data = await response.json();
+      console.log(data, "data");
+      if (!data.client) {
         toast({
           title: "Hata",
           description: "Danışan bulunamadı",
@@ -72,7 +86,34 @@ export default function ClientDetailPage() {
         router.push("/clients");
         return;
       }
-      setClient(clientData);
+
+      // Log the received data to debug
+      console.log("Received client data:", data.client);
+
+      // If diets are not included in the API response, fetch them separately
+      if (!data.client.diets || !Array.isArray(data.client.diets)) {
+        // Fetch diets for this client
+        try {
+          const dietsResponse = await fetch(`/api/clients/${clientId}/diets`);
+          const dietsData = await dietsResponse.json();
+          
+          // Combine the client data with the diets data
+          const clientWithDiets = {
+            ...data.client,
+            diets: dietsData.diets || []
+          };
+          
+          console.log("Client with diets:", clientWithDiets);
+          setClient(clientWithDiets);
+        } catch (dietsError) {
+          console.error("Error fetching client diets:", dietsError);
+          // Still set the client data even if diets fetch fails
+          setClient(data.client);
+        }
+      } else {
+        // Diets are already included in the client data
+        setClient(data.client);
+      }
     } catch (error) {
       console.error("Error fetching client:", error);
       toast({
@@ -85,11 +126,27 @@ export default function ClientDetailPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  // Update the formatDate function to properly handle the date format
+  const formatDate = (dateString: string | null | undefined) => {
+    console.log("Formatting date:", dateString); // Debug log
+    if (!dateString) return "Belirtilmemiş";
+
     try {
-      return format(new Date(dateString), "PPP", { locale: tr });
+      // First parse the ISO string to a Date object
+      const date = parseISO(dateString);
+      console.log("Parsed date:", date); // Debug log
+
+      if (isNaN(date.getTime())) {
+        console.log("Invalid date after parsing"); // Debug log
+        return "Belirtilmemiş";
+      }
+
+      const formatted = format(date, "d MMMM yyyy", { locale: tr });
+      console.log("Formatted date:", formatted); // Debug log
+      return formatted;
     } catch (error) {
-      return "Geçersiz Tarih";
+      console.error("Date formatting error:", error);
+      return "Belirtilmemiş";
     }
   };
 
@@ -142,7 +199,7 @@ export default function ClientDetailPage() {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Client basic information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-800 border-b pb-2">
@@ -156,9 +213,20 @@ export default function ClientDetailPage() {
                     Doğum Tarihi
                   </div>
                   <div className="text-gray-800">
-                    {client.birthdate
-                      ? formatDate(client.birthdate)
-                      : "Belirtilmemiş"}
+                    {formatDate(client.birthdate)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Illness Information */}
+              <div className="flex items-start">
+                <FileText className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-gray-600">
+                    Hastalık
+                  </div>
+                  <div className="text-gray-800">
+                    {client.illness || "Belirtilmemiş"}
                   </div>
                 </div>
               </div>
@@ -174,6 +242,21 @@ export default function ClientDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Add Gender */}
+              <div className="flex items-start gap-2">
+                <User className="h-5 w-5 text-indigo-500 mt-1" />
+                <div>
+                  <h4 className="font-medium text-gray-700">Cinsiyet</h4>
+                  <p className="text-gray-600">
+                    {client.gender === 1
+                      ? "Erkek"
+                      : client.gender === 2
+                      ? "Kadın"
+                      : "Belirtilmemiş"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Client notes */}
@@ -187,6 +270,34 @@ export default function ClientDetailPage() {
                   {client.notes || "Herhangi bir not bulunmuyor."}
                 </div>
               </div>
+            </div>
+
+            {/* Add Banned Foods section */}
+            <div className="col-span-full mt-4">
+              <h4 className="font-medium text-gray-700 mb-3">
+                Yasaklı Besinler
+              </h4>
+              {client.bannedFoods && client.bannedFoods.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {client.bannedFoods.map((banned) => (
+                    <div
+                      key={banned.besin.id}
+                      className="p-3 bg-red-50 border border-red-100 rounded-lg"
+                    >
+                      <p className="font-medium text-red-700">
+                        {banned.besin.name}
+                      </p>
+                      {banned.reason && (
+                        <p className="text-sm text-red-600 mt-1">
+                          Sebep: {banned.reason}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-600">Yasaklı besin bulunmamaktadır</p>
+              )}
             </div>
           </div>
 
@@ -234,29 +345,14 @@ export default function ClientDetailPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <ClipboardList className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <h3 className="text-lg font-medium text-gray-700 mb-1">
-                  Henüz beslenme programı bulunmuyor
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  Bu müşteri için bir beslenme programı oluşturun
-                </p>
-                <Button
-                  onClick={() =>
-                    router.push(`/diets/new?clientId=${client.id}`)
-                  }
-                  className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-                >
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Yeni Program Ekle
-                </Button>
-              </div>
+              <p className="text-gray-500 italic">
+                Henüz diyet bulunmuyor.
+              </p>
             )}
           </div>
         </div>
       </div>
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 }

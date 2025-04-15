@@ -1,9 +1,45 @@
+"use client";
 import { Diet } from "@/types/types";
 import FormFieldWrapper from "./CustomUI/FormFieldWrapper";
 import DatePicker from "./CustomUI/Datepicker";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { differenceInDays } from "date-fns";
+import { Label } from "./ui/label";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+
+interface ImportantDate {
+  id: number;
+  name: string;
+  message: string;
+  startDate: Date;
+  endDate: Date;
+}
+
+const isWithinBirthdayRange = (
+  birthdate: Date | null,
+  dietDate: Date | null
+) => {
+  if (!birthdate || !dietDate) return false;
+  const thisYearBirthday = new Date(
+    dietDate.getFullYear(),
+    birthdate.getMonth(),
+    birthdate.getDate()
+  );
+  const daysDifference = Math.abs(differenceInDays(dietDate, thisYearBirthday));
+  console.log(daysDifference);
+  return daysDifference <= 10;
+};
+
+const isWithinImportantDateRange = (
+  importantDate: ImportantDate,
+  dietDate: Date
+) => {
+  const start = new Date(importantDate.startDate);
+  const end = new Date(importantDate.endDate);
+
+  return dietDate >= start && dietDate <= end;
+};
 
 interface DietFormFieldsProps {
   form: any;
@@ -14,7 +50,81 @@ interface DietFormFieldsProps {
   disabled?: boolean;
 }
 
-const DietFormBasicFields = ({ form, diet, setDiet }: DietFormFieldsProps) => {
+const DietFormBasicFields = ({
+  form,
+  diet,
+  setDiet,
+  selectedClientId,
+  onSelectClient,
+  disabled,
+}: DietFormFieldsProps) => {
+  const [showBirthdayCelebration, setShowBirthdayCelebration] = useState(false);
+  const [importantDate, setImportantDate] = useState<ImportantDate | null>(
+    null
+  );
+
+  useEffect(() => {
+    const checkImportantDates = async () => {
+      if (!diet.Tarih) return;
+
+      const dietDate = new Date(diet.Tarih);
+
+      try {
+        const response = await fetch("/api/important-dates");
+        if (!response.ok) throw new Error("Failed to fetch important dates");
+
+        const importantDates: ImportantDate[] = await response.json();
+
+        const matchingDate = importantDates.find((date) =>
+          isWithinImportantDateRange(date, dietDate)
+        );
+
+        setImportantDate(matchingDate || null);
+      } catch (error) {
+        console.error("Error checking important dates:", error);
+      }
+    };
+
+    // Check for birthday
+    if (selectedClientId) {
+      fetch(`/api/clients/${selectedClientId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          // Here, data is the entire response object with the client property
+          console.log(data, "data");
+
+          // Access the client object inside the response
+          const client = data.client;
+          console.log(client, "client");
+
+          // Now you can correctly access the birthdate
+          console.log(client.birthdate, "client.birthdate");
+          console.log(diet.Tarih, "diet.Tarih");
+
+          const birthdate = new Date(client.birthdate);
+          console.log(birthdate, "birthdate");
+          const dietDate = new Date(diet.Tarih);
+
+          setShowBirthdayCelebration(
+            isWithinBirthdayRange(birthdate, dietDate)
+          );
+        });
+    }
+
+    // Check for important dates
+    checkImportantDates();
+  }, [selectedClientId, diet.Tarih]);
+
+  // Helper function to convert boolean to radio value
+  const boolToRadioValue = (value: boolean | undefined): "yes" | "no" => {
+    return value === true ? "yes" : "no";
+  };
+
+  // Helper function to convert radio value to boolean
+  const radioValueToBool = (value: string): boolean => {
+    return value === "yes";
+  };
+
   const inputBaseClass =
     "w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500";
 
@@ -84,6 +194,81 @@ const DietFormBasicFields = ({ form, diet, setDiet }: DietFormFieldsProps) => {
                 )}
               />
             </div>
+
+            {/* Birthday celebration option */}
+            {showBirthdayCelebration && (
+              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="text-sm text-purple-700 mb-2">
+                  Danışanın doğum günü yaklaşıyor! Kutlama eklemek ister
+                  misiniz?
+                </p>
+                <RadioGroup
+                  value={boolToRadioValue(diet.isBirthdayCelebration)}
+                  onValueChange={(value) =>
+                    setDiet({
+                      ...diet,
+                      isBirthdayCelebration: radioValueToBool(value),
+                    })
+                  }
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="celebration-yes" />
+                    <Label htmlFor="celebration-yes">Evet</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="celebration-no" />
+                    <Label htmlFor="celebration-no">Hayır</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Important date celebration option */}
+            {importantDate && (
+              <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-700 mb-2">
+                  {importantDate.name} zamanı! Kutlama eklemek ister misiniz?
+                </p>
+                <p className="text-xs text-amber-600 mb-3 italic">
+                  {importantDate.message}
+                </p>
+                <RadioGroup
+                  value={boolToRadioValue(diet.isImportantDateCelebrated)}
+                  onValueChange={(value) =>
+                    setDiet({
+                      ...diet,
+                      isImportantDateCelebrated: radioValueToBool(value),
+                      importantDateId: radioValueToBool(value)
+                        ? importantDate.id
+                        : null,
+                      importantDateName: radioValueToBool(value)
+                        ? importantDate.name
+                        : null,
+                    })
+                  }
+                  disabled={disabled}
+                >
+                  <div className="flex items-center space-x-2 cursor-pointer">
+                    <RadioGroupItem value="yes" id="important-date-yes" />
+                    <Label
+                      htmlFor="important-date-yes"
+                      className="cursor-pointer"
+                    >
+                      Evet
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 cursor-pointer">
+                    <RadioGroupItem value="no" id="important-date-no" />
+                    <Label
+                      htmlFor="important-date-no"
+                      className="cursor-pointer"
+                    >
+                      Hayır
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
           </div>
 
           {/* Right Column */}

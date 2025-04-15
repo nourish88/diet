@@ -73,9 +73,15 @@ const MenuItem = ({
 }: MenuItemProps) => {
   const [miktar, setMiktar] = useState(item.miktar || "");
   const [birimOpen, setBirimOpen] = useState(false);
-  const [birim, setBirim] = useState(item.birim || "");
+  // Initialize birim with the item's birim value
+  const [birim, setBirim] = useState(
+    typeof item.birim === 'object' ? item.birim?.name : item.birim || ""
+  );
   const [besinOpen, setBesinOpen] = useState(false);
-  const [besin, setBesin] = useState(item.besin || "");
+  // Initialize besin with the item's besin value
+  const [besin, setBesin] = useState(
+    typeof item.besin === 'object' ? item.besin?.name : item.besin || ""
+  );
   const [customBesinInput, setCustomBesinInput] = useState("");
   const [besins, setBesins] = useState<Besin[]>([]);
   const [groupedBesins, setGroupedBesins] = useState<GroupedBesins>({});
@@ -85,23 +91,23 @@ const MenuItem = ({
     const fetchBesins = async () => {
       try {
         setIsLoadingBesins(true);
-        const response = await fetch('/api/besinler');
-        if (!response.ok) throw new Error('Failed to fetch besins');
+        const response = await fetch("/api/besinler");
+        if (!response.ok) throw new Error("Failed to fetch besins");
         const data: Besin[] = await response.json();
-        
+
         const grouped = data.reduce((acc: GroupedBesins, besin: Besin) => {
-          const groupName = besin.group?.description || 'Diğer';
+          const groupName = besin.group?.description || "Diğer";
           if (!acc[groupName]) {
             acc[groupName] = [];
           }
           acc[groupName].push(besin);
           return acc;
         }, {});
-        
+
         setGroupedBesins(grouped);
         setBesins(data);
       } catch (error) {
-        console.error('Error fetching besins:', error);
+        console.error("Error fetching besins:", error);
       } finally {
         setIsLoadingBesins(false);
       }
@@ -112,14 +118,9 @@ const MenuItem = ({
 
   useEffect(() => {
     setMiktar(item.miktar || "");
-    setBirim(item.birim || "");
-    setBesin(item.besin || "");
-    if (item.besin && !besins.some(b => b.name === item.besin)) {
-      setCustomBesinInput(item.besin);
-    } else {
-      setCustomBesinInput("");
-    }
-  }, [item, besins]);
+    setBirim(typeof item.birim === 'object' ? item.birim?.name : item.birim || "");
+    setBesin(typeof item.besin === 'object' ? item.besin?.name : item.besin || "");
+  }, [item]);
 
   const updateParentState = (field: string, value: string) => {
     onItemChange(ogunIndex, index, field, value);
@@ -194,7 +195,7 @@ const MenuItem = ({
           </Popover>
         </div>
       </div>
-      
+
       <div className="flex gap-2 w-full">
         <div className="flex-1">
           <Popover open={besinOpen} onOpenChange={setBesinOpen}>
@@ -223,7 +224,7 @@ const MenuItem = ({
                     />
                   </CommandEmpty>
                   {Object.entries(groupedBesins)
-                    .filter(([groupName]) => groupName !== 'Diğer')
+                    .filter(([groupName]) => groupName !== "Diğer")
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([groupName, groupBesins]) => (
                       <CommandGroup key={groupName} heading={groupName}>
@@ -252,14 +253,14 @@ const MenuItem = ({
                       </CommandGroup>
                     ))}
 
-                  {groupedBesins['Diğer']?.length > 0 && 
-                   Object.keys(groupedBesins).length > 1 && (
-                    <CommandSeparator />
-                  )}
+                  {groupedBesins["Diğer"]?.length > 0 &&
+                    Object.keys(groupedBesins).length > 1 && (
+                      <CommandSeparator />
+                    )}
 
-                  {groupedBesins['Diğer']?.length > 0 && (
+                  {groupedBesins["Diğer"]?.length > 0 && (
                     <CommandGroup heading="Grupsuz Besinler">
-                      {groupedBesins['Diğer']
+                      {groupedBesins["Diğer"]
                         .sort((a, b) => a.name.localeCompare(b.name))
                         .map((b) => (
                           <CommandItem

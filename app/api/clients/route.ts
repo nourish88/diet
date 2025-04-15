@@ -1,42 +1,88 @@
-import { NextRequest, NextResponse } from "next/server";
-import ClientService from "@/services/ClientService";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
-export async function POST(request: NextRequest) {
+export async function GET() {
   try {
-    const clientData = await request.json();
+    const clients = await prisma.client.findMany({
+      orderBy: {
+        createdAt: "desc"
+      },
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        phoneNumber: true,  // Changed from phone to phoneNumber
+        birthdate: true,
+        createdAt: true,
+        // Remove email as it doesn't exist in the schema
+      }
+    });
 
-    if (!clientData.name || !clientData.surname) {
-      return NextResponse.json(
-        { error: "Name and surname are required" },
-        { status: 400 }
-      );
-    }
-
-    // Convert birthdate string to Date if present
-    if (clientData.birthdate) {
-      clientData.birthdate = new Date(clientData.birthdate);
-    }
-
-    const client = await ClientService.createClient(clientData);
-
-    return NextResponse.json({ client }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating client:", error);
+    return NextResponse.json(clients);
+  } catch (error) {
+    console.error('Database error:', error);
     return NextResponse.json(
-      { error: error.message || "Failed to create client" },
+      { error: 'Veritabanı bağlantısında bir hata oluştu' },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
-    const clients = await ClientService.getAllClients();
-    return NextResponse.json({ clients });
+    const clientData = await request.json();
+    console.log("Received client data in API:", clientData);
+
+    if (!clientData.name || !clientData.surname) {
+      return NextResponse.json(
+        { error: "İsim ve soyisim zorunludur" },
+        { status: 400 }
+      );
+    }
+
+    const { bannedBesins, ...clientDetails } = clientData;
+
+    const transformedData = {
+      ...clientDetails,
+      birthdate:
+        clientDetails.birthdate && clientDetails.birthdate !== "null"
+          ? new Date(clientDetails.birthdate)
+          : null,
+    };
+
+    console.log("Transformed data being sent to Prisma:", transformedData);
+
+    const client = await prisma.client.create({
+      data: {
+        ...transformedData,
+        bannedFoods: {
+          create:
+            bannedBesins?.map((ban: { besinId: number; reason?: string }) => ({
+              besinId: ban.besinId,
+              reason: ban.reason,
+            })) || [],
+        },
+      },
+      include: {
+        bannedFoods: {
+          include: {
+            besin: true,
+          },
+        },
+      },
+    });
+
+    console.log("Created client:", client);
+
+    return NextResponse.json({ client }, { status: 201 });
   } catch (error: any) {
-    console.error("Error fetching clients:", error);
+    console.error("Error creating client:", error);
+    
+    // Return a proper JSON response for all errors
     return NextResponse.json(
-      { error: error.message || "Failed to fetch clients" },
+      { 
+        error: error.message || "Danışan oluşturulurken bir hata oluştu" 
+      },
       { status: 500 }
     );
   }

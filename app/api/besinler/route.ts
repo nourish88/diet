@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 // GET /api/besinler - Get all besin items
 export async function GET() {
   try {
     const besinler = await prisma.besin.findMany({
       include: {
-        group: true,
+        besinGroup: true, // Changed from 'group' to 'besinGroup'
       },
-      orderBy: [{ priority: "desc" }, { name: "asc" }],
+      orderBy: [
+        {
+          priority: "desc"
+        },
+        {
+          name: "asc"
+        }
+      ]
     });
 
     return NextResponse.json(besinler);
   } catch (error) {
-    console.error("Error fetching besinler:", error);
+    console.error('Error fetching besinler:', error);
     return NextResponse.json(
-      { error: "Besinler yüklenirken bir hata oluştu" },
+      { error: 'Failed to fetch besinler' },
       { status: 500 }
     );
   }
@@ -30,9 +35,9 @@ export async function POST(request: NextRequest) {
 
     // Validate request body
     if (!data.name || typeof data.name !== "string") {
-      return NextResponse.json(
-        { error: "Geçerli bir besin adı gerekmektedir" },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ error: "Geçerli bir besin adı gerekmektedir" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -43,9 +48,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (!group) {
-        return NextResponse.json(
-          { error: "Belirtilen besin grubu bulunamadı" },
-          { status: 400 }
+        return new NextResponse(
+          JSON.stringify({ error: "Belirtilen besin grubu bulunamadı" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
     }
@@ -62,12 +67,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(besin, { status: 201 });
-  } catch (error) {
-    console.error("Error creating besin:", error);
-    return NextResponse.json(
-      { error: "Besin oluşturulurken bir hata oluştu" },
-      { status: 500 }
+    return new NextResponse(JSON.stringify(besin), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error: any) {
+    // Avoid using console.error with the error object directly
+    console.error(
+      "Error creating besin: " + (error.message || "Unknown error")
+    );
+    return new NextResponse(
+      JSON.stringify({ error: "Besin oluşturulurken bir hata oluştu" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

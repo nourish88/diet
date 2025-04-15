@@ -4,9 +4,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ClientForm from "@/components/ClientForm";
 import useClientActions from "@/hooks/useClientActions";
-import { ToastContainer } from "@/components/ui/toast";
+
 import { useToast } from "@/components/ui/use-toast";
 import { ChevronLeft, Loader2 } from "lucide-react";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function EditClientPage() {
   const [client, setClient] = useState<any>(null);
@@ -77,6 +78,13 @@ export default function EditClientPage() {
 
   if (!client) return null;
 
+  // Transform bannedFoods to bannedBesins format for the form
+  const bannedBesins =
+    client.bannedFoods?.map((banned: any) => ({
+      besinId: banned.besin.id,
+      reason: banned.reason,
+    })) || [];
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-6">
@@ -97,11 +105,14 @@ export default function EditClientPage() {
           birthdate: client.birthdate,
           phoneNumber: client.phoneNumber,
           notes: client.notes,
+          gender: client.gender?.toString() || null, // Convert gender to string
+          illness: client.illness,
+          bannedBesins: bannedBesins,
         }}
         onSuccess={handleSuccess}
         isEdit={true}
       />
-      <ToastContainer toasts={toasts} dismiss={dismiss} />
+      <Toaster />
     </div>
   );
 }

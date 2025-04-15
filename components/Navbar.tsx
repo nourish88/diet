@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Users, ClipboardList, Home } from "lucide-react";
+import { Menu, X, Users, ClipboardList, Home, Calendar } from "lucide-react";
 import Image from "next/image";
 
 const Navbar = () => {
@@ -25,15 +25,16 @@ const Navbar = () => {
 
   const navItems = [
     { href: "/", label: "Ana Sayfa", icon: Home },
-    { href: "/clients", label: "Müşteriler", icon: Users },
+    { href: "/clients", label: "Danışanlar", icon: Users },
     { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
+    { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
   ];
 
   return (
     <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
       <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
         <Link href="/" className="flex items-center space-x-3">
-          <div className="relative ">
+          <div className="relative">
             <Image
               src="/ezgi_evgin.png"
               alt="Diyet Danışmanlık Logo"

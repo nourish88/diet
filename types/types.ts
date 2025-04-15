@@ -1,4 +1,28 @@
+export interface PDFData {
+  id?: number;
+  fullName: string;
+  dietDate: string;
+  weeklyResult: string;
+  target: string;
+  ogunler: {
+    name: string;
+    time: string;
+    menuItems: string[];
+    notes?: string;
+    detail?: string;
+  }[];
+  waterConsumption: string;
+  physicalActivity: string;
+  isBirthdayCelebration?: boolean;
+  isImportantDateCelebrated?: boolean;
+  importantDateName?: string;
+  importantDateId?: number;
+  dietitianNote?: string;
+}
+
 export interface Diet {
+  id?: number;
+  clientId?: number;
   AdSoyad: string;
   Tarih: string | null; // ISO string format or null
   Sonuc: string;
@@ -6,14 +30,23 @@ export interface Diet {
   Su: string;
   Fizik: string;
   Oguns: Ogun[];
+  isBirthdayCelebration?: boolean;
+  isImportantDateCelebrated?: boolean;
+  importantDateId?: number | null;
+  importantDateName?: string | null;
+  dietitianNote?: string;
 }
 
 export interface Ogun {
+  id?: number;
   name: string;
   time: string;
   detail: string;
   order: number;
-  items: Item[];
+  dietId?: number;
+  items: MenuItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Item {
@@ -30,7 +63,27 @@ export interface Meal {
 }
 
 export interface MenuItem {
+  id?: number;
+  miktar: string;
+  birim: Birim;
+  besin: Besin;
+  ogunId?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface Besin {
+  id?: number;
   name: string;
-  amount?: string;
-  unit?: string;
+  menuItems?: MenuItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface Birim {
+  id?: number;
+  name: string;
+  menuItems?: MenuItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
