@@ -17,7 +17,6 @@ export const DietService = {
           isImportantDateCelebrated:
             dietData.isImportantDateCelebrated || false,
           importantDateId: dietData.importantDateId || null,
-          importantDateName: dietData.importantDateName || null,
           // Create the oguns and menu items in a nested create
           oguns: {
             create: dietData.Oguns.map((ogun) => ({
@@ -27,21 +26,50 @@ export const DietService = {
               order: ogun.order,
               items: {
                 create: ogun.items
-                  .filter((item) => item.besin && item.besin.trim() !== "")
+                  .filter(
+                    (item) =>
+                      item.besin &&
+                      (typeof item.besin === "string"
+                        ? item.besin.trim() !== ""
+                        : item.besin.name?.trim() !== "")
+                  )
                   .map((item) => ({
                     miktar: item.miktar,
                     besin: {
                       connectOrCreate: {
-                        where: { name: item.besin },
-                        create: { name: item.besin },
+                        where: {
+                          name:
+                            typeof item.besin === "string"
+                              ? item.besin
+                              : item.besin.name || "",
+                        },
+                        create: {
+                          name:
+                            typeof item.besin === "string"
+                              ? item.besin
+                              : item.besin.name || "",
+                        },
                       },
                     },
-                    ...(item.birim && item.birim.trim() !== ""
+                    ...(item.birim &&
+                    (typeof item.birim === "string"
+                      ? item.birim.trim() !== ""
+                      : item.birim.name?.trim() !== "")
                       ? {
                           birim: {
                             connectOrCreate: {
-                              where: { name: item.birim },
-                              create: { name: item.birim },
+                              where: {
+                                name:
+                                  typeof item.birim === "string"
+                                    ? item.birim
+                                    : item.birim.name || "",
+                              },
+                              create: {
+                                name:
+                                  typeof item.birim === "string"
+                                    ? item.birim
+                                    : item.birim.name || "",
+                              },
                             },
                           },
                         }
