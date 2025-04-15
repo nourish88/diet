@@ -79,7 +79,6 @@ export async function GET(
 
     // Handle client name with proper fallback
     const clientName =
-      diet.client?.fullName ||
       `${diet.client?.name || ""} ${diet.client?.surname || ""}`.trim() ||
       "İsimsiz Danışan";
 
