@@ -18,7 +18,10 @@ const clientSchema = z.object({
     .transform((val) => (val && val !== "" ? val : null)),
   phoneNumber: z.string().nullable(),
   notes: z.string().nullable(),
-  gender: z.string().transform(val => val ? parseInt(val) : null).nullable(),
+  gender: z
+    .string()
+    .transform((val) => (val ? parseInt(val) : null))
+    .nullable(),
   illness: z.string().nullable(),
 });
 
@@ -33,7 +36,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
   const [selectedBesins, setSelectedBesins] = useState(
     initialData?.bannedBesins?.map((ban: any) => ({
       besinId: ban.besinId,
-      reason: ban.reason
+      reason: ban.reason,
     })) || []
   );
 
@@ -42,8 +45,8 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
     defaultValues: {
       name: initialData?.name || "",
       surname: initialData?.surname || "",
-      birthdate: initialData?.birthdate 
-        ? new Date(initialData.birthdate).toISOString().split('T')[0] 
+      birthdate: initialData?.birthdate
+        ? new Date(initialData.birthdate).toISOString().split("T")[0]
         : null,
       phoneNumber: initialData?.phoneNumber || "",
       notes: initialData?.notes || "",
@@ -86,10 +89,11 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
 
       const transformedValues = {
         ...values,
-        birthdate: values.birthdate && values.birthdate.trim() !== "" 
-          ? new Date(values.birthdate).toISOString() 
-          : null,
-        gender: values.gender ? parseInt(values.gender) : null,
+        birthdate:
+          values.birthdate && values.birthdate.trim() !== ""
+            ? new Date(values.birthdate).toISOString()
+            : null,
+        gender: values.gender,
       };
 
       console.log("Transformed values being sent to API:", transformedValues);
@@ -108,7 +112,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
 
       const contentType = response.headers.get("content-type");
       let errorMessage = "İşlem başarısız";
-      
+
       if (!response.ok) {
         if (contentType && contentType.includes("application/json")) {
           const errorData = await response.json();

@@ -49,12 +49,12 @@ interface Client {
 export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { getClient } = useClientActions();
-  const { toast, toasts, dismiss } = useToast(); // Destructure all needed properties
+
+  const { toast } = useToast(); // Destructure all needed properties
   const params = useParams();
   const router = useRouter();
 
-  const clientId = Number(params.id);
+  const clientId = params?.id ? Number(params.id) : null;
 
   useEffect(() => {
     if (!clientId || isNaN(clientId)) {
@@ -96,13 +96,13 @@ export default function ClientDetailPage() {
         try {
           const dietsResponse = await fetch(`/api/clients/${clientId}/diets`);
           const dietsData = await dietsResponse.json();
-          
+
           // Combine the client data with the diets data
           const clientWithDiets = {
             ...data.client,
-            diets: dietsData.diets || []
+            diets: dietsData.diets || [],
           };
-          
+
           console.log("Client with diets:", clientWithDiets);
           setClient(clientWithDiets);
         } catch (dietsError) {
@@ -345,9 +345,7 @@ export default function ClientDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 italic">
-                Henüz diyet bulunmuyor.
-              </p>
+              <p className="text-gray-500 italic">Henüz diyet bulunmuyor.</p>
             )}
           </div>
         </div>
