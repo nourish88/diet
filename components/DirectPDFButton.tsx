@@ -30,50 +30,6 @@ const formatDateTR = (dateString: string | null | undefined | Date) => {
   }
 };
 
-const handleWhatsAppShare = async (pdfData: PDFData) => {
-  try {
-    const apiUrl = `/api/diets/${pdfData.id}/whatsapp`;
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        responseData.message || "WhatsApp gönderimi başarısız oldu"
-      );
-    }
-
-    // Open WhatsApp URL in a new window
-    if (responseData.whatsappUrl) {
-      window.open(responseData.whatsappUrl, "_blank");
-    }
-
-    toast({
-      title: "Başarılı",
-      description: "WhatsApp sayfası açıldı",
-      variant: "default",
-    });
-  } catch (error) {
-    console.error("Error details:", {
-      message: error.message,
-      stack: error.stack,
-    });
-
-    toast({
-      title: "Hata",
-      description: `WhatsApp raporu gönderilirken bir hata oluştu: ${error.message}`,
-      variant: "destructive",
-    });
-  }
-};
-
 interface PDFData {
   id?: number;
   fullName: string;
@@ -201,42 +157,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       fetchImportantDate();
     }
   }, [importantDateId, pdfData?.isImportantDateCelebrated]); // Dependencies
-
-  const replaceEmojisWithText = (text: string): string => {
-    if (!text) return text;
-
-    const emojiCodeMap: Record<string, string> = {
-      ":smile:": "😊",
-      ":heart:": "❤️",
-      ":fire:": "🔥",
-      ":check:": "✅",
-      ":x:": "❌",
-      ":warning:": "⚠️",
-      ":star:": "⭐",
-      ":muscle:": "💪",
-      ":clap:": "👏",
-      ":pray:": "🙏",
-      ":clock:": "⏰",
-      ":memo:": "📝",
-      ":chart:": "📊",
-      ":dart:": "🎯",
-      ":trophy:": "🏆",
-      ":pie:": "🎂",
-    };
-
-    let processedText = text;
-    Object.entries(emojiCodeMap).forEach(([code, emoji]) => {
-      processedText = processedText.replace(new RegExp(code, "g"), emoji);
-    });
-
-    processedText = twemoji.parse(processedText, {
-      folder: "svg",
-      ext: ".svg",
-      base: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/",
-    });
-
-    return processedText;
-  };
 
   const handleSuccess = () => {
     toast({
@@ -466,7 +386,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     const primaryColor = "#2563eb"; // Professional blue
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
-    const accentColor = "#3b82f6"; // Lighter blue for accents
 
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
@@ -784,7 +703,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           },
         ],
       },
-      footer: function (currentPage, pageCount) {
+      footer: function () {
         return {
           columns: [
             {
@@ -806,71 +725,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
   };
 
-  const shareViaWhatsApp = async (pdfDataToShare: PDFData) => {
-    try {
-      setIsLoading(true);
-
-      // Check if diet has an ID
-      if (!pdfDataToShare.id) {
-        toast({
-          title: "Uyarı",
-          description: "Lütfen önce diyeti kaydedin.",
-          variant: "warning",
-          duration: 5000,
-        });
-        return;
-      }
-
-      // Use the provided phone number or a test one
-      const phoneToUse = phoneNumber || "5333104970"; // Replace with your test number
-
-      // Format phone number (remove spaces, +, etc.)
-      let formattedPhone = phoneToUse.replace(/\D/g, "");
-
-      // If it doesn't start with country code, add Turkish code
-      if (!formattedPhone.startsWith("90")) {
-        formattedPhone = `90${formattedPhone}`;
-      }
-
-      // Create a message with the download link
-      const message = encodeURIComponent(
-        `Merhaba ${pdfDataToShare.fullName || "Danışanım"},\n\n` +
-          `${
-            pdfDataToShare.dietDate
-              ? formatDateTR(pdfDataToShare.dietDate)
-              : "Bugün"
-          } tarihli beslenme programınızı hazırladım.\n\n` +
-          `Sağlıklı günler dilerim,\n` +
-          `Dyt. Ezgi Evgin Aktaş`
-      );
-
-      // Create WhatsApp URL
-      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
-
-      // Open WhatsApp in a new window
-      window.open(whatsappUrl, "_blank");
-
-      toast({
-        title: "WhatsApp Açıldı",
-        description: "WhatsApp mesajınız hazırlandı, göndermeye hazır.",
-        variant: "default",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error("Error sharing via WhatsApp:", error);
-      toast({
-        title: "Hata",
-        description: `WhatsApp üzerinden paylaşım yapılırken bir hata oluştu: ${
-          (error as Error).message
-        }`,
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleClick = async () => {
     if (!dietId || !phoneNumber) {
       onError?.("DietId ve telefon numarası gereklidir");
@@ -890,7 +744,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
 
       // Create the download URL using the diet ID
       const baseUrl = window.location.origin;
-      const downloadUrl = `${baseUrl}/api/diets/download/${dietId}`;
 
       // Create a message with the download link
       const message = encodeURIComponent(
