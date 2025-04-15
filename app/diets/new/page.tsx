@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react";
 
 function DietPageContent() {
   const searchParams = useSearchParams();
-  const clientId = searchParams.get("clientId");
+  const clientId = searchParams?.get("clientId");
 
   return (
     <div className="container mx-auto px-4 py-8">
