@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     // Create besin group
     const besinGroup = await prisma.besinGroup.create({
       data: {
+        name: data.name, // Ensure 'name' is provided in the request body
         description: data.description,
       },
     });
