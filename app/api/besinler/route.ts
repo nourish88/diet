@@ -10,19 +10,19 @@ export async function GET() {
       },
       orderBy: [
         {
-          priority: "desc"
+          priority: "desc",
         },
         {
-          name: "asc"
-        }
-      ]
+          name: "asc",
+        },
+      ],
     });
 
     return NextResponse.json(besinler);
   } catch (error) {
-    console.error('Error fetching besinler:', error);
+    console.error("Error fetching besinler:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch besinler' },
+      { error: "Failed to fetch besinler" },
       { status: 500 }
     );
   }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         groupId: data.groupId || null,
       },
       include: {
-        group: true,
+        besinGroup: true,
       },
     });
 
