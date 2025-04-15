@@ -52,7 +52,7 @@ export async function generatePDF(diet: any): Promise<Buffer> {
         // Meal notes if any
         if (ogun.detail) {
           doc.moveDown(0.5);
-          doc.fontSize(10).text(`Not: ${ogun.detail}`, { italic: true });
+          doc.fontSize(10).text(`Not: ${ogun.detail}`);
         }
 
         doc.moveDown();
