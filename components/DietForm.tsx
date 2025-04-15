@@ -289,12 +289,14 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
                 besin: dbItem.besin || {},
               })) || [],
           })) || OGUN,
+        Su: dbDiet.waterConsumption || "",
+        Fizik: dbDiet.physicalActivity || "",
       };
     } catch (error) {
       console.error("Error converting DB diet to UI diet:", error);
       // Return a default diet structure
       return {
-        id: null,
+        id: 0,
         AdSoyad: getClientFullName(selectedClientId),
         Tarih: new Date().toISOString(),
         Hedef: "",
@@ -305,6 +307,8 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
         importantDateId: null,
         importantDateName: null,
         Oguns: OGUN,
+        Su: "",
+        Fizik: "",
       };
     }
   };
