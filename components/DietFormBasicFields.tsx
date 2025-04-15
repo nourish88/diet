@@ -103,7 +103,7 @@ const DietFormBasicFields = ({
 
           const birthdate = new Date(client.birthdate);
           console.log(birthdate, "birthdate");
-          const dietDate = new Date(diet.Tarih);
+          const dietDate = diet.Tarih ? new Date(diet.Tarih) : null;
 
           setShowBirthdayCelebration(
             isWithinBirthdayRange(birthdate, dietDate)
@@ -151,13 +151,15 @@ const DietFormBasicFields = ({
               <div className="w-full">
                 <DatePicker
                   selected={diet.Tarih ? new Date(diet.Tarih) : null}
-                  onSelect={(newDate) =>
+                  onChange={(date: Date | null) =>
                     setDiet({
                       ...diet,
-                      Tarih: newDate ? newDate.toISOString() : null,
+                      Tarih: date ? date.toISOString() : null,
                     })
                   }
-                  placeholder="Tarih Seçiniz"
+                  placeholderText="Tarih Seçiniz"
+                  dateFormat="dd/MM/yyyy"
+                  className="w-full"
                 />
               </div>
             </FormFieldWrapper>

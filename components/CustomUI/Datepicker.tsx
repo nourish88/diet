@@ -11,14 +11,14 @@ import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 
 interface DatePickerProps {
-  selected: Date | null | undefined;
-  onSelect: (date: Date | undefined) => void;
+  selected: Date | null;
+  onChange: (date: Date | null) => void;
   placeholder?: string;
 }
 
 const DatePicker = ({
   selected,
-  onSelect,
+  onChange,
   placeholder = "Tarih",
 }: DatePickerProps) => {
   const [inputValue, setInputValue] = useState("");
@@ -41,7 +41,7 @@ const DatePicker = ({
           const parsedDate = parse(dateStr, "dd.MM.yyyy", new Date());
 
           if (!isNaN(parsedDate.getTime())) {
-            onSelect(parsedDate);
+            onChange(parsedDate);
           }
         }
       } catch (error) {
@@ -67,7 +67,7 @@ const DatePicker = ({
         <Calendar
           mode="single"
           selected={selected!}
-          onSelect={onSelect}
+          onSelect={(day: Date | undefined) => onChange(day || null)}
           initialFocus
           locale={tr}
           fromYear={1900}
