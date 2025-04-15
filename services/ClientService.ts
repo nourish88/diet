@@ -43,9 +43,9 @@ const ClientService = {
           },
           bannedFoods: {
             include: {
-              besin: true
-            }
-          }
+              besin: true,
+            },
+          },
         },
       });
 
@@ -117,18 +117,18 @@ const ClientService = {
       // If bannedBesins is provided, update them
       if (bannedBesins) {
         // First, remove all existing banned besins
-        await prisma.bannedBesin.deleteMany({
+        await prisma.bannedFood.deleteMany({
           where: { clientId: id },
         });
 
         // Then create new ones
         if (bannedBesins.length > 0) {
-          await prisma.bannedBesin.createMany({
-            data: bannedBesins.map(ban => ({
+          await prisma.bannedFood.createMany({
+            data: bannedBesins.map((ban) => ({
               clientId: id,
               besinId: ban.besinId,
-              reason: ban.reason
-            }))
+              reason: ban.reason,
+            })),
           });
         }
       }
@@ -137,12 +137,12 @@ const ClientService = {
       return await prisma.client.findUnique({
         where: { id },
         include: {
-          bannedBesins: {
+          bannedFoods: {
             include: {
-              besin: true
-            }
-          }
-        }
+              besin: true,
+            },
+          },
+        },
       });
     } catch (error) {
       console.error("Error updating client:", error);
@@ -172,12 +172,12 @@ export default ClientService;
 
 export const fetchClients = async (): Promise<Client[]> => {
   try {
-    const response = await fetch('/api/clients', {
-      method: 'GET',
+    const response = await fetch("/api/clients", {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      cache: 'no-store' // Disable caching for now to help with debugging
+      cache: "no-store", // Disable caching for now to help with debugging
     });
 
     if (!response.ok) {
@@ -185,14 +185,14 @@ export const fetchClients = async (): Promise<Client[]> => {
     }
 
     const data = await response.json();
-    
+
     if (!Array.isArray(data)) {
-      throw new Error('Invalid data format received from server');
+      throw new Error("Invalid data format received from server");
     }
 
     return data;
   } catch (error) {
-    console.error('Error in fetchClients:', error);
+    console.error("Error in fetchClients:", error);
     throw error;
   }
 };
