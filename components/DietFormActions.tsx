@@ -2,7 +2,7 @@ import DirectPDFButton from "./DirectPDFButton";
 import { Button } from "./ui/button";
 import dynamic from "next/dynamic";
 import { Diet } from "@/types/types";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "./ui/use-toast";
 
@@ -16,15 +16,17 @@ interface DietFormActionsProps {
   clientId?: number;
   onSaveToDatabase: () => Promise<void>;
   disabled?: boolean;
-  phoneNumber?: string; // Add this prop
+  phoneNumber?: string;
 }
 
 const DietFormActions = ({
+  onAddOgun,
   onGeneratePDF,
   dietData,
   diet,
   clientId,
   onSaveToDatabase,
+  disabled = false,
   phoneNumber,
 }: DietFormActionsProps) => {
   const [isSaving, setIsSaving] = useState(false);
@@ -43,19 +45,7 @@ const DietFormActions = ({
   // Check if diet is saved by verifying it has an ID
   const isDietSaved = Boolean(diet?.id);
 
-  // Log the diet ID for debugging
-  console.log("Diet ID in DietFormActions:", diet?.id);
-
   const handleSaveToDatabase = async () => {
-    if (!onSaveToDatabase) {
-      toast({
-        title: "Hata",
-        description: "Veritabanına kaydetme işlevi tanımlanmamış.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!clientId) {
       toast({
         title: "Uyarı",
@@ -87,20 +77,24 @@ const DietFormActions = ({
 
   return (
     <div className="flex flex-wrap gap-3 mt-6 justify-start">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onAddOgun}
+        className="bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Öğün Ekle
+      </Button>
+
       <DirectPDFButton
         pdfData={{
-          id: diet?.id, // Ensure diet ID is passed
+          id: diet?.id,
           fullName: dietData.fullName,
           dietDate: dietData.dietDate,
           weeklyResult: dietData.weeklyResult,
           target: dietData.target,
-          ogunler: dietData.ogunler.map((ogun) => ({
-            name: ogun.name,
-            time: ogun.time,
-            menuItems: ogun.menuItems,
-            notes: ogun.detail || ogun.notes || "",
-            detail: ogun.detail || "",
-          })),
+          ogunler: dietData.ogunler,
           waterConsumption: diet.Su,
           physicalActivity: diet.Fizik,
           dietitianNote: diet.dietitianNote,
@@ -108,11 +102,10 @@ const DietFormActions = ({
           isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
         }}
         variant="default"
-        size="lg"
-        className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white border-none h-11 px-6 py-2"
-        phoneNumber={validPhoneNumber} // Pass the formatted phone number
-        dietId={diet?.id} // Explicitly pass the diet ID
-        disabled={!diet?.id || !validPhoneNumber} // Disable if either diet ID or phone number is missing
+        className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white border-none"
+        phoneNumber={validPhoneNumber}
+        dietId={diet?.id}
+        disabled={!diet?.id || !validPhoneNumber}
         onError={(error) => {
           toast({
             title: "Hata",
@@ -123,28 +116,25 @@ const DietFormActions = ({
         }}
       />
 
-      {onSaveToDatabase && (
-        <Button
-          type="button"
-          variant="default"
-          size="lg"
-          onClick={handleSaveToDatabase}
-          disabled={isSaving || !clientId}
-          className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white border-none h-11 px-6 py-2"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Kaydediliyor...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              {isDietSaved ? "Güncelle" : "Kaydet"}
-            </>
-          )}
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="default"
+        onClick={handleSaveToDatabase}
+        disabled={isSaving || !clientId}
+        className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white border-none"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Kaydediliyor...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4 mr-2" />
+            {isDietSaved ? "Güncelle" : "Kaydet"}
+          </>
+        )}
+      </Button>
     </div>
   );
 };
