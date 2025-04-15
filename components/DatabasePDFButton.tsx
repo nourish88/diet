@@ -261,7 +261,20 @@ const DatabasePDFButton = ({
       });
     }
 
-    const content = [
+    // Define the content type
+    type ContentItem = {
+      text?: string;
+      style?: string;
+      color?: string;
+      margin?: number[];
+      columns?: any[];
+      stack?: any[];
+      table?: any;
+      layout?: any;
+      alignment?: string;
+    };
+
+    const content: ContentItem[] = [
       {
         columns: [
           {
