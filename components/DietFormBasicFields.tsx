@@ -157,8 +157,8 @@ const DietFormBasicFields = ({
                       Tarih: date ? date.toISOString() : null,
                     })
                   }
-                  placeholderText="Tarih Seçiniz"
-                  dateFormat="dd/MM/yyyy"
+                  placeholder="Tarih Seçiniz"
+                  dateFormat="dd.MM.yyyy"
                   className="w-full"
                 />
               </div>

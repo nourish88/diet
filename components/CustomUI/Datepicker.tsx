@@ -14,12 +14,16 @@ interface DatePickerProps {
   selected: Date | null;
   onChange: (date: Date | null) => void;
   placeholder?: string;
+  dateFormat?: string;
+  className?: string;
 }
 
 const DatePicker = ({
   selected,
   onChange,
   placeholder = "Tarih",
+  dateFormat = "dd.MM.yyyy",
+  className = "",
 }: DatePickerProps) => {
   const [inputValue, setInputValue] = useState("");
 
@@ -53,11 +57,11 @@ const DatePicker = ({
   return (
     <Popover>
       <PopoverTrigger className="w-full" asChild>
-        <div className="relative w-full">
+        <div className={`relative w-full ${className}`}>
           <Input
-            value={selected ? format(selected, "dd.MM.yyyy") : inputValue}
+            value={selected ? format(selected, dateFormat) : inputValue}
             onChange={handleInputChange}
-            placeholder={placeholder || "GG.AA.YYYY"}
+            placeholder={placeholder}
             className="w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
           />
           <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -66,7 +70,7 @@ const DatePicker = ({
       <PopoverContent className="w-auto p-0">
         <Calendar
           mode="single"
-          selected={selected!}
+          selected={selected || undefined}
           onSelect={(day: Date | undefined) => onChange(day || null)}
           initialFocus
           locale={tr}
