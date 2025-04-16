@@ -345,7 +345,7 @@ const DietTable = ({
                                       e.target.value
                                     )
                                   }
-                                  placeholder="Öğüne özel notlar veya açıklamalar (emoji kullanabilirsiniz 😊 veya :smile:, :heart:, :fire:, :check:, :x: yazarak)"
+                                  placeholder="Öğüne Özel Açıklamalar Girebilirsiniz."
                                   className="resize-none h-20 text-sm"
                                 />
                               </div>
