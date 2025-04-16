@@ -1,14 +1,5 @@
-import { useState, useEffect } from "react";
-import useClientActions from "@/hooks/useClientActions";
-import {
-  Loader2,
-  Check,
-  ChevronsUpDown,
-  PlusCircle,
-  Search,
-  UserPlus,
-} from "lucide-react";
-import { Button } from "./ui/button";
+import { useState } from "react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -17,38 +8,41 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { useToast } from "./ui/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+
+interface Client {
+  id: number;
+  name: string;
+  surname: string;
+}
 
 interface ClientSelectorProps {
   onSelectClient: (clientId: number | null) => void;
   selectedClientId: number | null;
   isLoading?: boolean;
-  clients?: Array<{ id: number; name: string; surname: string }>;
+  clients: Client[];
 }
 
 const ClientSelector = ({
   onSelectClient,
   selectedClientId,
   isLoading = false,
-  clients = []
+  clients = [],
 }: ClientSelectorProps) => {
+  const [open, setOpen] = useState(false);
+
+  const getSelectedClientName = () => {
+    const client = clients.find((c) => c.id === selectedClientId);
+    return client ? `${client.name} ${client.surname}` : "Danışan seçin";
+  };
+
   return (
     <div className="w-full space-y-2">
       <Label htmlFor="client-select">Danışan Seçin</Label>
@@ -58,27 +52,56 @@ const ClientSelector = ({
           <span>Danışanlar yükleniyor...</span>
         </div>
       ) : (
-        <Select
-          value={selectedClientId?.toString()}
-          onValueChange={(value) => onSelectClient(value ? Number(value) : null)}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Danışan seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            {clients.length === 0 ? (
-              <SelectItem value="no-clients" disabled>
-                Danışan bulunamadı
-              </SelectItem>
-            ) : (
-              clients.map((client) => (
-                <SelectItem key={client.id} value={client.id.toString()}>
-                  {`${client.name} ${client.surname}`}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between"
+            >
+              {getSelectedClientName()}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Danışan ara..." />
+              <CommandList className="max-h-[300px] overflow-y-auto">
+                <CommandEmpty>Danışan bulunamadı.</CommandEmpty>
+                <CommandGroup>
+                  {clients.map((client) => (
+                    <CommandItem
+                      key={client.id}
+                      value={`${client.name} ${client.surname}`}
+                      onSelect={() => {
+                        onSelectClient(client.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedClientId === client.id
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {client.name} {client.surname}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          ID: {client.id}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );
