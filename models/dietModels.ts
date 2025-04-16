@@ -8,7 +8,9 @@ const emptyMenuItem: MenuItem = {
 };
 
 // Create default empty menu items for each meal
-const defaultMenuItems: MenuItem[] = Array(3).fill(null).map(() => ({ ...emptyMenuItem }));
+const defaultMenuItems: MenuItem[] = Array(1)
+  .fill(null)
+  .map(() => ({ ...emptyMenuItem }));
 
 export const OGUN: Ogun[] = [
   {
