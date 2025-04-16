@@ -23,20 +23,10 @@ import { Check, ChevronsUpDown, Trash } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const BIRIMS = [
-  "gram",
-  "adet",
-  "dilim",
-  "yemek kaşığı",
-  "tatlı kaşığı",
-  "çay kaşığı",
-  "su bardağı",
-  "çay bardağı",
-  "fincan",
-  "kase",
-  "porsiyon",
-  "avuç",
-];
+interface Birim {
+  id: number;
+  name: string;
+}
 
 interface Besin {
   id: number;
@@ -77,6 +67,8 @@ const MenuItem = ({
   const [birim, setBirim] = useState(
     typeof item.birim === 'object' ? item.birim?.name : item.birim || ""
   );
+  const [birims, setBirims] = useState<Birim[]>([]);
+  const [isLoadingBirims, setIsLoadingBirims] = useState(false);
   const [besinOpen, setBesinOpen] = useState(false);
   // Initialize besin with the item's besin value
   const [besin, setBesin] = useState(
@@ -86,6 +78,24 @@ const MenuItem = ({
   const [besins, setBesins] = useState<Besin[]>([]);
   const [groupedBesins, setGroupedBesins] = useState<GroupedBesins>({});
   const [isLoadingBesins, setIsLoadingBesins] = useState(false);
+
+  useEffect(() => {
+    const fetchBirims = async () => {
+      try {
+        setIsLoadingBirims(true);
+        const response = await fetch("/api/birims");
+        if (!response.ok) throw new Error("Failed to fetch birims");
+        const data = await response.json();
+        setBirims(data);
+      } catch (error) {
+        console.error("Error fetching birims:", error);
+      } finally {
+        setIsLoadingBirims(false);
+      }
+    };
+
+    fetchBirims();
+  }, []);
 
   useEffect(() => {
     const fetchBesins = async () => {
@@ -168,26 +178,31 @@ const MenuItem = ({
               <Command>
                 <CommandInput placeholder="Birim ara..." />
                 <CommandList>
+                  <CommandEmpty>Birim bulunamadı...</CommandEmpty>
                   <CommandGroup>
-                    {BIRIMS.map((b) => (
-                      <CommandItem
-                        key={b}
-                        value={b}
-                        onSelect={(currentValue) => {
-                          setBirim(currentValue);
-                          setBirimOpen(false);
-                          updateParentState("birim", currentValue);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            birim === b ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {b}
-                      </CommandItem>
-                    ))}
+                    {isLoadingBirims ? (
+                      <CommandItem disabled>Yükleniyor...</CommandItem>
+                    ) : (
+                      birims.map((b) => (
+                        <CommandItem
+                          key={b.id}
+                          value={b.name}
+                          onSelect={(currentValue) => {
+                            setBirim(currentValue);
+                            setBirimOpen(false);
+                            updateParentState("birim", currentValue);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              birim === b.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {b.name}
+                        </CommandItem>
+                      ))
+                    )}
                   </CommandGroup>
                 </CommandList>
               </Command>

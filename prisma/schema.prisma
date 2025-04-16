@@ -94,6 +94,14 @@ model Besin {
   bannedFoods BannedFood[]
   menuItems   MenuItem[]
 }
+model BesinGroup {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  description String
+  besins      Besin[]
+}
 
 model Birim {
   id        Int        @id @default(autoincrement())
@@ -104,14 +112,6 @@ model Birim {
   menuItems MenuItem[]
 }
 
-model BesinGroup {
-  id          Int      @id @default(autoincrement())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  name        String
-  description String
-  besins      Besin[]
-}
 
 model BannedFood {
   id        Int      @id @default(autoincrement())
