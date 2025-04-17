@@ -58,6 +58,9 @@ const DietFormBasicFields = ({
   onSelectClient,
   disabled,
 }: DietFormFieldsProps) => {
+  // Add console.log to debug incoming props
+  console.log("DietFormBasicFields received diet:", diet);
+
   const [showBirthdayCelebration, setShowBirthdayCelebration] = useState(false);
   const [importantDate, setImportantDate] = useState<ImportantDate | null>(
     null
@@ -170,10 +173,13 @@ const DietFormBasicFields = ({
               label="Su Tüketimi"
               renderField={(field) => (
                 <Input
-                  value={diet.Su}
+                  value={diet.Su || ""} // Add fallback empty string
                   className={inputBaseClass}
                   placeholder="Örn: 2-3 litre"
-                  onChange={(e) => setDiet({ ...diet, Su: e.target.value })}
+                  onChange={(e) => {
+                    console.log("Updating Su:", e.target.value); // Debug log
+                    setDiet({ ...diet, Su: e.target.value });
+                  }}
                 />
               )}
             />
@@ -186,12 +192,13 @@ const DietFormBasicFields = ({
                 label="Fiziki Aktivite   "
                 renderField={(field) => (
                   <Input
-                    value={diet.Fizik}
+                    value={diet.Fizik || ""} // Add fallback empty string
                     className={inputBaseClass}
                     placeholder="Örn: Günde 30dk yürüyüş, haftada 3 gün pilates..."
-                    onChange={(e) =>
-                      setDiet({ ...diet, Fizik: e.target.value })
-                    }
+                    onChange={(e) => {
+                      console.log("Updating Fizik:", e.target.value); // Debug log
+                      setDiet({ ...diet, Fizik: e.target.value });
+                    }}
                   />
                 )}
               />
@@ -281,10 +288,13 @@ const DietFormBasicFields = ({
               label="Haftalık Sonuç"
               renderField={(field) => (
                 <Input
-                  value={diet.Sonuc}
+                  value={diet.Sonuc || ""} // Add fallback empty string
                   className={inputBaseClass}
                   placeholder="Haftalık sonuç notları"
-                  onChange={(e) => setDiet({ ...diet, Sonuc: e.target.value })}
+                  onChange={(e) => {
+                    console.log("Updating Sonuc:", e.target.value); // Debug log
+                    setDiet({ ...diet, Sonuc: e.target.value });
+                  }}
                 />
               )}
             />
@@ -295,10 +305,30 @@ const DietFormBasicFields = ({
               label="Haftalık Hedef"
               renderField={(field) => (
                 <Input
-                  value={diet.Hedef}
+                  value={diet.Hedef || ""} // Add fallback empty string
                   className={inputBaseClass}
                   placeholder="Haftalık hedef notları"
-                  onChange={(e) => setDiet({ ...diet, Hedef: e.target.value })}
+                  onChange={(e) => {
+                    console.log("Updating Hedef:", e.target.value); // Debug log
+                    setDiet({ ...diet, Hedef: e.target.value });
+                  }}
+                />
+              )}
+            />
+
+            <FormFieldWrapper
+              form={form}
+              name="diyetisyenNotu"
+              label="Diyetisyen Notu"
+              renderField={(field) => (
+                <Input
+                  value={diet.dietitianNote || ""} // Add fallback empty string
+                  className={inputBaseClass}
+                  placeholder="Diyetisyen notu..."
+                  onChange={(e) => {
+                    console.log("Updating dietitianNote:", e.target.value); // Debug log
+                    setDiet({ ...diet, dietitianNote: e.target.value });
+                  }}
                 />
               )}
             />

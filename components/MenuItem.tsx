@@ -107,7 +107,6 @@ const MenuItem = ({
         const data: Besin[] = await response.json();
 
         const grouped = data.reduce((acc: GroupedBesins, besin: Besin) => {
-          console.log(besin, "asdasdadad");
           const groupName = besin.besinGroup?.name || "Diğer";
           if (!acc[groupName]) {
             acc[groupName] = [];

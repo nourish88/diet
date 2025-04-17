@@ -203,19 +203,19 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/diets/latest/${selectedClientId}`);
-
-      // Log the response for debugging
-      console.log("Latest diet response status:", response.status);
       const data = await response.json();
-      console.log("Latest diet response data:", data);
 
       if (!response.ok) {
         if (response.status === 404) {
           console.log("No previous diet found for client");
-          // Initialize with empty diet instead of showing error
           setDiet((prev) => ({
             ...prev,
             Oguns: OGUN,
+            Su: "",
+            Fizik: "",
+            Sonuc: "",
+            Hedef: "",
+            dietitianNote: "",
           }));
           return;
         }
@@ -223,21 +223,41 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       }
 
       if (data.diet) {
-        console.log("Found latest diet:", data.diet);
-        const uiDiet = convertDbDietToUiDiet(data.diet);
+        // Create the UI diet with correct field mapping from API response
+        const uiDiet = {
+          ...convertDbDietToUiDiet(data.diet),
+          // Use the correct field names from API response
+          Su: data.diet.su || "",
+          Fizik: data.diet.fizik || "",
+          Sonuc: data.diet.sonuc || "",
+          Hedef: data.diet.hedef || "",
+          dietitianNote: data.diet.dietitianNote || "",
+          Tarih: data.diet.tarih || data.diet.createdAt || new Date().toISOString(),
+        };
+
+        console.log("Final UI Diet Object with correct mapping:", uiDiet);
         setDiet(uiDiet);
-        toast({
-          title: "Bilgi",
-          description: "Danışanın son diyeti yüklendi.",
-          variant: "default",
-        });
       }
     } catch (error) {
       console.error("Error loading latest diet:", error);
+      setDiet((prev) => ({
+        ...prev,
+        Oguns: OGUN,
+        Su: "",
+        Fizik: "",
+        Sonuc: "",
+        Hedef: "",
+        dietitianNote: "",
+      })); // Add this
       // Initialize with empty diet on error
       setDiet((prev) => ({
         ...prev,
         Oguns: OGUN,
+        Su: "",
+        Fizik: "",
+        Sonuc: "",
+        Hedef: "",
+        dietitianNote: "",
       }));
 
       // Check if it's a network error
@@ -268,47 +288,44 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       return {
         id: dbDiet.id,
         AdSoyad: getClientFullName(selectedClientId),
-        Tarih: dbDiet.createdAt || new Date().toISOString(),
-        Hedef: dbDiet.target || "",
-        Sonuc: dbDiet.weeklyResult || "",
+        Tarih: dbDiet.tarih || dbDiet.createdAt || new Date().toISOString(),
+        Hedef: dbDiet.hedef || "",
+        Sonuc: dbDiet.sonuc || "",
+        Su: dbDiet.su || "",
+        Fizik: dbDiet.fizik || "",
         dietitianNote: dbDiet.dietitianNote || "",
         isBirthdayCelebration: dbDiet.isBirthdayCelebration || false,
         isImportantDateCelebrated: dbDiet.isImportantDateCelebrated || false,
         importantDateId: dbDiet.importantDateId || null,
         importantDateName: dbDiet.importantDateName || null,
-        Oguns:
-          dbDiet.oguns?.map((dbOgun: any) => ({
-            name: dbOgun.name || "",
-            time: dbOgun.time || "",
-            detail: dbOgun.detail || "",
-            order: dbOgun.order || 0,
-            items:
-              dbOgun.items?.map((dbItem: any) => ({
-                miktar: dbItem.miktar || "",
-                birim: dbItem.birim || {},
-                besin: dbItem.besin || {},
-              })) || [],
-          })) || OGUN,
-        Su: dbDiet.waterConsumption || "",
-        Fizik: dbDiet.physicalActivity || "",
+        Oguns: dbDiet.oguns?.map((dbOgun: any) => ({
+          name: dbOgun.name || "",
+          time: dbOgun.time || "",
+          detail: dbOgun.detail || "",
+          order: dbOgun.order || 0,
+          items: dbOgun.items?.map((dbItem: any) => ({
+            miktar: dbItem.miktar || "",
+            birim: dbItem.birim || {},
+            besin: dbItem.besin || {},
+          })) || [],
+        })) || OGUN,
       };
     } catch (error) {
       console.error("Error converting DB diet to UI diet:", error);
-      // Return a default diet structure
       return {
         id: 0,
         AdSoyad: getClientFullName(selectedClientId),
         Tarih: new Date().toISOString(),
         Hedef: "",
         Sonuc: "",
+        Su: "",
+        Fizik: "",
         dietitianNote: "",
         isBirthdayCelebration: false,
         isImportantDateCelebrated: false,
         importantDateId: null,
         importantDateName: null,
         Oguns: OGUN,
-        Su: "",
-        Fizik: "",
       };
     }
   };
