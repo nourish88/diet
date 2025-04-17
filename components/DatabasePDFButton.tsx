@@ -204,34 +204,94 @@ const DatabasePDFButton = ({
   const buildMealTableRows = (dietData: PDFData) => {
     const rows = [
       [
-        { text: "ÖĞÜN", style: "tableHeader", alignment: "left" },
-        { text: "SAAT", style: "tableHeader", alignment: "left" },
-        { text: "MENÜ", style: "tableHeader", alignment: "left" },
-        { text: "NOTLAR", style: "tableHeader", alignment: "left" },
+        { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
+        { text: "SAAT", style: "tableHeader", alignment: "center" },
+        { text: "MENÜ", style: "tableHeader", alignment: "center" },
+        { text: "NOTLAR", style: "tableHeader", alignment: "center" },
       ],
     ];
 
     dietData.ogunler.forEach((ogun) => {
-      const menuText = ogun.menuItems.join("\n• ") || "Belirtilmemiş";
+      const menuText = ogun.menuItems.join("\n• ");
       rows.push([
         {
-          text: ogun.name || "Belirtilmemiş",
+          text: ogun.name,
           style: "tableCell",
-          alignment: "left",
+          alignment: "center",
         },
         {
-          text: ogun.time || "Belirtilmemiş",
+          text: ogun.time,
+          style: "tableCell",
+          alignment: "center",
+        },
+        {
+          text: `• ${menuText}`,
           style: "tableCell",
           alignment: "left",
         },
-        { text: `• ${menuText}`, style: "tableCell", alignment: "left" },
         {
           text: ogun.notes || "-",
-          style: ogun.notes ? "tableCell" : "tableCellItalic",
+          style: "tableCell",
           alignment: "left",
         },
       ]);
     });
+
+    // Append water consumption row only if it has a value
+    if (dietData.waterConsumption?.trim()) {
+      rows.push([
+        {
+          text: "SU TÜKETİMİ",
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+        {
+          text: dietData.waterConsumption,
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+      ]);
+    }
+
+    // Append physical activity row only if it has a value
+    if (dietData.physicalActivity?.trim()) {
+      rows.push([
+        {
+          text: "FİZİKSEL AKTİVİTE",
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+        {
+          text: dietData.physicalActivity,
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+      ]);
+    }
 
     return rows;
   };
@@ -257,103 +317,66 @@ const DatabasePDFButton = ({
         text: "🎂 Doğum Gününüz Kutlu Olsun! İyi ki doğdunuz.",
         style: "celebration",
         color: "#8B5CF6",
-        margin: [0, 10, 0, 0],
+        margin: [0, 5, 0, 0],
       });
     }
 
-    // Define the content type
-    type ContentItem = {
-      text?: string;
-      style?: string;
-      color?: string;
-      margin?: number[];
-      columns?: any[];
-      stack?: any[];
-      table?: any;
-      layout?: any;
-      alignment?: string;
-    };
-
-    const content: ContentItem[] = [
+    const content = [
+      // Danışan Bilgileri section
       {
-        columns: [
-          {
-            image: backgroundDataUrl,
-            width: 90,
-            margin: [0, 0, 0, 10],
-          },
-        ],
-        alignment: "center",
+        text: "",
+        style: "sectionHeader",
+        margin: [0, 25, 0, 5],
       },
       {
-        stack: [
-          {
-            text: "DANIŞAN BİLGİLERİ",
-            style: "sectionHeader",
-            margin: [0, 10, 0, 10],
-          },
-          {
-            table: {
-              widths: ["50%", "50%"],
-              body: [
-                [
-                  {
-                    text: `Ad Soyad: ${pdfData.fullName}`,
-                    style: "clientInfo",
-                    border: [false, false, false, false],
-                  },
-                  {
-                    text: `Hedef: ${pdfData.target}`,
-                    style: "clientInfo",
-                    border: [false, false, false, false],
-                  },
-                ],
-                [
-                  {
-                    text: `Tarih: ${formattedDietDate}`,
-                    style: "clientInfo",
-                    border: [false, false, false, false],
-                  },
-                  {
-                    text: `Sonuç: ${pdfData.weeklyResult}`,
-                    style: "clientInfo",
-                    border: [false, false, false, false],
-                  },
-                ],
-              ],
-            },
-            layout: "noBorders",
-            margin: [0, 0, 0, 15],
-          },
-        ],
-        margin: [0, 0, 0, 20],
-      },
-      {
-        stack: [
-          {
-            text: "GÜNLÜK BESLENME PROGRAMI",
-            style: "sectionHeader",
-          },
-          {
-            canvas: [
+        table: {
+          widths: ["50%", "50%"],
+          body: [
+            [
               {
-                type: "line",
-                x1: 0,
-                y1: 0,
-                x2: 515,
-                y2: 0,
-                lineWidth: 0.5,
-                lineColor: borderColor,
+                text: `Ad Soyad: ${pdfData.fullName}`,
+                style: "clientInfo",
+                border: [false, false, false, false],
+              },
+              {
+                text: `Hedef: ${pdfData.target}`,
+                style: "clientInfo",
+                border: [false, false, false, false],
               },
             ],
+            [
+              {
+                text: `Tarih: ${formattedDietDate}`,
+                style: "clientInfo",
+                border: [false, false, false, false],
+              },
+              {
+                text: `Sonuç: ${pdfData.weeklyResult}`,
+                style: "clientInfo",
+                border: [false, false, false, false],
+              },
+            ],
+          ],
+        },
+        layout: "noBorders",
+        margin: [0, 0, 0, 8],
+      },
+
+      // Nutrition Program section
+      {
+        stack: [
+          {
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            style: "sectionHeader",
+            alignment: "center",
           },
         ],
-        margin: [0, 10, 0, 15],
+        margin: [0, 5, 0, 8],
       },
       {
         table: {
           headerRows: 1,
-          widths: ["15%", "15%", "42%", "28%"],
+          widths: ["12%", "8%", "38%", "42%"],
           body: buildMealTableRows(pdfData),
         },
         layout: {
@@ -368,129 +391,99 @@ const DatabasePDFButton = ({
             }
             return rowIndex % 2 === 1 ? "#f9fafb" : null;
           },
-          paddingTop: (i) => (i === 0 ? 8 : 6),
-          paddingBottom: (i) => (i === 0 ? 8 : 6),
-          paddingLeft: () => 8,
-          paddingRight: () => 8,
+          paddingTop: (i) => (i === 0 ? 6 : 4),
+          paddingBottom: (i) => (i === 0 ? 6 : 4),
+          paddingLeft: () => 6,
+          paddingRight: () => 6,
         },
-        margin: [0, 0, 0, 20],
+        margin: [0, 0, 0, 10],
       },
     ];
 
-    // Add celebrations if they exist
-    if (celebrationsContent.length > 0) {
-      content.push(...celebrationsContent);
-    }
-
+    // Add Dietitian Note if exists
     if (pdfData.dietitianNote) {
       content.push(
         {
           text: "DİYETİSYEN NOTU",
           style: "sectionHeader",
-          margin: [0, 20, 0, 10],
+          margin: [0, 10, 0, 5],
         },
         {
           text: pdfData.dietitianNote,
           style: "dietitianNote",
-          margin: [0, 0, 0, 20],
+          margin: [0, 0, 0, 10],
         }
       );
     }
 
-    content.push(
-      {
-        text: "GÜNLÜK TAKİP ÖNERİLERİ",
-        style: "sectionHeader",
-        margin: [0, 10, 0, 10],
-      },
-      {
-        columns: [
-          {
-            width: "50%",
-            stack: [
+    // Add Celebrations if exist
+    if (celebrationsContent.length > 0) {
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: ["*"],
+          body: [
+            [
               {
-                text: "Su Tüketimi",
-                style: "recommendationHeader",
-                margin: [0, 0, 0, 5],
-              },
-              {
-                text: pdfData.waterConsumption,
-                style: "recommendationContent",
-                margin: [0, 0, 0, 15],
+                text: celebrationsContent.map((c) => c.text).join("\n"),
+                alignment: "center",
+                style: "celebration",
               },
             ],
-          },
-          {
-            width: "50%",
-            stack: [
-              {
-                text: "Fiziksel Aktivite",
-                style: "recommendationHeader",
-                margin: [0, 0, 0, 5],
-              },
-              {
-                text: pdfData.physicalActivity,
-                style: "recommendationContent",
-                margin: [0, 0, 0, 15],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        stack: [
-          {
-            canvas: [
-              {
-                type: "line",
-                x1: 0,
-                y1: 0,
-                x2: 200,
-                y2: 0,
-                lineWidth: 1,
-                lineColor: primaryColor,
-              },
-            ],
-            margin: [0, 30, 0, 5],
-          },
-          { text: "Dyt. Ezgi Evgin Aktaş", style: "signatureText" },
-        ],
-        alignment: "right",
-        margin: [0, 20, 40, 0],
-      }
-    );
+          ],
+        },
+        layout: {
+          hLineWidth: () => 1,
+          vLineWidth: () => 1,
+          hLineColor: () => borderColor,
+          vLineColor: () => "#e9d5ff",
+          fillColor: () => "#2563eb",
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+        },
+        margin: [0, 8, 0, 8],
+      });
+    }
+
+    // Add signature
+    content.push({
+      columns: [
+        {
+          width: "*",
+          stack: [],
+        },
+        {
+          width: "auto",
+          stack: [
+            {
+              text: "Dyt. Ezgi Evgin Aktaş",
+              style: "signatureText",
+              margin: [0, 10, 0, 0],
+            },
+          ],
+        },
+      ],
+      margin: [0, 0, 0, 0],
+    });
 
     return {
       content,
       pageSize: "A4",
-      pageMargins: [40, 40, 40, 60], // Reduced top margin from 100 to 40
-      // header: {
-      //   columns: [
-      //     {
-      //       image: backgroundDataUrl,
-      //       width: 90,
-      //       margin: [40, 20, 0, 0],
-      //     },
-      //   ],
-      // },
-      footer: function () {
-        return {
-          columns: [
-            {
-              text:
-                "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA\n" +
-                "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
-              style: "footerText",
-              alignment: "center",
-              margin: [40, 0, 40, 0],
-            },
-          ],
-          margin: [0, 20, 0, 0],
-        };
+      pageMargins: [30, 30, 30, 50],
+      header: {
+        columns: [
+          {
+            image: backgroundDataUrl,
+            width: 80,
+            margin: [30, 15, 0, 0],
+          },
+        ],
       },
       styles: {
         sectionHeader: {
-          fontSize: 16, // Increased from 14
+          fontSize: 14,
           bold: true,
           color: primaryColor,
           alignment: "left",
@@ -498,49 +491,53 @@ const DatabasePDFButton = ({
             width: 1,
             color: primaryColor,
           },
-          margin: [0, 5, 0, 8],
+          margin: [0, 3, 0, 5],
         },
         labelBold: {
-          fontSize: 11,
+          fontSize: 12,
           bold: true,
           color: "#374151",
         },
         valueText: {
-          fontSize: 11,
+          fontSize: 12,
           color: "#1f2937",
         },
         tableHeader: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12,
           bold: true,
           color: "#ffffff",
         },
         tableCell: {
-          fontSize: 12, // Increased from 10
+          fontSize: 11,
           color: "#374151",
         },
         tableCellItalic: {
-          fontSize: 12, // Increased from 10
+          fontSize: 11,
           italics: true,
           color: "#9ca3af",
         },
         recommendationHeader: {
-          fontSize: 12,
+          fontSize: 13,
           bold: true,
           color: primaryColor,
         },
         recommendationContent: {
-          fontSize: 11,
+          fontSize: 12,
           color: "#374151",
         },
         celebration: {
-          fontSize: 15, // Increased from 13
+          fontSize: 14,
           bold: true,
           alignment: "center",
         },
         signatureText: {
-          fontSize: 12,
+          fontSize: 13,
           bold: true,
           color: primaryColor,
+          alignment: "right",
+          decoration: "underline",
+          decorationStyle: "solid",
+          decorationColor: primaryColor,
         },
         footerText: {
           fontSize: 9,
@@ -548,14 +545,14 @@ const DatabasePDFButton = ({
           alignment: "center",
         },
         clientInfo: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12,
           color: "#374151",
-          margin: [0, 2, 0, 2],
+          margin: [0, 1, 0, 1],
         },
         dietitianNote: {
-          fontSize: 11,
+          fontSize: 10,
           color: secondaryColor,
-          lineHeight: 1.4,
+          lineHeight: 1.3,
         },
       },
       defaultStyle: {

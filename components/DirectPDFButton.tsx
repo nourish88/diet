@@ -335,8 +335,15 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
   };
 
+  interface TableCell {
+    text: string;
+    style: string;
+    alignment: string;
+    colSpan?: number;
+  }
+
   const buildMealTableRows = (dietData: PDFData) => {
-    const rows = [
+    const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
         { text: "SAAT", style: "tableHeader", alignment: "center" },
@@ -365,12 +372,68 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           alignment: "left",
         },
         {
-          text: ogun.notes || "-", // Show dash for empty notes
+          text: ogun.notes || "-",
           style: "tableCell",
           alignment: "left",
         },
       ]);
     });
+
+    // Append water consumption row only if it has a value
+    if (dietData.waterConsumption?.trim()) {
+      rows.push([
+        {
+          text: "SU TÜKETİMİ",
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+        {
+          text: dietData.waterConsumption,
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+      ]);
+    }
+
+    // Append physical activity row only if it has a value
+    if (dietData.physicalActivity?.trim()) {
+      rows.push([
+        {
+          text: "FİZİKSEL AKTİVİTE",
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+        {
+          text: dietData.physicalActivity,
+          style: "tableCell",
+          alignment: "left",
+          colSpan: 2,
+        },
+        {
+          text: "",
+          style: "tableCell",
+          alignment: "left",
+        },
+      ]);
+    }
 
     return rows;
   };
@@ -403,7 +466,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         text: "🎂 Doğum Gününüz Kutlu Olsun! İyi ki doğdunuz.",
         style: "celebration",
         color: "#8B5CF6",
-        margin: [0, 10, 0, 0],
+        margin: [0, 5, 0, 0], // Reduced margin
       });
     }
 
@@ -416,18 +479,18 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         text: `🎉 ${pdfData.importantDate.message}`,
         style: "celebration",
         color: "#D97706",
-        margin: [0, pdfData.isBirthdayCelebration ? 5 : 10, 0, 0],
+        margin: [0, pdfData.isBirthdayCelebration ? 3 : 5, 0, 0], // Reduced margin
       });
     }
 
     console.log("Final celebrations content:", celebrationsContent);
 
     const content = [
-      // Danışan Bilgileri section
+      // Danışan Bilgileri section - more compact
       {
-        text: "DANIŞAN BİLGİLERİ",
+        text: "",
         style: "sectionHeader",
-        margin: [0, 25, 0, 10],
+        margin: [0, 25, 0, 5],
       },
       {
         table: {
@@ -460,36 +523,24 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           ],
         },
         layout: "noBorders",
-        margin: [0, 0, 0, 15],
+        margin: [0, 0, 0, 8],
       },
 
       // Nutrition Program section
       {
         stack: [
           {
-            text: "GÜNLÜK BESLENME PROGRAMI",
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
             style: "sectionHeader",
-          },
-          {
-            canvas: [
-              {
-                type: "line",
-                x1: 0,
-                y1: 0,
-                x2: 515, // Adjust width as needed
-                y2: 0,
-                lineWidth: 0.5,
-                lineColor: borderColor,
-              },
-            ],
+            alignment: "center",
           },
         ],
-        margin: [0, 10, 0, 15],
+        margin: [0, 5, 0, 8],
       },
       {
         table: {
           headerRows: 1,
-          widths: ["15%", "15%", "42%", "28%"],
+          widths: ["12%", "8%", "38%", "42%"],
           body: buildMealTableRows(pdfData),
         },
         layout: {
@@ -504,12 +555,12 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             }
             return rowIndex % 2 === 1 ? "#f9fafb" : null;
           },
-          paddingTop: (i) => (i === 0 ? 8 : 6),
-          paddingBottom: (i) => (i === 0 ? 8 : 6),
-          paddingLeft: () => 8,
-          paddingRight: () => 8,
+          paddingTop: (i) => (i === 0 ? 6 : 4), // Reduced padding
+          paddingBottom: (i) => (i === 0 ? 6 : 4), // Reduced padding
+          paddingLeft: () => 6, // Reduced padding
+          paddingRight: () => 6, // Reduced padding
         },
-        margin: [0, 0, 0, 20],
+        margin: [0, 0, 0, 10], // Reduced margin
       },
 
       // Water and Physical Activity section
@@ -519,12 +570,12 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             width: "50%",
             stack: [
               {
-                text: "SU TÜKETİMİ",
+                text: "",
                 style: "recommendationHeader",
-                margin: [0, 0, 0, 5],
+                margin: [0, 0, 0, 3], // Reduced margin
               },
               {
-                text: pdfData.waterConsumption || "Belirtilmemiş",
+                text: "",
                 style: "recommendationContent",
               },
             ],
@@ -533,38 +584,38 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             width: "50%",
             stack: [
               {
-                text: "FİZİKSEL AKTİVİTE",
+                text: "",
                 style: "recommendationHeader",
-                margin: [0, 0, 0, 5],
+                margin: [0, 0, 0, 3], // Reduced margin
               },
               {
-                text: pdfData.physicalActivity || "Belirtilmemiş",
+                text: "",
                 style: "recommendationContent",
               },
             ],
           },
         ],
-        margin: [0, 0, 0, 15],
+        margin: [0, 0, 0, 8], // Reduced margin
       },
     ];
 
-    // Add Dietitian Note if exists
+    // Add Dietitian Note if exists - more compact
     if (pdfData.dietitianNote) {
       content.push(
         {
           text: "DİYETİSYEN NOTU",
           style: "sectionHeader",
-          margin: [0, 20, 0, 10],
+          margin: [0, 10, 0, 5], // Reduced margins
         },
         {
           text: pdfData.dietitianNote,
           style: "dietitianNote",
-          margin: [0, 0, 0, 20],
+          margin: [0, 0, 0, 10], // Reduced margin
         }
       );
     }
 
-    // Add Celebrations if exist
+    // Add Celebrations if exist - more compact
     if (celebrationsContent.length > 0) {
       content.push({
         table: {
@@ -586,16 +637,16 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           hLineColor: () => borderColor,
           vLineColor: () => "#e9d5ff",
           fillColor: () => "#2563eb",
-          paddingTop: () => 8,
-          paddingBottom: () => 8,
-          paddingLeft: () => 10,
-          paddingRight: () => 10,
+          paddingTop: () => 6, // Reduced padding
+          paddingBottom: () => 6, // Reduced padding
+          paddingLeft: () => 8, // Reduced padding
+          paddingRight: () => 8, // Reduced padding
         },
-        margin: [0, 10, 0, 15],
+        margin: [0, 8, 0, 8], // Reduced margins
       });
     }
 
-    // Add signature to content
+    // Add signature to content - more compact
     content.push({
       columns: [
         {
@@ -608,21 +659,21 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             {
               text: "Dyt. Ezgi Evgin Aktaş",
               style: "signatureText",
-              margin: [0, 20, 0, 0],
+              margin: [0, 10, 0, 0], // Reduced margin
             },
           ],
         },
       ],
-      margin: [0, 0, 0, 0], // Added required margin property
+      margin: [0, 0, 0, 0],
     });
 
     return {
       content,
       pageSize: "A4",
-      pageMargins: [40, 40, 40, 60], // Reduced top margin
+      pageMargins: [30, 30, 30, 50], // Reduced margins
       styles: {
         sectionHeader: {
-          fontSize: 16, // Increased from 14
+          fontSize: 14, // Reduced from 16
           bold: true,
           color: primaryColor,
           alignment: "left",
@@ -630,47 +681,47 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
             width: 1,
             color: primaryColor,
           },
-          margin: [0, 5, 0, 8],
+          margin: [0, 3, 0, 5], // Reduced margins
         },
         labelBold: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12, // Reduced from 13
           bold: true,
           color: "#374151",
         },
         valueText: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12, // Reduced from 13
           color: "#1f2937",
         },
         tableHeader: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12, // Reduced from 13
           bold: true,
           color: "#ffffff",
         },
         tableCell: {
-          fontSize: 12, // Increased from 10
+          fontSize: 11, // Reduced from 12
           color: "#374151",
         },
         tableCellItalic: {
-          fontSize: 12, // Increased from 10
+          fontSize: 11, // Reduced from 12
           italics: true,
           color: "#9ca3af",
         },
         recommendationHeader: {
-          fontSize: 14, // Increased from 12
+          fontSize: 13, // Reduced from 14
           bold: true,
           color: primaryColor,
         },
         recommendationContent: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12, // Reduced from 13
           color: "#374151",
         },
         celebration: {
-          fontSize: 15, // Increased from 13
+          fontSize: 14, // Reduced from 15
           bold: true,
           alignment: "center",
         },
         signatureText: {
-          fontSize: 14, // Increased from 12
+          fontSize: 13, // Reduced from 14
           bold: true,
           color: primaryColor,
           alignment: "right",
@@ -679,27 +730,27 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           decorationColor: primaryColor,
         },
         footerText: {
-          fontSize: 10, // Increased from 9
+          fontSize: 9, // Reduced from 10
           color: secondaryColor,
           alignment: "center",
         },
         clientInfo: {
-          fontSize: 13, // Increased from 11
+          fontSize: 12, // Reduced from 13
           color: "#374151",
-          margin: [0, 2, 0, 2],
+          margin: [0, 1, 0, 1], // Reduced margins
         },
         dietitianNote: {
-          fontSize: 11,
+          fontSize: 10, // Reduced from 11
           color: secondaryColor,
-          lineHeight: 1.4,
+          lineHeight: 1.3, // Reduced line height
         },
       },
       header: {
         columns: [
           {
             image: backgroundDataUrl,
-            width: 90,
-            margin: [40, 20, 0, 0],
+            width: 80, // Reduced from 90
+            margin: [30, 15, 0, 0], // Reduced margins
           },
         ],
       },
@@ -712,15 +763,15 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
                 "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
               style: "footerText",
               alignment: "center",
-              margin: [40, 0, 40, 0],
+              margin: [30, 0, 30, 0], // Reduced margins
             },
           ],
-          margin: [0, 20, 0, 0],
+          margin: [0, 10, 0, 0], // Reduced margin
         };
       },
       defaultStyle: {
         font: "Roboto",
-        lineHeight: 1.3,
+        lineHeight: 1.2, // Reduced line height
       },
     };
   };
