@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/toaster";
 interface BesinGroup {
   id: number;
   description: string;
+  name: string;
 }
 
 interface Besin {
@@ -26,7 +27,7 @@ interface Besin {
   name: string;
   priority: number;
   groupId: number | null;
-  group: BesinGroup | null;
+  besinGroup: BesinGroup | null;
   createdAt: string;
 }
 
@@ -182,12 +183,12 @@ export default function BesinlerPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {besin.group ? (
+                      {besin.besinGroup ? (
                         <Badge
-                          variant="outline"
-                          className="bg-blue-50 text-blue-700 border-blue-200"
+                          variant="secondary"
+                          className="bg-purple-100 text-purple-800"
                         >
-                          {besin.group.description}
+                          {besin.besinGroup.name}
                         </Badge>
                       ) : (
                         <span className="text-sm text-gray-400">Grup yok</span>

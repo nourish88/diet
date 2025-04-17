@@ -31,10 +31,11 @@ interface Birim {
 interface Besin {
   id: number;
   name: string;
-  group?: {
+  besinGroup?: {
     id: number;
     description: string;
-  } | null;
+    name: string;
+  };
 }
 
 interface GroupedBesins {
@@ -65,14 +66,14 @@ const MenuItem = ({
   const [birimOpen, setBirimOpen] = useState(false);
   // Initialize birim with the item's birim value
   const [birim, setBirim] = useState(
-    typeof item.birim === 'object' ? item.birim?.name : item.birim || ""
+    typeof item.birim === "object" ? item.birim?.name : item.birim || ""
   );
   const [birims, setBirims] = useState<Birim[]>([]);
   const [isLoadingBirims, setIsLoadingBirims] = useState(false);
   const [besinOpen, setBesinOpen] = useState(false);
   // Initialize besin with the item's besin value
   const [besin, setBesin] = useState(
-    typeof item.besin === 'object' ? item.besin?.name : item.besin || ""
+    typeof item.besin === "object" ? item.besin?.name : item.besin || ""
   );
   const [customBesinInput, setCustomBesinInput] = useState("");
   const [besins, setBesins] = useState<Besin[]>([]);
@@ -106,7 +107,8 @@ const MenuItem = ({
         const data: Besin[] = await response.json();
 
         const grouped = data.reduce((acc: GroupedBesins, besin: Besin) => {
-          const groupName = besin.group?.description || "Diğer";
+          console.log(besin, "asdasdadad");
+          const groupName = besin.besinGroup?.name || "Diğer";
           if (!acc[groupName]) {
             acc[groupName] = [];
           }
@@ -128,8 +130,12 @@ const MenuItem = ({
 
   useEffect(() => {
     setMiktar(item.miktar || "");
-    setBirim(typeof item.birim === 'object' ? item.birim?.name : item.birim || "");
-    setBesin(typeof item.besin === 'object' ? item.besin?.name : item.besin || "");
+    setBirim(
+      typeof item.birim === "object" ? item.birim?.name : item.birim || ""
+    );
+    setBesin(
+      typeof item.besin === "object" ? item.besin?.name : item.besin || ""
+    );
   }, [item]);
 
   const updateParentState = (field: string, value: string) => {
@@ -239,7 +245,6 @@ const MenuItem = ({
                     />
                   </CommandEmpty>
                   {Object.entries(groupedBesins)
-                    .filter(([groupName]) => groupName !== "Diğer")
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([groupName, groupBesins]) => (
                       <CommandGroup key={groupName} heading={groupName}>
@@ -267,38 +272,6 @@ const MenuItem = ({
                           ))}
                       </CommandGroup>
                     ))}
-
-                  {groupedBesins["Diğer"]?.length > 0 &&
-                    Object.keys(groupedBesins).length > 1 && (
-                      <CommandSeparator />
-                    )}
-
-                  {groupedBesins["Diğer"]?.length > 0 && (
-                    <CommandGroup heading="Grupsuz Besinler">
-                      {groupedBesins["Diğer"]
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((b) => (
-                          <CommandItem
-                            key={b.id}
-                            value={b.name}
-                            onSelect={(currentValue) => {
-                              setBesin(currentValue);
-                              setBesinOpen(false);
-                              setCustomBesinInput("");
-                              updateParentState("besin", currentValue);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                besin === b.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {b.name}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  )}
                 </CommandList>
               </Command>
             </PopoverContent>
