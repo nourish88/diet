@@ -10,6 +10,12 @@ import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+interface TableCell {
+  text: string;
+  style: string;
+  alignment: string;
+  colSpan?: number;
+}
 
 interface PDFData {
   fullName: string;
@@ -202,7 +208,7 @@ const DatabasePDFButton = ({
   };
 
   const buildMealTableRows = (dietData: PDFData) => {
-    const rows = [
+    const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
         { text: "SAAT", style: "tableHeader", alignment: "center" },
@@ -449,23 +455,36 @@ const DatabasePDFButton = ({
 
     // Add signature
     content.push({
-      columns: [
-        {
-          width: "*",
-          stack: [],
-        },
-        {
-          width: "auto",
-          stack: [
+      table: {
+        headerRows: 0,
+        widths: ["*", "auto"],
+        body: [
+          [
+            {
+              text: "",
+              style: "tableCell",
+              alignment: "left",
+            },
             {
               text: "Dyt. Ezgi Evgin Aktaş",
               style: "signatureText",
-              margin: [0, 10, 0, 0],
+              alignment: "right",
             },
           ],
-        },
-      ],
-      margin: [0, 0, 0, 0],
+        ],
+      },
+      layout: {
+        hLineWidth: () => 0.5,
+        vLineWidth: () => 0,
+        hLineColor: () => borderColor,
+        vLineColor: () => borderColor,
+        fillColor: () => null,
+        paddingTop: () => 4,
+        paddingBottom: () => 4,
+        paddingLeft: () => 6,
+        paddingRight: () => 6,
+      },
+      margin: [0, 10, 0, 0],
     });
 
     return {
