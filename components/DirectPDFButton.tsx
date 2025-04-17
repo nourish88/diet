@@ -92,26 +92,25 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
   const [importantDateMessage, setImportantDateMessage] = useState<string>("");
 
-  console.log("DirectPDFButton - Initial props:", {
-    importantDateId,
-    isImportantDateCelebrated: pdfData?.isImportantDateCelebrated ?? false,
-  });
-
   useEffect(() => {
-    const loadBackgroundImage = async () => {
+    const loadImages = async () => {
       try {
-        const response = await fetch("/ezgi_evgin.png");
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => setBackgroundDataUrl(reader.result as string);
-        reader.readAsDataURL(blob);
+        const logoResponse = await fetch("/ezgi_evgin.png");
+        if (!logoResponse.ok)
+          throw new Error(`HTTP error! status: ${logoResponse.status}`);
+        const logoBlob = await logoResponse.blob();
+        const logoReader = new FileReader();
+        logoReader.onloadend = () => {
+          setBackgroundDataUrl(logoReader.result as string);
+          console.log("Logo loaded successfully");
+        };
+        logoReader.readAsDataURL(logoBlob);
       } catch (error) {
-        console.error("Error loading background image:", error);
+        console.error("Error loading images:", error);
       }
     };
-    loadBackgroundImage();
+
+    loadImages();
   }, []);
 
   useEffect(() => {
@@ -446,7 +445,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     });
 
     // Color scheme
-    const primaryColor = "#2563eb"; // Professional blue
+    const primaryColor = "#8B5CF6"; // Changed from "#2563eb" to a purple color
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
 
@@ -485,13 +484,34 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
 
     console.log("Final celebrations content:", celebrationsContent);
 
-    const content = [
-      // Danışan Bilgileri section - more compact
+    type PDFContentItem = {
+      text?: string;
+      style?: string;
+      margin?: number[];
+      columns?: any[];
+      stack?: any[];
+      table?: {
+        widths?: (string | number)[];
+        headerRows?: number;
+        body?: any[][];
+      };
+      layout?: any;
+      image?: string;
+      width?: number;
+      opacity?: number;
+      alignment?: string;
+      absolutePosition?: { x: number; y: number };
+    };
+
+    const content: PDFContentItem[] = [
+      // Title at the very top
       {
-        text: "",
-        style: "sectionHeader",
-        margin: [0, 25, 0, 5],
+        text: "KİŞİYE ÖZEL BESLENME PLANI",
+        alignment: "center",
+        style: "titleStyle",
+        margin: [0, 0, 0, 12],
       },
+      // Simple two-row table
       {
         table: {
           widths: ["50%", "50%"],
@@ -500,42 +520,43 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
               {
                 text: `Ad Soyad: ${pdfData.fullName}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
               {
-                text: `Hedef: ${pdfData.target}`,
+                text: `Tarih: ${formattedDietDate}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
             ],
             [
               {
-                text: `Tarih: ${formattedDietDate}`,
+                text: `Hedef: ${pdfData.target}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
               {
                 text: `Sonuç: ${pdfData.weeklyResult}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
             ],
           ],
         },
-        layout: "noBorders",
-        margin: [0, 0, 0, 8],
+        layout: {
+          hLineWidth: () => 0,
+          vLineWidth: () => 0,
+          paddingLeft: () => 4,
+          paddingRight: () => 4,
+          paddingTop: () => 4,
+          paddingBottom: () => 4,
+        },
+        margin: [0, 0, 0, 10],
       },
 
       // Nutrition Program section
       {
-        stack: [
-          {
-            text: "KİŞİYE ÖZEL BESLENME PLANI",
-            style: "sectionHeader",
-            alignment: "center",
-          },
-        ],
-        margin: [0, 5, 0, 8],
+        image: backgroundDataUrl,
+        width: 300,
+        opacity: 0.1,
+        alignment: "center",
+        margin: [0, 20, 0, -25],
+        absolutePosition: { x: 50, y: 300 }, // Changed x from 150 to 50
       },
       {
         table: {
@@ -551,9 +572,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineColor: () => borderColor,
           fillColor: function (rowIndex) {
             if (rowIndex === 0) {
-              return primaryColor;
+              return "#8B5CF6"; // Header background color (purple)
             }
-            return rowIndex % 2 === 1 ? "#f9fafb" : null;
+            return rowIndex % 2 === 1 ? "#F5F3FF" : null; // Light purple for alternating rows
           },
           paddingTop: (i) => (i === 0 ? 6 : 4), // Reduced padding
           paddingBottom: (i) => (i === 0 ? 6 : 4), // Reduced padding
@@ -605,7 +626,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         {
           text: "DİYETİSYEN NOTU",
           style: "sectionHeader",
-          margin: [0, 10, 0, 5], // Reduced margins
+          margin: [0, 20, 0, 15], // Reduced margins
         },
         {
           text: pdfData.dietitianNote,
@@ -619,7 +640,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     if (celebrationsContent.length > 0) {
       content.push({
         table: {
-          headerRows: 1,
           widths: ["*"],
           body: [
             [
@@ -637,13 +657,13 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           hLineColor: () => borderColor,
           vLineColor: () => "#e9d5ff",
           fillColor: () => "#2563eb",
-          paddingTop: () => 6, // Reduced padding
-          paddingBottom: () => 6, // Reduced padding
-          paddingLeft: () => 8, // Reduced padding
-          paddingRight: () => 8, // Reduced padding
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
         },
-        margin: [0, 8, 0, 8], // Reduced margins
-      });
+        margin: [0, 8, 0, 8],
+      } as PDFContentItem);
     }
 
     // Add signature to content - more compact
@@ -735,22 +755,36 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           alignment: "center",
         },
         clientInfo: {
-          fontSize: 12, // Reduced from 13
+          fontSize: 11, // Slightly smaller font
           color: "#374151",
-          margin: [0, 1, 0, 1], // Reduced margins
+          bold: false,
+          lineHeight: 1.2,
         },
         dietitianNote: {
           fontSize: 10, // Reduced from 11
           color: secondaryColor,
           lineHeight: 1.3, // Reduced line height
         },
+        titleStyle: {
+          fontSize: 20,
+          bold: true,
+          color: "#8B5CF6",
+        },
       },
       header: {
         columns: [
           {
             image: backgroundDataUrl,
-            width: 80, // Reduced from 90
-            margin: [30, 15, 0, 0], // Reduced margins
+            width: 120, // Increased from 80
+            margin: [30, 15, 0, 0],
+          },
+          {
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            alignment: "center",
+            fontSize: 16,
+            bold: true,
+            margin: [0, 25, 0, -25],
+            color: "#8B5CF6", // Matching your purple theme
           },
         ],
       },

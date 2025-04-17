@@ -16,7 +16,24 @@ interface TableCell {
   alignment: string;
   colSpan?: number;
 }
-
+type PDFContentItem = {
+  text?: string;
+  style?: string;
+  margin?: number[];
+  columns?: any[];
+  stack?: any[];
+  table?: {
+    widths?: (string | number)[];
+    headerRows?: number;
+    body?: any[][];
+  };
+  layout?: any;
+  image?: string;
+  width?: number;
+  opacity?: number;
+  alignment?: string;
+  absolutePosition?: { x: number; y: number };
+};
 interface PDFData {
   fullName: string;
   dietDate: string;
@@ -304,36 +321,30 @@ const DatabasePDFButton = ({
 
   const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
     // Color scheme
-    const primaryColor = "#2563eb"; // Professional blue
+    const primaryColor = "#8B5CF6"; // Purple color
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
 
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
-    // Celebrations content - only create if they exist
-    const celebrationsContent: {
-      text: string;
-      style: string;
-      color: string;
-      margin: number[];
-    }[] = [];
-
-    if (pdfData.isBirthdayCelebration) {
-      celebrationsContent.push({
-        text: "🎂 Doğum Gününüz Kutlu Olsun! İyi ki doğdunuz.",
-        style: "celebration",
-        color: "#8B5CF6",
-        margin: [0, 5, 0, 0],
-      });
-    }
-
-    const content = [
-      // Danışan Bilgileri section
+    const content: PDFContentItem[] = [
+      // Background logo in center
       {
-        text: "",
-        style: "sectionHeader",
-        margin: [0, 25, 0, 5],
+        image: backgroundDataUrl,
+        width: 300,
+        opacity: 0.1,
+        alignment: "center",
+        margin: [0, 20, 0, -25],
+        absolutePosition: { x: 50, y: 300 },
       },
+      // Title at the very top
+      {
+        text: "KİŞİYE ÖZEL BESLENME PLANI",
+        alignment: "center",
+        style: "titleStyle",
+        margin: [0, 0, 0, 8],
+      },
+      // Simple two-row table
       {
         table: {
           widths: ["50%", "50%"],
@@ -342,43 +353,35 @@ const DatabasePDFButton = ({
               {
                 text: `Ad Soyad: ${pdfData.fullName}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
               {
-                text: `Hedef: ${pdfData.target}`,
+                text: `Tarih: ${formattedDietDate}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
             ],
             [
               {
-                text: `Tarih: ${formattedDietDate}`,
+                text: `Hedef: ${pdfData.target}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
               {
                 text: `Sonuç: ${pdfData.weeklyResult}`,
                 style: "clientInfo",
-                border: [false, false, false, false],
               },
             ],
           ],
         },
-        layout: "noBorders",
-        margin: [0, 0, 0, 8],
+        layout: {
+          hLineWidth: () => 0,
+          vLineWidth: () => 0,
+          paddingLeft: () => 4,
+          paddingRight: () => 4,
+          paddingTop: () => 4,
+          paddingBottom: () => 4,
+        },
+        margin: [0, 0, 0, 10],
       },
-
-      // Nutrition Program section
-      {
-        stack: [
-          {
-            text: "KİŞİYE ÖZEL BESLENME PLANI",
-            style: "sectionHeader",
-            alignment: "center",
-          },
-        ],
-        margin: [0, 5, 0, 8],
-      },
+      // Main meals table
       {
         table: {
           headerRows: 1,
@@ -395,7 +398,7 @@ const DatabasePDFButton = ({
             if (rowIndex === 0) {
               return primaryColor;
             }
-            return rowIndex % 2 === 1 ? "#f9fafb" : null;
+            return rowIndex % 2 === 1 ? "#F5F3FF" : null;
           },
           paddingTop: (i) => (i === 0 ? 6 : 4),
           paddingBottom: (i) => (i === 0 ? 6 : 4),
@@ -406,32 +409,15 @@ const DatabasePDFButton = ({
       },
     ];
 
-    // Add Dietitian Note if exists
-    if (pdfData.dietitianNote) {
-      content.push(
-        {
-          text: "DİYETİSYEN NOTU",
-          style: "sectionHeader",
-          margin: [0, 10, 0, 5],
-        },
-        {
-          text: pdfData.dietitianNote,
-          style: "dietitianNote",
-          margin: [0, 0, 0, 10],
-        }
-      );
-    }
-
-    // Add Celebrations if exist
-    if (celebrationsContent.length > 0) {
+    // Add celebrations if they exist
+    if (pdfData.isBirthdayCelebration) {
       content.push({
         table: {
-          headerRows: 1,
           widths: ["*"],
           body: [
             [
               {
-                text: celebrationsContent.map((c) => c.text).join("\n"),
+                text: "🎂 Doğum Gününüz Kutlu Olsun! İyi ki doğdunuz.",
                 alignment: "center",
                 style: "celebration",
               },
@@ -443,7 +429,7 @@ const DatabasePDFButton = ({
           vLineWidth: () => 1,
           hLineColor: () => borderColor,
           vLineColor: () => "#e9d5ff",
-          fillColor: () => "#2563eb",
+          fillColor: () => "#F5F3FF",
           paddingTop: () => 6,
           paddingBottom: () => 6,
           paddingLeft: () => 8,
@@ -453,38 +439,41 @@ const DatabasePDFButton = ({
       });
     }
 
+    // Add dietitian note if exists
+    if (pdfData.dietitianNote) {
+      content.push(
+        {
+          text: "DİYETİSYEN NOTU",
+          style: "sectionHeader",
+          margin: [0, 20, 0, 15],
+        },
+        {
+          text: pdfData.dietitianNote,
+          style: "dietitianNote",
+          margin: [0, 0, 0, 10],
+        }
+      );
+    }
+
     // Add signature
     content.push({
-      table: {
-        headerRows: 0,
-        widths: ["*", "auto"],
-        body: [
-          [
-            {
-              text: "",
-              style: "tableCell",
-              alignment: "left",
-            },
+      columns: [
+        {
+          width: "*",
+          stack: [],
+        },
+        {
+          width: "auto",
+          stack: [
             {
               text: "Dyt. Ezgi Evgin Aktaş",
               style: "signatureText",
-              alignment: "right",
+              margin: [0, 10, 0, 0],
             },
           ],
-        ],
-      },
-      layout: {
-        hLineWidth: () => 0.5,
-        vLineWidth: () => 0,
-        hLineColor: () => borderColor,
-        vLineColor: () => borderColor,
-        fillColor: () => null,
-        paddingTop: () => 4,
-        paddingBottom: () => 4,
-        paddingLeft: () => 6,
-        paddingRight: () => 6,
-      },
-      margin: [0, 10, 0, 0],
+        },
+      ],
+      margin: [0, 0, 0, 0],
     });
 
     return {
@@ -495,31 +484,43 @@ const DatabasePDFButton = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 80,
-            margin: [30, 15, 0, 0],
+            width: 120,
+            margin: [30, 10, 0, 0], // Changed from [30, 15, 0, 0] to [30, 10, 0, 0]
+          },
+          {
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            alignment: "center",
+            fontSize: 16,
+            bold: true,
+            margin: [0, 25, 0, -25],
+            color: "#8B5CF6",
           },
         ],
       },
+      footer: function () {
+        return {
+          columns: [
+            {
+              text:
+                "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA\n" +
+                "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
+              style: "footerText",
+              alignment: "center",
+              margin: [40, 0, 40, 0],
+            },
+          ],
+          margin: [0, 20, 0, 0],
+        };
+      },
       styles: {
-        sectionHeader: {
-          fontSize: 14,
+        titleStyle: {
+          fontSize: 20,
           bold: true,
           color: primaryColor,
-          alignment: "left",
-          borderBottom: {
-            width: 1,
-            color: primaryColor,
-          },
-          margin: [0, 3, 0, 5],
         },
-        labelBold: {
-          fontSize: 12,
-          bold: true,
+        clientInfo: {
+          fontSize: 11,
           color: "#374151",
-        },
-        valueText: {
-          fontSize: 12,
-          color: "#1f2937",
         },
         tableHeader: {
           fontSize: 12,
@@ -530,48 +531,29 @@ const DatabasePDFButton = ({
           fontSize: 11,
           color: "#374151",
         },
-        tableCellItalic: {
-          fontSize: 11,
-          italics: true,
-          color: "#9ca3af",
-        },
-        recommendationHeader: {
-          fontSize: 13,
-          bold: true,
-          color: primaryColor,
-        },
-        recommendationContent: {
-          fontSize: 12,
-          color: "#374151",
-        },
-        celebration: {
+        sectionHeader: {
           fontSize: 14,
           bold: true,
-          alignment: "center",
+          color: primaryColor,
+        },
+        celebration: {
+          fontSize: 12,
+          color: primaryColor,
         },
         signatureText: {
-          fontSize: 13,
+          fontSize: 12,
           bold: true,
           color: primaryColor,
-          alignment: "right",
-          decoration: "underline",
-          decorationStyle: "solid",
-          decorationColor: primaryColor,
         },
         footerText: {
           fontSize: 9,
           color: secondaryColor,
           alignment: "center",
         },
-        clientInfo: {
-          fontSize: 12,
-          color: "#374151",
-          margin: [0, 1, 0, 1],
-        },
         dietitianNote: {
-          fontSize: 10,
+          fontSize: 11,
           color: secondaryColor,
-          lineHeight: 1.3,
+          lineHeight: 1.4,
         },
       },
       defaultStyle: {
