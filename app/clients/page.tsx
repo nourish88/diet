@@ -236,6 +236,7 @@ export default function ClientsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                     
                       {client.gender === 1 ? "Erkek" : "Kadın"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

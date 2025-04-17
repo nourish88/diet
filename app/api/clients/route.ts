@@ -14,6 +14,7 @@ export async function GET() {
         phoneNumber: true, // Changed from phone to phoneNumber
         birthdate: true,
         createdAt: true,
+        gender: true,
         // Remove email as it doesn't exist in the schema
       },
     });
