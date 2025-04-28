@@ -410,7 +410,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       ]);
     }
     return rows;
-  };const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
+  };
+
+  const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
     console.log("Creating doc definition with data:", {
       isBirthdayCelebration: pdfData.isBirthdayCelebration,
       isImportantDateCelebrated: pdfData.isImportantDateCelebrated,
@@ -477,34 +479,14 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 10, 0, 12], // Added 10px top margin
+        margin: [0, 20, 0, 12], // Increased top margin to 20px
       },
-      // Simple one-row table (removed Hedef and Sonuc row)
+      // Client info - redesigned to be centered with bold text
       {
-        table: {
-          widths: ["50%", "50%"],
-          body: [
-            [
-              {
-                text: `Ad Soyad: ${pdfData.fullName}`,
-                style: "clientInfo",
-              },
-              {
-                text: `Tarih: ${formattedDietDate}`,
-                style: "clientInfo",
-              },
-            ],
-          ],
-        },
-        layout: {
-          hLineWidth: () => 0,
-          vLineWidth: () => 0,
-          paddingLeft: () => 4,
-          paddingRight: () => 4,
-          paddingTop: () => 4,
-          paddingBottom: () => 4,
-        },
-        margin: [0, 0, 0, 10],
+        text: `${pdfData.fullName} / ${formattedDietDate}`,
+        style: "clientInfoCentered",
+        alignment: "center",
+        margin: [0, 0, 0, 15],
       },
       // Nutrition Program section
       {
@@ -710,10 +692,10 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: secondaryColor,
           alignment: "center",
         },
-        clientInfo: {
-          fontSize: 11, // Slightly smaller font
+        clientInfoCentered: {
+          fontSize: 16, // Larger font size
           color: "#374151",
-          bold: false,
+          bold: true,
           lineHeight: 1.2,
         },
         dietitianNote: {
@@ -731,16 +713,16 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 120, // Increased from 80
+            width: 180, // Increased from 120 to 180 (1.5x larger)
             margin: [30, 15, 0, 0],
           },
           {
-            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            text: "", // Removed the header text since it's now in the content
             alignment: "center",
             fontSize: 16,
             bold: true,
             margin: [0, 25, 0, -25],
-            color: "#d32d7e", // Changed to pink
+            color: "#d32d7e",
           },
         ],
       },
@@ -853,7 +835,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           <MessageCircle className="h-4 w-4 mr-2" />
         )}
         WhatsApp
-      </Button>     </div>
+      </Button>
+    </div>
   );
 };
 
