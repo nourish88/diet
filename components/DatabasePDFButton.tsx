@@ -472,7 +472,7 @@ const DatabasePDFButton = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 132, // Increased from 120 to 180 (1.5x)
+            width: 127, // Increased from 120 to 180 (1.5x)
             margin: [30, 10, 0, 0],
           },
           {
