@@ -345,15 +345,15 @@ const DatabasePDFButton = ({
         style: "titleStyle",
         margin: [0, 0, 0, 8],
       },
-      // Simple one-row table - Removed Hedef and Sonuç row
+      // Reformatted client info - name and date on one line, bold and centered
       {
         table: {
           widths: ["*"],
           body: [
             [
               {
-                text: `Ad Soyad: ${pdfData.fullName}   |   Tarih: ${formattedDietDate}`,
-                style: "clientInfo",
+                text: `${pdfData.fullName} / ${formattedDietDate}`,
+                style: "clientInfoBold",
                 alignment: "center",
               },
             ],
@@ -472,7 +472,7 @@ const DatabasePDFButton = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 120,
+            width: 132, // Increased from 120 to 180 (1.5x)
             margin: [30, 10, 0, 0],
           },
           {
@@ -480,8 +480,8 @@ const DatabasePDFButton = ({
             alignment: "center",
             fontSize: 16,
             bold: true,
-            margin: [0, 35, 0, -25], // Moved down by increasing top margin from 25 to 35
-            color: primaryColor, // Changed to match new color scheme
+            margin: [0, 45, 0, -25], // Moved down by 10px (from 35 to 45)
+            color: primaryColor,
           },
         ],
       },
@@ -508,6 +508,12 @@ const DatabasePDFButton = ({
         },
         clientInfo: {
           fontSize: 11,
+          color: "#374151",
+        },
+        // New style for bold client info
+        clientInfoBold: {
+          fontSize: 14, // Increased font size
+          bold: true,
           color: "#374151",
         },
         tableHeader: {
