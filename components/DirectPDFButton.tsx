@@ -713,7 +713,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 132, // Increased from 120 to 180 (1.5x larger)
+            width: 127, // Increased from 120 to 180 (1.5x larger)
             margin: [30, 15, 0, 0],
           },
           {
