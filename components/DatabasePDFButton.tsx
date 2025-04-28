@@ -320,10 +320,11 @@ const DatabasePDFButton = ({
   };
 
   const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
-    // Color scheme
-    const primaryColor = "#8B5CF6"; // Purple color
+    // Color scheme - Updated to use #d32d7e
+    const primaryColor = "#d32d7e"; // Changed from "#8B5CF6" to "#d32d7e"
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
+    const stripedRowColor = "#fce7f3"; // Light pink background for striped rows
 
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
@@ -344,29 +345,16 @@ const DatabasePDFButton = ({
         style: "titleStyle",
         margin: [0, 0, 0, 8],
       },
-      // Simple two-row table
+      // Simple one-row table - Removed Hedef and Sonuç row
       {
         table: {
-          widths: ["50%", "50%"],
+          widths: ["*"],
           body: [
             [
               {
-                text: `Ad Soyad: ${pdfData.fullName}`,
+                text: `Ad Soyad: ${pdfData.fullName}   |   Tarih: ${formattedDietDate}`,
                 style: "clientInfo",
-              },
-              {
-                text: `Tarih: ${formattedDietDate}`,
-                style: "clientInfo",
-              },
-            ],
-            [
-              {
-                text: `Hedef: ${pdfData.target}`,
-                style: "clientInfo",
-              },
-              {
-                text: `Sonuç: ${pdfData.weeklyResult}`,
-                style: "clientInfo",
+                alignment: "center",
               },
             ],
           ],
@@ -398,7 +386,7 @@ const DatabasePDFButton = ({
             if (rowIndex === 0) {
               return primaryColor;
             }
-            return rowIndex % 2 === 1 ? "#F5F3FF" : null;
+            return rowIndex % 2 === 1 ? stripedRowColor : null;
           },
           paddingTop: (i) => (i === 0 ? 6 : 4),
           paddingBottom: (i) => (i === 0 ? 6 : 4),
@@ -428,8 +416,8 @@ const DatabasePDFButton = ({
           hLineWidth: () => 1,
           vLineWidth: () => 1,
           hLineColor: () => borderColor,
-          vLineColor: () => "#e9d5ff",
-          fillColor: () => "#F5F3FF",
+          vLineColor: () => "#fbcfe8", // Updated to match new color scheme
+          fillColor: () => stripedRowColor,
           paddingTop: () => 6,
           paddingBottom: () => 6,
           paddingLeft: () => 8,
@@ -485,15 +473,15 @@ const DatabasePDFButton = ({
           {
             image: backgroundDataUrl,
             width: 120,
-            margin: [30, 10, 0, 0], // Changed from [30, 15, 0, 0] to [30, 10, 0, 0]
+            margin: [30, 10, 0, 0],
           },
           {
             text: "KİŞİYE ÖZEL BESLENME PLANI",
             alignment: "center",
             fontSize: 16,
             bold: true,
-            margin: [0, 25, 0, -25],
-            color: "#8B5CF6",
+            margin: [0, 35, 0, -25], // Moved down by increasing top margin from 25 to 35
+            color: primaryColor, // Changed to match new color scheme
           },
         ],
       },
