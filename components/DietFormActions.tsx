@@ -94,7 +94,7 @@ const DietFormActions = ({
       const templateData = {
         name: templateName.trim(),
         description: "",
-        category: category?.trim() || null,
+        category: category?.trim() || undefined,
         su: diet.Su,
         fizik: diet.Fizik,
         hedef: diet.Hedef,

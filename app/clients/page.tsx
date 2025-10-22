@@ -301,9 +301,11 @@ export default function ClientsPage() {
                       {client.phoneNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(client.birthdate), "dd MMMM yyyy", {
-                        locale: tr,
-                      })}
+                      {client.birthdate
+                        ? format(new Date(client.birthdate), "dd MMMM yyyy", {
+                            locale: tr,
+                          })
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
