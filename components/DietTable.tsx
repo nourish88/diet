@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
 import { Clock, Coffee, FileText, Menu, Plus, Trash } from "lucide-react";
+import { OgunQuickActions } from "@/components/OgunQuickActions";
+import { MealPreset } from "@/services/PresetService";
 
 interface DietTableProps {
   setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
@@ -117,6 +119,30 @@ const DietTable = ({
     setDiet({
       ...diet,
       Oguns: reorderedOguns,
+    });
+  };
+
+  // Apply preset to a specific ogun
+  const handleApplyPreset = (ogunIndex: number, preset: MealPreset) => {
+    setDiet((prevDiet: Diet): Diet => {
+      const updatedOguns = prevDiet.Oguns.map((ogun, idx) => {
+        if (idx === ogunIndex) {
+          return {
+            ...ogun,
+            items: preset.items.map((item) => ({
+              miktar: item.miktar,
+              birim: item.birim,
+              besin: item.besinName,
+            })),
+          };
+        }
+        return ogun;
+      });
+
+      return {
+        ...prevDiet,
+        Oguns: updatedOguns,
+      };
     });
   };
 
@@ -264,19 +290,29 @@ const DietTable = ({
                               style={{ width: `${columnWidths.ogun}%` }}
                               className="px-3 py-3 align-top"
                             >
-                              <Input
-                                style={{ fontSize }}
-                                type="text"
-                                value={ogun.name}
-                                onChange={(e) =>
-                                  handleOgunChange(
-                                    index,
-                                    "name",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              />
+                              <div className="space-y-2">
+                                <Input
+                                  style={{ fontSize }}
+                                  type="text"
+                                  value={ogun.name}
+                                  onChange={(e) =>
+                                    handleOgunChange(
+                                      index,
+                                      "name",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                />
+                                <div className="no-print">
+                                  <OgunQuickActions
+                                    ogunName={ogun.name}
+                                    onApplyPreset={(preset) =>
+                                      handleApplyPreset(index, preset)
+                                    }
+                                  />
+                                </div>
+                              </div>
                             </td>
                             <td
                               style={{ width: `${columnWidths.saat}%` }}

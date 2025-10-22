@@ -22,7 +22,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gray-50 min-h-screen`}>
         <QueryProvider>
           <Navbar />
-          <main className="pt-16">{children}</main>
+          <main className="pt-24">{children}</main>
         </QueryProvider>
         <Toaster />
       </body>

@@ -1,14 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import useClientActions from "@/hooks/useClientActions";
 import { Button } from "@/components/ui/button";
 import { Loader2, UserPlus, Pencil, Trash2, Search, X } from "lucide-react";
-import { Toast } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+import { fetchClients } from "@/services/ClientService";
 
 interface Client {
   id: number;
@@ -19,60 +18,117 @@ interface Client {
   gender?: number;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const { getClients } = useClientActions();
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // Fetch clients with pagination
+  const loadClients = useCallback(
+    async (pageNum: number, search: string, append: boolean = false) => {
+      try {
+        if (append) {
+          setIsLoadingMore(true);
+        } else {
+          setIsLoading(true);
+        }
+
+        const skip = pageNum * ITEMS_PER_PAGE;
+        const response = await fetchClients({
+          skip,
+          take: ITEMS_PER_PAGE,
+          search: search || undefined,
+        });
+
+        if (append) {
+          setClients((prev) => [...prev, ...response.clients]);
+        } else {
+          setClients(response.clients);
+        }
+
+        setHasMore(response.hasMore);
+        setTotal(response.total);
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+        toast({
+          title: "Hata",
+          description: "Danışanlar yüklenirken bir hata oluştu.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [toast]
+  );
+
+  // Initial load
   useEffect(() => {
-    fetchClients();
+    loadClients(0, searchTerm, false);
+    setPage(0);
   }, []);
 
+  // Search effect - reset and load from beginning
   useEffect(() => {
-    // Filter clients when the search term changes
-    if (searchTerm.trim() === "") {
-      setFilteredClients(clients);
-    } else {
-      const lowerSearch = searchTerm.toLowerCase();
-      const filtered = clients.filter((client) => {
-        const fullName = `${client.name} ${client.surname}`.toLowerCase();
-        const phone = client.phoneNumber?.toLowerCase() || "";
-        return fullName.includes(lowerSearch) || phone.includes(lowerSearch);
-      });
-      setFilteredClients(filtered);
+    const timer = setTimeout(() => {
+      setPage(0);
+      loadClients(0, searchTerm, false);
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, loadClients]);
+
+  // Load more when scrolling
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && !isLoading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadClients(nextPage, searchTerm, true);
     }
-  }, [searchTerm, clients]);
+  }, [page, searchTerm, hasMore, isLoading, isLoadingMore, loadClients]);
 
-  const fetchClients = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getClients();
-      console.log("API Response:", response); // Debug log
+  // Setup intersection observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
-      if (Array.isArray(response)) {
-        setClients(response);
-        console.log("Clients set to:", response);
-      } else {
-        console.error("Unexpected response format:", response);
-        setClients([]);
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !isLoading &&
+          !isLoadingMore
+        ) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      toast({
-        title: "Hata",
-        description: "Danışanlar yüklenirken bir hata oluştu.",
-        variant: "destructive",
-      });
-      setClients([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   const handleDeleteClient = async (id: number) => {
     if (!confirm("Bu danışanı silmek istediğinize emin misiniz?")) {
@@ -95,7 +151,9 @@ export default function ClientsPage() {
         variant: "default",
       });
 
-      fetchClients();
+      // Reload clients from the beginning
+      setPage(0);
+      loadClients(0, searchTerm, false);
     } catch (error) {
       console.error("Error deleting client:", error);
       toast({
@@ -107,9 +165,6 @@ export default function ClientsPage() {
       setIsDeleting(null);
     }
   };
-
-  console.log("Current clients state:", clients); // Debug log
-  console.log("Is loading:", isLoading); // Debug log
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -149,7 +204,7 @@ export default function ClientsPage() {
         </div>
         {searchTerm && (
           <p className="text-xs text-gray-500 mt-1">
-            "{searchTerm}" için {filteredClients.length} sonuç bulundu
+            "{searchTerm}" için {total} sonuç bulundu
           </p>
         )}
       </div>
@@ -159,7 +214,7 @@ export default function ClientsPage() {
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
           <span className="ml-2 text-gray-600">Danışanlar yükleniyor...</span>
         </div>
-      ) : filteredClients.length === 0 ? (
+      ) : clients.length === 0 ? (
         searchTerm ? (
           <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
             <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -202,8 +257,8 @@ export default function ClientsPage() {
             </h2>
             <p className="text-sm text-blue-100 mt-1">
               {searchTerm
-                ? `"${searchTerm}" için ${filteredClients.length} sonuç`
-                : `Toplam ${filteredClients.length} danışan`}
+                ? `"${searchTerm}" için ${total} sonuç (${clients.length} yüklendi)`
+                : `Toplam ${total} danışan (${clients.length} yüklendi)`}
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -228,7 +283,7 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredClients.map((client) => (
+                {clients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -236,7 +291,6 @@ export default function ClientsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                     
                       {client.gender === 1 ? "Erkek" : "Kadın"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -279,6 +333,28 @@ export default function ClientsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-10" />
+
+          {/* Loading more indicator */}
+          {isLoadingMore && (
+            <div className="flex justify-center items-center py-4 border-t">
+              <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+              <span className="ml-2 text-gray-600">
+                Daha fazla yükleniyor...
+              </span>
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {!hasMore && clients.length > 0 && (
+            <div className="text-center py-4 border-t bg-gray-50">
+              <p className="text-sm text-gray-500">
+                Tüm danışanlar yüklendi ({total} toplam)
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

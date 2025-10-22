@@ -1,9 +1,10 @@
 import DirectPDFButton from "./DirectPDFButton";
 import { Button } from "./ui/button";
 import { Diet } from "@/types/types";
-import { Save, Loader2, Plus } from "lucide-react";
+import { Save, Loader2, Plus, FileText } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "./ui/use-toast";
+import TemplateService from "@/services/TemplateService";
 
 // Create a separate component for the PDF button to ensure client-side only rendering
 
@@ -30,6 +31,7 @@ const DietFormActions = ({
   phoneNumber,
 }: DietFormActionsProps) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const { toast } = useToast();
 
   // Add validation for phone number
@@ -77,8 +79,70 @@ const DietFormActions = ({
 
   console.log("DietFormActions - Received props:", {
     isImportantDateCelebrated: diet.isImportantDateCelebrated,
-    importantDateId: diet.importantDateId
+    importantDateId: diet.importantDateId,
   });
+
+  const handleSaveAsTemplate = async () => {
+    const templateName = prompt("Şablon adı girin:");
+    if (!templateName || !templateName.trim()) return;
+
+    const category = prompt("Kategori (opsiyonel, örn: kilo_verme):");
+
+    setIsSavingTemplate(true);
+    try {
+      // Convert diet to template format
+      const templateData = {
+        name: templateName.trim(),
+        description: "",
+        category: category?.trim() || null,
+        su: diet.Su,
+        fizik: diet.Fizik,
+        hedef: diet.Hedef,
+        sonuc: diet.Sonuc,
+        oguns: diet.Oguns.map((ogun) => ({
+          name: ogun.name,
+          time: ogun.time,
+          detail: ogun.detail || "",
+          order: ogun.order || 0,
+          items: ogun.items
+            .filter((item) => {
+              const besinName =
+                typeof item.besin === "object" ? item.besin?.name : item.besin;
+              return besinName && besinName.trim() !== "";
+            })
+            .map((item) => ({
+              besinName:
+                typeof item.besin === "object"
+                  ? item.besin?.name || ""
+                  : item.besin || "",
+              miktar: item.miktar || "",
+              birim:
+                typeof item.birim === "object"
+                  ? item.birim?.name || ""
+                  : item.birim || "",
+            })),
+        })).filter((ogun) => ogun.items.length > 0), // Only save oguns with items
+      };
+
+      await TemplateService.createTemplate(templateData);
+
+      toast({
+        title: "Başarılı",
+        description:
+          "Şablon oluşturuldu! /sablonlar sayfasından görüntüleyebilirsiniz.",
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error("Error saving template:", error);
+      toast({
+        title: "Hata",
+        description: error.message || "Şablon kaydedilirken bir hata oluştu",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
 
   return (
     <div className="flex flex-wrap gap-3 mt-6 justify-start">
@@ -115,7 +179,8 @@ const DietFormActions = ({
         onError={(error) => {
           toast({
             title: "Hata",
-            description: error || "WhatsApp raporu gönderilirken bir hata oluştu",
+            description:
+              error || "WhatsApp raporu gönderilirken bir hata oluştu",
             variant: "destructive",
           });
         }}
@@ -137,6 +202,26 @@ const DietFormActions = ({
           <>
             <Save className="h-4 w-4 mr-2" />
             {isDietSaved ? "Güncelle" : "Kaydet"}
+          </>
+        )}
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleSaveAsTemplate}
+        disabled={isSavingTemplate}
+        className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+      >
+        {isSavingTemplate ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Kaydediliyor...
+          </>
+        ) : (
+          <>
+            <FileText className="h-4 w-4 mr-2" />
+            Şablon Olarak Kaydet
           </>
         )}
       </Button>

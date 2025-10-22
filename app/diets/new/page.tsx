@@ -8,6 +8,7 @@ import { ChevronLeft } from "lucide-react";
 function DietPageContent() {
   const searchParams = useSearchParams();
   const clientId = searchParams?.get("clientId");
+  const templateId = searchParams?.get("templateId");
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -33,6 +34,7 @@ function DietPageContent() {
 
       <DietForm
         initialClientId={clientId ? parseInt(clientId, 10) : undefined}
+        initialTemplateId={templateId ? parseInt(templateId, 10) : undefined}
       />
     </div>
   );

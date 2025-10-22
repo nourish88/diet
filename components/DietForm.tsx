@@ -21,12 +21,17 @@ import { useFontStore } from "@/store/store";
 import ClientWarnings from "./ClientWarnings";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Textarea } from "./ui/textarea";
+import TemplateService from "@/services/TemplateService";
+import { TemplateSelector } from "./sablonlar/TemplateSelector";
+import { Button } from "./ui/button";
+import { FileText } from "lucide-react";
 
 interface DietFormProps {
   initialClientId?: number;
+  initialTemplateId?: number;
 }
 
-const DietForm = ({ initialClientId }: DietFormProps) => {
+const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const [diet, setDiet] = useState<Diet>({
     ...initialDiet,
   });
@@ -59,6 +64,11 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
 
   // Add state for loading
   const [isLoading, setIsLoading] = useState(false);
+
+  // Template states
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // Separate effect for initial client fetch if initialClientId is provided
   useEffect(() => {
@@ -102,6 +112,9 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
             ? "+90" + data.client.phoneNumber
             : undefined;
           setClientPhoneNumber(phone);
+
+          // Load latest diet for this client
+          await loadLatestDiet(data.client.id);
         }
       } catch (error) {
         console.error("Error fetching initial client:", error);
@@ -129,11 +142,13 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
         }
         const data = await response.json();
 
-        if (Array.isArray(data)) {
+        // Handle new pagination format
+        const clientsList = data.clients || data;
+        if (Array.isArray(clientsList)) {
           setClients((currentClients) => {
             // Merge with existing clients, avoiding duplicates
             const newClients = [...currentClients];
-            data.forEach((client) => {
+            clientsList.forEach((client) => {
               if (!newClients.some((c) => c.id === client.id)) {
                 newClients.push(client);
               }
@@ -155,6 +170,79 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
 
     fetchClients();
   }, [toast]);
+
+  // Load templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        setIsLoadingTemplates(true);
+        const data = await TemplateService.getTemplates();
+        setTemplates(data);
+      } catch (error) {
+        console.error("Error loading templates:", error);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  // Load initial template if provided
+  useEffect(() => {
+    const loadInitialTemplate = async () => {
+      if (!initialTemplateId) return;
+
+      try {
+        setIsLoading(true);
+        const template = await TemplateService.getTemplate(initialTemplateId);
+
+        // Convert template to diet format
+        const templateDiet: Diet = {
+          id: 0,
+          AdSoyad: "",
+          Tarih: new Date().toISOString(),
+          Su: template.su || "",
+          Fizik: template.fizik || "",
+          Hedef: template.hedef || "",
+          Sonuc: template.sonuc || "",
+          dietitianNote: "",
+          isBirthdayCelebration: false,
+          isImportantDateCelebrated: false,
+          importantDateId: null,
+          importantDateName: null,
+          Oguns: template.oguns.map((ogun) => ({
+            name: ogun.name,
+            time: ogun.time,
+            detail: ogun.detail || "",
+            order: ogun.order,
+            items: ogun.items.map((item) => ({
+              miktar: item.miktar,
+              birim: item.birim,
+              besin: item.besinName,
+            })),
+          })),
+        };
+
+        setDiet(templateDiet);
+
+        toast({
+          title: "Şablon Yüklendi",
+          description: `"${template.name}" şablonu kullanılıyor`,
+        });
+      } catch (error) {
+        console.error("Error loading template:", error);
+        toast({
+          title: "Hata",
+          description: "Şablon yüklenirken bir hata oluştu",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialTemplate();
+  }, [initialTemplateId]);
 
   // Add this to your state
   const [clientPhoneNumber, setClientPhoneNumber] = useState<
@@ -197,12 +285,13 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
   }, [selectedClientId, clients]);
 
   // Function to load the latest diet for a selected client
-  const loadLatestDiet = async () => {
-    if (!selectedClientId) return;
+  const loadLatestDiet = async (clientId?: number) => {
+    const targetClientId = clientId || selectedClientId;
+    if (!targetClientId) return;
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/diets/latest/${selectedClientId}`);
+      const response = await fetch(`/api/diets/latest/${targetClientId}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -225,17 +314,17 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
       if (data.diet) {
         // Create the UI diet with correct field mapping from API response
         const uiDiet = {
-          ...convertDbDietToUiDiet(data.diet),
+          ...convertDbDietToUiDiet(data.diet, targetClientId),
           // Use the correct field names from API response
           Su: data.diet.su || "",
           Fizik: data.diet.fizik || "",
           Sonuc: data.diet.sonuc || "",
           Hedef: data.diet.hedef || "",
           dietitianNote: data.diet.dietitianNote || "",
-          Tarih: data.diet.tarih || data.diet.createdAt || new Date().toISOString(),
+          Tarih:
+            data.diet.tarih || data.diet.createdAt || new Date().toISOString(),
         };
 
-        console.log("Final UI Diet Object with correct mapping:", uiDiet);
         setDiet(uiDiet);
       }
     } catch (error) {
@@ -283,11 +372,11 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
   };
 
   // Function to convert database diet format to UI diet format
-  const convertDbDietToUiDiet = (dbDiet: any): Diet => {
+  const convertDbDietToUiDiet = (dbDiet: any, clientId?: number): Diet => {
     try {
       return {
         id: dbDiet.id,
-        AdSoyad: getClientFullName(selectedClientId),
+        AdSoyad: getClientFullName(clientId || selectedClientId),
         Tarih: dbDiet.tarih || dbDiet.createdAt || new Date().toISOString(),
         Hedef: dbDiet.hedef || "",
         Sonuc: dbDiet.sonuc || "",
@@ -298,17 +387,31 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
         isImportantDateCelebrated: dbDiet.isImportantDateCelebrated || false,
         importantDateId: dbDiet.importantDateId || null,
         importantDateName: dbDiet.importantDateName || null,
-        Oguns: dbDiet.oguns?.map((dbOgun: any) => ({
-          name: dbOgun.name || "",
-          time: dbOgun.time || "",
-          detail: dbOgun.detail || "",
-          order: dbOgun.order || 0,
-          items: dbOgun.items?.map((dbItem: any) => ({
-            miktar: dbItem.miktar || "",
-            birim: dbItem.birim || {},
-            besin: dbItem.besin || {},
-          })) || [],
-        })) || OGUN,
+        Oguns:
+          dbDiet.oguns?.map((dbOgun: any) => ({
+            name: dbOgun.name || "",
+            time: dbOgun.time || "",
+            detail: dbOgun.detail || "",
+            order: dbOgun.order || 0,
+            items:
+              dbOgun.items?.map((dbItem: any) => {
+                const miktarValue = dbItem.miktar || "";
+                const birimValue =
+                  typeof dbItem.birim === "object" && dbItem.birim
+                    ? dbItem.birim.name || ""
+                    : dbItem.birim || "";
+                const besinValue =
+                  typeof dbItem.besin === "object" && dbItem.besin
+                    ? dbItem.besin.name || ""
+                    : dbItem.besin || "";
+
+                return {
+                  miktar: miktarValue,
+                  birim: birimValue,
+                  besin: besinValue,
+                };
+              }) || [],
+          })) || OGUN,
       };
     } catch (error) {
       console.error("Error converting DB diet to UI diet:", error);
@@ -547,6 +650,73 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
               />
             </div>
 
+            {/* Template selector button */}
+            {!initialTemplateId && (
+              <div className="mb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowTemplateSelector(true)}
+                  className="w-full border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  📋 Şablondan Başla
+                </Button>
+              </div>
+            )}
+
+            {/* Template Selector Modal */}
+            <TemplateSelector
+              open={showTemplateSelector}
+              onClose={() => setShowTemplateSelector(false)}
+              templates={templates}
+              isLoading={isLoadingTemplates}
+              onSelect={async (template) => {
+                try {
+                  // Convert template to diet format
+                  const templateDiet: Diet = {
+                    id: 0,
+                    AdSoyad: getClientFullName(selectedClientId),
+                    Tarih: new Date().toISOString(),
+                    Su: template.su || "",
+                    Fizik: template.fizik || "",
+                    Hedef: template.hedef || "",
+                    Sonuc: template.sonuc || "",
+                    dietitianNote: "",
+                    isBirthdayCelebration: false,
+                    isImportantDateCelebrated: false,
+                    importantDateId: null,
+                    importantDateName: null,
+                    Oguns: template.oguns.map((ogun) => ({
+                      name: ogun.name,
+                      time: ogun.time,
+                      detail: ogun.detail || "",
+                      order: ogun.order,
+                      items: ogun.items.map((item) => ({
+                        miktar: item.miktar,
+                        birim: item.birim,
+                        besin: item.besinName,
+                      })),
+                    })),
+                  };
+
+                  setDiet(templateDiet);
+
+                  toast({
+                    title: "Şablon Yüklendi",
+                    description: `"${template.name}" şablonu kullanılıyor`,
+                  });
+                } catch (error) {
+                  console.error("Error loading template:", error);
+                  toast({
+                    title: "Hata",
+                    description: "Şablon yüklenirken bir hata oluştu",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            />
+
             {/* Update ClientWarnings component */}
             {selectedClientId && (
               <ClientWarnings
@@ -572,18 +742,26 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
                 <DietFormBasicFields
                   form={form}
                   diet={diet}
-                  setDiet={(newDiet) => {
+                  setDiet={(newDietOrUpdater) => {
                     const isDate = (value: any): value is Date =>
                       value &&
                       Object.prototype.toString.call(value) ===
                         "[object Date]" &&
                       !isNaN(value);
 
-                    setDiet({
-                      ...newDiet,
-                      Tarih: isDate(newDiet.Tarih)
-                        ? newDiet.Tarih.toISOString()
-                        : newDiet.Tarih,
+                    // Use functional update to get the latest state
+                    setDiet((prevDiet) => {
+                      const newDiet =
+                        typeof newDietOrUpdater === "function"
+                          ? newDietOrUpdater(prevDiet) // Use prevDiet instead of diet!
+                          : newDietOrUpdater;
+
+                      return {
+                        ...newDiet,
+                        Tarih: isDate(newDiet.Tarih)
+                          ? newDiet.Tarih.toISOString()
+                          : newDiet.Tarih,
+                      };
                     });
                   }}
                   selectedClientId={selectedClientId}
@@ -644,7 +822,7 @@ const DietForm = ({ initialClientId }: DietFormProps) => {
                     isImportantDateCelebrated: diet.isImportantDateCelebrated,
                     target: diet.Hedef,
                     id: diet.id,
-                    ogunler: diet.Oguns.map((ogun) => ({
+                    ogunler: (diet.Oguns || []).map((ogun) => ({
                       name: ogun.name,
                       time: ogun.time,
                       notes: ogun.detail,

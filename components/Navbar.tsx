@@ -2,7 +2,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Users, ClipboardList, Home, Calendar } from "lucide-react";
+import {
+  Menu,
+  X,
+  Users,
+  ClipboardList,
+  Home,
+  Calendar,
+  Settings,
+  FileText,
+  BarChart3,
+} from "lucide-react";
 import Image from "next/image";
 
 const Navbar = () => {
@@ -28,7 +38,10 @@ const Navbar = () => {
     { href: "/", label: "Ana Sayfa", icon: Home },
     { href: "/clients", label: "Danışanlar", icon: Users },
     { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
+    { href: "/sablonlar", label: "Şablonlar", icon: FileText },
+    { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
     { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
+    { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
   ];
 
   return (

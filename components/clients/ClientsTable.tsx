@@ -46,7 +46,7 @@ export const ClientsTable = () => {
     queryKey: ["clients"] as const,
     queryFn: async () => {
       const response = await fetchClients();
-      return response.map((client) => ({
+      return response.clients.map((client) => ({
         ...client,
         birthdate: client.birthdate?.toString() || null,
         createdAt: client.createdAt.toString(),

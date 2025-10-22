@@ -1,9 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const skip = parseInt(searchParams.get("skip") || "0");
+    const take = parseInt(searchParams.get("take") || "20");
+    const search = searchParams.get("search") || "";
+
+    // Build the where clause for search
+    const whereClause = search
+      ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              surname: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              phoneNumber: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
+      : {};
+
+    // Get total count for pagination
+    const total = await prisma.client.count({
+      where: whereClause,
+    });
+
+    // Get paginated clients
     const clients = await prisma.client.findMany({
+      where: whereClause,
+      skip,
+      take,
       orderBy: {
         createdAt: "desc",
       },
@@ -11,15 +51,20 @@ export async function GET() {
         id: true,
         name: true,
         surname: true,
-        phoneNumber: true, // Changed from phone to phoneNumber
+        phoneNumber: true,
         birthdate: true,
         createdAt: true,
         gender: true,
-        // Remove email as it doesn't exist in the schema
       },
     });
 
-    return NextResponse.json(clients);
+    const hasMore = skip + take < total;
+
+    return NextResponse.json({
+      clients,
+      total,
+      hasMore,
+    });
   } catch (error) {
     console.error("Database error:", error);
     return NextResponse.json(

@@ -7,6 +7,14 @@ import { useEffect, useState } from "react";
 import { differenceInDays } from "date-fns";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import DefinitionService, { Definition } from "@/services/DefinitionService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ImportantDate {
   id: number;
@@ -44,7 +52,7 @@ const isWithinImportantDateRange = (
 interface DietFormFieldsProps {
   form: any;
   diet: Diet;
-  setDiet: (diet: Diet) => void;
+  setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
   selectedClientId?: number | null;
   onSelectClient?: (clientId: number) => void;
   disabled?: boolean;
@@ -65,6 +73,54 @@ const DietFormBasicFields = ({
   const [importantDate, setImportantDate] = useState<ImportantDate | null>(
     null
   );
+  const [suDefinitions, setSuDefinitions] = useState<Definition[]>([]);
+  const [fizikDefinitions, setFizikDefinitions] = useState<Definition[]>([]);
+  const [showCustomSu, setShowCustomSu] = useState(false);
+  const [showCustomFizik, setShowCustomFizik] = useState(false);
+
+  // Function to save custom input as a definition
+  const saveCustomDefinition = async (
+    type: "su_tuketimi" | "fiziksel_aktivite",
+    name: string
+  ) => {
+    if (!name.trim()) return;
+
+    try {
+      const newDef = await DefinitionService.createDefinition(
+        type,
+        name.trim()
+      );
+
+      // Update local state
+      if (type === "su_tuketimi") {
+        setSuDefinitions((prev) => [newDef, ...prev]);
+      } else {
+        setFizikDefinitions((prev) => [newDef, ...prev]);
+      }
+
+      console.log(`✅ Tanımlama eklendi: ${name}`);
+    } catch (error) {
+      console.error("Error saving custom definition:", error);
+      // Don't show error to user, fail silently
+    }
+  };
+
+  // Load definitions on mount
+  useEffect(() => {
+    const loadDefinitions = async () => {
+      try {
+        const [suDefs, fizikDefs] = await Promise.all([
+          DefinitionService.getDefinitions("su_tuketimi"),
+          DefinitionService.getDefinitions("fiziksel_aktivite"),
+        ]);
+        setSuDefinitions(suDefs);
+        setFizikDefinitions(fizikDefs);
+      } catch (error) {
+        console.error("Error loading definitions:", error);
+      }
+    };
+    loadDefinitions();
+  }, []);
 
   useEffect(() => {
     const checkImportantDates = async () => {
@@ -154,12 +210,13 @@ const DietFormBasicFields = ({
               <div className="w-full">
                 <DatePicker
                   selected={diet.Tarih ? new Date(diet.Tarih) : null}
-                  onChange={(date: Date | null) =>
-                    setDiet({
-                      ...diet,
-                      Tarih: date ? date.toISOString() : null,
-                    })
-                  }
+                  onChange={(date: Date | null) => {
+                    const newTarih = date ? date.toISOString() : null;
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
+                      Tarih: newTarih,
+                    }));
+                  }}
                   placeholder="Tarih Seçiniz"
                   dateFormat="dd.MM.yyyy"
                   className="w-full"
@@ -172,15 +229,82 @@ const DietFormBasicFields = ({
               name="suTuketimi"
               label="Su Tüketimi"
               renderField={(field) => (
-                <Input
-                  value={diet.Su || ""} // Add fallback empty string
-                  className={inputBaseClass}
-                  placeholder="Örn: 2-3 litre"
-                  onChange={(e) => {
-                    console.log("Updating Su:", e.target.value); // Debug log
-                    setDiet({ ...diet, Su: e.target.value });
-                  }}
-                />
+                <div className="space-y-2">
+                  {!showCustomSu ? (
+                    <Select
+                      value={diet.Su || ""}
+                      onValueChange={(value) => {
+                        if (value === "__custom__") {
+                          setShowCustomSu(true);
+                          setDiet((prevDiet) => ({ ...prevDiet, Su: "" }));
+                        } else {
+                          setDiet((prevDiet) => ({ ...prevDiet, Su: value }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={inputBaseClass}>
+                        <SelectValue placeholder="Seçiniz..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suDefinitions.map((def) => (
+                          <SelectItem key={def.id} value={def.name}>
+                            {def.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">
+                          ✏️ Özel giriş yap
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        value={diet.Su || ""}
+                        className={inputBaseClass}
+                        placeholder="Özel su tüketimi girin..."
+                        onChange={(e) => {
+                          setDiet((prevDiet) => ({
+                            ...prevDiet,
+                            Su: e.target.value,
+                          }));
+                        }}
+                        onBlur={async () => {
+                          // Save as definition when user leaves input
+                          if (diet.Su && diet.Su.trim()) {
+                            await saveCustomDefinition("su_tuketimi", diet.Su);
+                            setShowCustomSu(false);
+                          }
+                        }}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            // Save as definition when Enter is pressed
+                            if (diet.Su && diet.Su.trim()) {
+                              await saveCustomDefinition(
+                                "su_tuketimi",
+                                diet.Su
+                              );
+                              setShowCustomSu(false);
+                            }
+                          } else if (e.key === "Escape") {
+                            setShowCustomSu(false);
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustomSu(false);
+                        }}
+                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                        title="İptal (Esc)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             />
 
@@ -189,17 +313,90 @@ const DietFormBasicFields = ({
               <FormFieldWrapper
                 form={form}
                 name="fizikselAktivite"
-                label="Fiziki Aktivite   "
+                label="Fiziki Aktivite"
                 renderField={(field) => (
-                  <Input
-                    value={diet.Fizik || ""} // Add fallback empty string
-                    className={inputBaseClass}
-                    placeholder="Örn: Günde 30dk yürüyüş, haftada 3 gün pilates..."
-                    onChange={(e) => {
-                      console.log("Updating Fizik:", e.target.value); // Debug log
-                      setDiet({ ...diet, Fizik: e.target.value });
-                    }}
-                  />
+                  <div className="space-y-2">
+                    {!showCustomFizik ? (
+                      <Select
+                        value={diet.Fizik || ""}
+                        onValueChange={(value) => {
+                          if (value === "__custom__") {
+                            setShowCustomFizik(true);
+                            setDiet((prevDiet) => ({ ...prevDiet, Fizik: "" }));
+                          } else {
+                            setDiet((prevDiet) => ({
+                              ...prevDiet,
+                              Fizik: value,
+                            }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={inputBaseClass}>
+                          <SelectValue placeholder="Seçiniz..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fizikDefinitions.map((def) => (
+                            <SelectItem key={def.id} value={def.name}>
+                              {def.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="__custom__">
+                            ✏️ Özel giriş yap
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          value={diet.Fizik || ""}
+                          className={inputBaseClass}
+                          placeholder="Özel fiziksel aktivite girin..."
+                          onChange={(e) => {
+                            setDiet((prevDiet) => ({
+                              ...prevDiet,
+                              Fizik: e.target.value,
+                            }));
+                          }}
+                          onBlur={async () => {
+                            // Save as definition when user leaves input
+                            if (diet.Fizik && diet.Fizik.trim()) {
+                              await saveCustomDefinition(
+                                "fiziksel_aktivite",
+                                diet.Fizik
+                              );
+                              setShowCustomFizik(false);
+                            }
+                          }}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              // Save as definition when Enter is pressed
+                              if (diet.Fizik && diet.Fizik.trim()) {
+                                await saveCustomDefinition(
+                                  "fiziksel_aktivite",
+                                  diet.Fizik
+                                );
+                                setShowCustomFizik(false);
+                              }
+                            } else if (e.key === "Escape") {
+                              setShowCustomFizik(false);
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomFizik(false);
+                          }}
+                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                          title="İptal (Esc)"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               />
             </div>
@@ -214,10 +411,10 @@ const DietFormBasicFields = ({
                 <RadioGroup
                   value={boolToRadioValue(diet.isBirthdayCelebration)}
                   onValueChange={(value) =>
-                    setDiet({
-                      ...diet,
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
                       isBirthdayCelebration: radioValueToBool(value),
-                    })
+                    }))
                   }
                 >
                   <div className="flex items-center space-x-2">
@@ -244,8 +441,8 @@ const DietFormBasicFields = ({
                 <RadioGroup
                   value={boolToRadioValue(diet.isImportantDateCelebrated)}
                   onValueChange={(value) =>
-                    setDiet({
-                      ...diet,
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
                       isImportantDateCelebrated: radioValueToBool(value),
                       importantDateId: radioValueToBool(value)
                         ? importantDate.id
@@ -253,7 +450,7 @@ const DietFormBasicFields = ({
                       importantDateName: radioValueToBool(value)
                         ? importantDate.name
                         : null,
-                    })
+                    }))
                   }
                   disabled={disabled}
                 >
@@ -293,7 +490,10 @@ const DietFormBasicFields = ({
                   placeholder="Haftalık sonuç notları"
                   onChange={(e) => {
                     console.log("Updating Sonuc:", e.target.value); // Debug log
-                    setDiet({ ...diet, Sonuc: e.target.value });
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
+                      Sonuc: e.target.value,
+                    }));
                   }}
                 />
               )}
@@ -310,7 +510,10 @@ const DietFormBasicFields = ({
                   placeholder="Haftalık hedef notları"
                   onChange={(e) => {
                     console.log("Updating Hedef:", e.target.value); // Debug log
-                    setDiet({ ...diet, Hedef: e.target.value });
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
+                      Hedef: e.target.value,
+                    }));
                   }}
                 />
               )}
@@ -327,7 +530,10 @@ const DietFormBasicFields = ({
                   placeholder="Diyetisyen notu..."
                   onChange={(e) => {
                     console.log("Updating dietitianNote:", e.target.value); // Debug log
-                    setDiet({ ...diet, dietitianNote: e.target.value });
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
+                      dietitianNote: e.target.value,
+                    }));
                   }}
                 />
               )}
