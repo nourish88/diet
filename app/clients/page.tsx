@@ -14,8 +14,12 @@ interface Client {
   name: string;
   surname: string;
   birthdate: string | Date | null;
-  phoneNumber?: string;
-  gender?: number;
+  phoneNumber?: string | null;
+  gender?: number | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  illness?: string | null;
+  notes?: string | null;
 }
 
 const ITEMS_PER_PAGE = 20;
