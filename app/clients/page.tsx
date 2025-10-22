@@ -13,7 +13,7 @@ interface Client {
   id: number;
   name: string;
   surname: string;
-  birthdate: string;
+  birthdate: string | Date | null;
   phoneNumber?: string;
   gender?: number;
 }
