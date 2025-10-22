@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create presets from patterns (only high-score ones)
-    const createdPresets = [];
+    const createdPresets: any[] = [];
     for (const pattern of detectedPatterns) {
       if (pattern.score < 60) continue; // Only patterns with 60%+ similarity
 
