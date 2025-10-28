@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 // POST - Match user with client
 export async function POST(request: NextRequest) {

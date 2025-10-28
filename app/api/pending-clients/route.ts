@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 // GET - List pending users
 export async function GET(request: NextRequest) {
