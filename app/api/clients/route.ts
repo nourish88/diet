@@ -7,32 +7,39 @@ export async function GET(request: NextRequest) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const take = parseInt(searchParams.get("take") || "20");
     const search = searchParams.get("search") || "";
+    const dietitianId = searchParams.get("dietitianId");
 
-    // Build the where clause for search
-    const whereClause = search
-      ? {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              surname: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              phoneNumber: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-          ],
-        }
-      : {};
+    // Build the where clause for search and dietitian filter
+    const whereClause: any = {};
+
+    // Add dietitian filter if provided (for mobile app)
+    if (dietitianId) {
+      whereClause.dietitianId = parseInt(dietitianId);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      whereClause.OR = [
+        {
+          name: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          surname: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          phoneNumber: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+      ];
+    }
 
     // Get total count for pagination
     const total = await prisma.client.count({

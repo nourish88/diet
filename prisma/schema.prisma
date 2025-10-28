@@ -19,7 +19,7 @@ model Client {
   name        String
   surname     String
   birthdate   DateTime?
-  phoneNumber String?
+  phoneNumber String?      @unique
   notes       String?
   gender      Int?
   illness     String?
@@ -27,6 +27,11 @@ model Client {
   updatedAt   DateTime     @updatedAt
   diets       Diet[]
   bannedFoods BannedFood[]
+  user        User?        @relation(fields: [userId], references: [id])
+  userId      Int?         @unique
+  dietitianId Int?         // NEW: Assign to specific dietitian
+  dietitian   User?        @relation("ClientDietitian", fields: [dietitianId], references: [id])
+  mealPhotos  MealPhoto[]
 }
 
 model Diet {
@@ -43,8 +48,12 @@ model Diet {
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId Int
+  dietitianId Int?    // NEW: Assign to specific dietitian
+  dietitian   User?   @relation("DietDietitian", fields: [dietitianId], references: [id])
 
   oguns Ogun[]
+  comments DietComment[]
+  mealPhotos MealPhoto[]
 
   isBirthdayCelebration        Boolean        @default(false)
 
@@ -62,6 +71,8 @@ model Ogun {
   dietId    Int
   diet      Diet       @relation(fields: [dietId], references: [id])
   items     MenuItem[]
+  comments  DietComment[]
+  mealPhotos MealPhoto[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
@@ -81,6 +92,7 @@ model MenuItem {
 
   ogunId    Int
   ogun      Ogun     @relation(fields: [ogunId], references: [id], onDelete: Cascade)
+  comments  DietComment[]
 }
 
 model Besin {
@@ -226,4 +238,75 @@ model PresetItem {
   miktar    String
   birim     String
   order     Int        @default(0)
+}
+
+// Mobile App Models
+
+model User {
+  id            Int       @id @default(autoincrement())
+  supabaseId    String    @unique
+  email         String    @unique
+  role          String    // "dietitian" or "client"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Reference code for client matching
+  referenceCode String?   @unique  // e.g., "REF-A1B2C3"
+  isApproved    Boolean   @default(false)
+  approvedAt    DateTime?
+  
+  client        Client?
+  comments      DietComment[]
+  notificationPreference NotificationPreference?
+  
+  // Relations for multi-dietitian support
+  clients       Client[] @relation("ClientDietitian")
+  diets         Diet[]   @relation("DietDietitian")
+  
+  @@index([supabaseId])
+  @@index([email])
+}
+
+model DietComment {
+  id          Int      @id @default(autoincrement())
+  content     String
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  dietId      Int
+  diet        Diet     @relation(fields: [dietId], references: [id])
+  ogunId      Int?     // Optional: specific meal
+  ogun        Ogun?    @relation(fields: [ogunId], references: [id])
+  menuItemId  Int?     // Optional: specific item
+  menuItem    MenuItem? @relation(fields: [menuItemId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([dietId, createdAt])
+}
+
+model MealPhoto {
+  id          Int      @id @default(autoincrement())
+  imageData   String   // Base64 encoded image data
+  dietId      Int
+  diet        Diet     @relation(fields: [dietId], references: [id])
+  ogunId      Int      // Which meal
+  ogun        Ogun     @relation(fields: [ogunId], references: [id])
+  clientId    Int
+  client      Client   @relation(fields: [clientId], references: [id])
+  uploadedAt  DateTime @default(now())
+  expiresAt   DateTime // Auto-delete date
+  
+  @@index([dietId, ogunId])
+  @@index([expiresAt])
+}
+
+model NotificationPreference {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id])
+  mealReminders Boolean @default(true)
+  dietUpdates   Boolean @default(true)
+  comments      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

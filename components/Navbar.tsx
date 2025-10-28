@@ -37,6 +37,7 @@ const Navbar = () => {
   const navItems = [
     { href: "/", label: "Ana Sayfa", icon: Home },
     { href: "/clients", label: "Danışanlar", icon: Users },
+    { href: "/pending-clients", label: "Bekleyen Onaylar", icon: Users },
     { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
     { href: "/sablonlar", label: "Şablonlar", icon: FileText },
     { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },

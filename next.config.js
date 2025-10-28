@@ -1,19 +1,16 @@
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
-  experimental: {
-    serverActions: true,
-  },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals = [...config.externals,
-        '@neondatabase/serverless',
-        'ws'
+      config.externals = [
+        ...config.externals,
+        "@neondatabase/serverless",
+        "ws",
       ];
     }
-    
+
     // Add fallback for 'crypto'
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -21,7 +18,7 @@ const nextConfig = {
     };
 
     return config;
-  }
+  },
 };
 
 module.exports = nextConfig;

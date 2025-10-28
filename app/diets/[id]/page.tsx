@@ -116,6 +116,46 @@ export default function DietDetailPage() {
     }
   };
 
+  const handleSendViaWhatsApp = async () => {
+    if (!diet?.client?.id || !dietId) return;
+
+    try {
+      const response = await fetch("/api/whatsapp/send-diet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: diet.client.id,
+          dietId: dietId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Open WhatsApp with the generated URL
+        window.open(data.whatsappURL, "_blank");
+
+        toast({
+          title: "Başarılı",
+          description:
+            "WhatsApp açıldı! Mesajı göndermek için 'Gönder' butonuna basın.",
+        });
+      } else {
+        toast({
+          title: "Hata",
+          description: data.error || "WhatsApp URL oluşturulamadı",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "WhatsApp URL oluşturulamadı",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Tarih Belirtilmemiş";
     try {
@@ -213,6 +253,14 @@ export default function DietDetailPage() {
               variant="outline"
               className="bg-white text-indigo-700 hover:bg-indigo-50"
             />
+            <Button
+              variant="outline"
+              className="bg-white text-green-600 hover:bg-green-50"
+              onClick={handleSendViaWhatsApp}
+              disabled={!diet.client?.phoneNumber}
+            >
+              📱 WhatsApp
+            </Button>
             <Button
               variant="outline"
               className="bg-white text-red-600 hover:bg-red-50"

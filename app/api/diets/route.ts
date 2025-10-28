@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
     const data = await request.json();
     console.log("Received data:", data);
 
+    // Get client to inherit their dietitian (for backward compatibility)
+    const client = await prisma.client.findUnique({
+      where: { id: data.clientId },
+      select: { dietitianId: true },
+    });
+
     // Create diet with proper null checks and defaults
     const diet = await prisma.diet.create({
       data: {
         clientId: data.clientId,
+        dietitianId: client?.dietitianId || null, // Auto-inherit from client
         tarih: data.tarih ? new Date(data.tarih) : null,
         su: data.su || "",
         sonuc: data.sonuc || "",
@@ -65,7 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      diet: diet
+      diet: diet,
     });
   } catch (error) {
     console.error("Error creating diet:", error);
@@ -83,26 +88,46 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
+    const dietitianId = searchParams.get("dietitianId");
 
+    // Build where clause based on filters
+    const where: any = {};
     if (clientId) {
-      const diets = await prisma.diet.findMany({
-        where: { clientId: Number(clientId) },
-        include: {
-          client: true,
-          oguns: {
-            include: {
-              items: true,
+      where.clientId = Number(clientId);
+    }
+    if (dietitianId) {
+      where.dietitianId = Number(dietitianId);
+    }
+
+    // If no filters provided, return error
+    if (!clientId && !dietitianId) {
+      return NextResponse.json(
+        { error: "Client ID or Dietitian ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const diets = await prisma.diet.findMany({
+      where,
+      include: {
+        client: true,
+        oguns: {
+          include: {
+            items: {
+              include: {
+                besin: true,
+                birim: true,
+              },
             },
           },
         },
-      });
-      return NextResponse.json({ diets });
-    }
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-    return NextResponse.json(
-      { error: "Client ID is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ diets });
   } catch (error: any) {
     console.error("Error fetching diets:", error);
     return NextResponse.json(

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import path from "path";
 import fs from "fs";
-
-const prisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,

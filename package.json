@@ -58,6 +58,7 @@
     "react-resizable": "^3.0.5",
     "tailwind-merge": "^3.1.0",
     "twemoji": "^14.0.2",
+    "twilio": "^5.10.3",
     "uuid": "^11.1.0",
     "ws": "^8.13.0",
     "zod": "^3.24.1",
