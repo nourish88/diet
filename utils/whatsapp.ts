@@ -21,12 +21,13 @@ export function getWhatsAppURL(phoneNumber: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 }
 
-export function openWhatsApp(phoneNumber: string, message: string): void {
+export function openWhatsApp(phoneNumber: string, message: string): string {
   const url = getWhatsAppURL(phoneNumber, message);
 
   // For web browsers
   if (typeof window !== "undefined") {
     window.open(url, "_blank");
+    return url;
   }
 
   // For React Native (mobile)
