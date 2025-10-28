@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate reference code for clients
-    let referenceCode = null;
+    let referenceCode: string | null = null;
     if (role === "client") {
       referenceCode = generateReferenceCode();
       while (await prisma.user.findUnique({ where: { referenceCode } })) {

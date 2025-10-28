@@ -1,5 +1,5 @@
 import { Diet as DietType } from "../types/types";
-import { prisma } from "../lib/db";
+import prisma from "../lib/prisma";
 
 export const DietService = {
   // Create a new diet with all related data

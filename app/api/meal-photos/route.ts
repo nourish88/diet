@@ -184,6 +184,7 @@ export async function DELETE(request: NextRequest) {
     // Check if user is authorized to delete
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
+      include: { client: true },
     });
 
     if (!user) {
