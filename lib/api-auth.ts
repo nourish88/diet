@@ -147,9 +147,9 @@ export async function authenticateSupabase(
 }
 
 export function requireAuth(
-  handler: (request: NextRequest, auth: AuthResult) => Promise<Response>
+  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
 ) {
-  return async (request: NextRequest) => {
+  return async (request: NextRequest, context?: any) => {
     const auth = await authenticateRequest(request);
 
     if (!auth.user) {
@@ -159,15 +159,15 @@ export function requireAuth(
       });
     }
 
-    return handler(request, auth);
+    return handler(request, auth, context);
   };
 }
 
 export function requireRole(allowedRoles: ("dietitian" | "client")[]) {
   return function (
-    handler: (request: NextRequest, auth: AuthResult) => Promise<Response>
+    handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
   ) {
-    return async (request: NextRequest) => {
+    return async (request: NextRequest, context?: any) => {
       const auth = await authenticateRequest(request);
 
       if (!auth.user) {
@@ -184,19 +184,19 @@ export function requireRole(allowedRoles: ("dietitian" | "client")[]) {
         });
       }
 
-      return handler(request, auth);
+      return handler(request, auth, context);
     };
   };
 }
 
 export function requireDietitian(
-  handler: (request: NextRequest, auth: AuthResult) => Promise<Response>
+  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
 ) {
   return requireRole(["dietitian"])(handler);
 }
 
 export function requireClient(
-  handler: (request: NextRequest, auth: AuthResult) => Promise<Response>
+  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
 ) {
   return requireRole(["client"])(handler);
 }

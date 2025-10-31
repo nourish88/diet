@@ -7,9 +7,10 @@ export const GET = requireDietitian(
   async (
     request: NextRequest,
     auth: AuthResult,
-    { params }: { params: { id: string } }
+    context: any
   ) => {
     try {
+      const { params } = context;
       const id = parseInt(params.id);
 
       if (isNaN(id)) {
@@ -54,9 +55,10 @@ export const PUT = requireDietitian(
   async (
     request: NextRequest,
     auth: AuthResult,
-    { params }: { params: { id: string } }
+    context: any
   ) => {
     try {
+      const { params } = context;
       const id = parseInt(params.id);
       const data = await request.json();
 
@@ -122,9 +124,10 @@ export const DELETE = requireDietitian(
   async (
     request: NextRequest,
     auth: AuthResult,
-    { params }: { params: { id: string } }
+    context: any
   ) => {
     try {
+      const { params } = context;
       const id = parseInt(params.id);
 
       if (isNaN(id)) {
