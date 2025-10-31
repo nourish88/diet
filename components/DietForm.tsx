@@ -25,6 +25,7 @@ import TemplateService from "@/services/TemplateService";
 import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -35,12 +36,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const [diet, setDiet] = useState<Diet>({
     ...initialDiet,
   });
-  const [clients, setClients] = useState<
-    Array<{ id: number; name: string; surname: string }>
-  >([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(
     initialClientId || null
   );
+  const [selectedClientName, setSelectedClientName] = useState<string>("");
   const [clientData, setClientData] = useState<{
     illness: string | null;
     bannedFoods: any[];
@@ -77,7 +76,23 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/clients/${initialClientId}`);
+
+        // Get authentication token
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+          throw new Error("Authentication required");
+        }
+
+        const response = await fetch(`/api/clients/${initialClientId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
         const data = await response.json();
 
         if (!response.ok) {
@@ -85,23 +100,8 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         }
 
         if (data.client) {
-          setClients((prevClients) => {
-            const clientExists = prevClients.some(
-              (c) => c.id === data.client.id
-            );
-            if (!clientExists) {
-              return [
-                ...prevClients,
-                {
-                  id: data.client.id,
-                  name: data.client.name,
-                  surname: data.client.surname,
-                },
-              ];
-            }
-            return prevClients;
-          });
           setSelectedClientId(data.client.id);
+          setSelectedClientName(`${data.client.name} ${data.client.surname}`);
 
           // Set client data here instead of in a separate effect
           setClientData({
@@ -130,46 +130,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
     fetchInitialClient();
   }, [initialClientId]);
-
-  // Existing effect for fetching all clients
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/clients");
-        if (!response.ok) {
-          throw new Error("Failed to fetch clients");
-        }
-        const data = await response.json();
-
-        // Handle new pagination format
-        const clientsList = data.clients || data;
-        if (Array.isArray(clientsList)) {
-          setClients((currentClients) => {
-            // Merge with existing clients, avoiding duplicates
-            const newClients = [...currentClients];
-            clientsList.forEach((client) => {
-              if (!newClients.some((c) => c.id === client.id)) {
-                newClients.push(client);
-              }
-            });
-            return newClients;
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching clients:", error);
-        toast({
-          title: "Hata",
-          description: "Danışan listesi yüklenirken bir hata oluştu.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchClients();
-  }, [toast]);
 
   // Load templates on mount
   useEffect(() => {
@@ -250,39 +210,77 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   >(undefined);
 
   useEffect(() => {
-    if (selectedClientId) {
-      // Validate client ID first
-      if (isNaN(selectedClientId)) {
-        toast({
-          title: "Hata",
-          description: "Geçersiz danışan ID'si",
-          variant: "destructive",
-        });
-        setSelectedClientId(null);
-        return;
+    const fetchClientData = async () => {
+      if (selectedClientId) {
+        // Validate client ID first
+        if (isNaN(selectedClientId)) {
+          toast({
+            title: "Hata",
+            description: "Geçersiz danışan ID'si",
+            variant: "destructive",
+          });
+          setSelectedClientId(null);
+          return;
+        }
+
+        try {
+          // Fetch client details
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          if (!token) return;
+
+          const response = await fetch(`/api/clients/${selectedClientId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) return;
+
+          const data = await response.json();
+          const client = data.client;
+
+          if (!client) return;
+
+          // Set client name for display
+          setSelectedClientName(`${client.name} ${client.surname}`);
+
+          // Set client data
+          setClientData({
+            illness: client.illness,
+            bannedFoods: client.bannedFoods || [],
+          });
+
+          const phone = client.phoneNumber
+            ? "+90" + client.phoneNumber
+            : undefined;
+          setClientPhoneNumber(phone);
+
+          // Update diet with client name
+          setDiet((prev) => ({
+            ...prev,
+            AdSoyad: `${client.name} ${client.surname}`,
+          }));
+
+          // Load latest diet for this client
+          loadLatestDiet();
+        } catch (error) {
+          console.error("Error fetching client data:", error);
+        }
+      } else {
+        console.log("selected client id is null");
+        setClientPhoneNumber(undefined);
+        setClientData({ illness: null, bannedFoods: [] });
+        setSelectedClientName("");
       }
+    };
 
-      const selectedClient = clients.find((c) => c.id === selectedClientId);
-
-      if (!selectedClient) {
-        // Don't show toast here as it might be still loading
-        return;
-      }
-
-      // Only proceed with setting diet and fetching data if client is valid
-      setDiet((prev) => ({
-        ...prev,
-        AdSoyad: getClientFullName(selectedClientId),
-      }));
-
-      // Load latest diet for this client
-      loadLatestDiet();
-    } else {
-      console.log("selected client id is null");
-      setClientPhoneNumber(undefined);
-      setClientData({ illness: null, bannedFoods: [] });
-    }
-  }, [selectedClientId, clients]);
+    fetchClientData();
+  }, [selectedClientId]);
 
   // Function to load the latest diet for a selected client
   const loadLatestDiet = async (clientId?: number) => {
@@ -621,13 +619,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Create a function to get client name
   const getClientFullName = (clientId: number | null) => {
     if (!clientId) return "İsimsiz Danışan";
-
-    const client = clients.find((c) => c.id === clientId);
-    if (!client) return "İsimsiz Danışan";
-
-    return (
-      `${client.name || ""} ${client.surname || ""}`.trim() || "İsimsiz Danışan"
-    );
+    return selectedClientName || "İsimsiz Danışan";
   };
 
   // Add this helper function to check if form should be disabled
@@ -645,8 +637,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
               <ClientSelector
                 onSelectClient={(clientId) => setSelectedClientId(clientId)}
                 selectedClientId={selectedClientId}
-                isLoading={isLoading}
-                clients={clients}
+                selectedClientName={selectedClientName}
               />
             </div>
 

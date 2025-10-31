@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PresetService from "@/services/PresetService";
+import { apiClient } from "@/lib/api-client";
 
 interface BesinStat {
   id: number;
@@ -48,12 +49,12 @@ export default function IstatistiklerPage() {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/analytics/stats");
-      if (!response.ok) throw new Error("Failed to fetch analytics");
-      const data = await response.json();
+      console.log("🔄 IstatistiklerPage: Loading analytics...");
+      const data = await apiClient.get("/api/analytics/stats");
+      console.log("📊 IstatistiklerPage: Analytics loaded:", data);
       setAnalyticsData(data);
     } catch (error) {
-      console.error("Error loading analytics:", error);
+      console.error("❌ IstatistiklerPage: Error loading analytics:", error);
       toast({
         title: "Hata",
         description: "İstatistikler yüklenirken bir hata oluştu",

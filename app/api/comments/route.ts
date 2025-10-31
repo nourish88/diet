@@ -1,75 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { requireAuth, addCorsHeaders } from "@/lib/api-auth";
+import { z } from "zod";
 
-export async function POST(request: NextRequest) {
+// Validation schemas
+const createCommentSchema = z.object({
+  content: z.string().min(1, "Yorum içeriği gerekli"),
+  dietId: z.number().int().positive("Geçerli diyet ID gerekli"),
+  ogunId: z.number().int().positive().optional(),
+  menuItemId: z.number().int().positive().optional(),
+});
+
+const getCommentsSchema = z.object({
+  dietId: z.string().transform(Number),
+  ogunId: z.string().transform(Number).optional(),
+  menuItemId: z.string().transform(Number).optional(),
+});
+
+// POST /api/comments - Create a new comment
+export const POST = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { content, userId, dietId, ogunId, menuItemId } =
-      await request.json();
+    const body = await request.json();
+    const validatedData = createCommentSchema.parse(body);
 
-    if (!content || !userId || !dietId) {
-      return NextResponse.json(
-        { error: "Missing required fields: content, userId, dietId" },
-        { status: 400 }
-      );
-    }
-
-    // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Verify diet exists
-    const diet = await prisma.diet.findUnique({
-      where: { id: dietId },
+    // Verify user owns the diet or is the client
+    const diet = await prisma.diet.findFirst({
+      where: {
+        id: validatedData.dietId,
+        OR: [
+          { dietitianId: auth.user!.id }, // Dietitian owns the diet
+          { client: { userId: auth.user!.id } }, // Client owns the diet
+        ],
+      },
+      include: {
+        client: true,
+      },
     });
 
     if (!diet) {
-      return NextResponse.json({ error: "Diet not found" }, { status: 404 });
-    }
-
-    // If ogunId is provided, verify it exists and belongs to the diet
-    if (ogunId) {
-      const ogun = await prisma.ogun.findFirst({
-        where: { id: ogunId, dietId },
-      });
-
-      if (!ogun) {
-        return NextResponse.json(
-          { error: "Meal not found or doesn't belong to this diet" },
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
           { status: 404 }
-        );
-      }
-    }
-
-    // If menuItemId is provided, verify it exists and belongs to the diet
-    if (menuItemId) {
-      const menuItem = await prisma.menuItem.findFirst({
-        where: {
-          id: menuItemId,
-          ogun: { dietId },
-        },
-      });
-
-      if (!menuItem) {
-        return NextResponse.json(
-          { error: "Menu item not found or doesn't belong to this diet" },
-          { status: 404 }
-        );
-      }
+        )
+      );
     }
 
     // Create comment
     const comment = await prisma.dietComment.create({
       data: {
-        content,
-        userId,
-        dietId,
-        ogunId: ogunId || null,
-        menuItemId: menuItemId || null,
+        content: validatedData.content,
+        userId: auth.user!.id,
+        dietId: validatedData.dietId,
+        ogunId: validatedData.ogunId,
+        menuItemId: validatedData.menuItemId,
       },
       include: {
         user: {
@@ -98,49 +82,79 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      comment,
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        comment,
+        message: "Yorum başarıyla eklendi",
+      })
+    );
   } catch (error: any) {
     console.error("Error creating comment:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to create comment",
-      },
-      { status: 500 }
-    );
-  }
-}
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const dietId = searchParams.get("dietId");
-    const ogunId = searchParams.get("ogunId");
-    const menuItemId = searchParams.get("menuItemId");
-
-    if (!dietId) {
-      return NextResponse.json(
-        { error: "dietId is required" },
-        { status: 400 }
+    if (error instanceof z.ZodError) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Geçersiz veri", details: error.errors },
+          { status: 400 }
+        )
       );
     }
 
-    // Build where clause
-    const whereClause: any = { dietId: parseInt(dietId) };
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Yorum oluşturulurken bir hata oluştu" },
+        { status: 500 }
+      )
+    );
+  }
+});
 
-    if (ogunId) {
-      whereClause.ogunId = parseInt(ogunId);
+// GET /api/comments - Get comments for a diet
+export const GET = requireAuth(async (request: NextRequest, auth) => {
+  try {
+    const { searchParams } = new URL(request.url);
+    const validatedParams = getCommentsSchema.parse({
+      dietId: searchParams.get("dietId"),
+      ogunId: searchParams.get("ogunId"),
+      menuItemId: searchParams.get("menuItemId"),
+    });
+
+    // Verify user has access to the diet
+    const diet = await prisma.diet.findFirst({
+      where: {
+        id: validatedParams.dietId,
+        OR: [
+          { dietitianId: auth.user!.id }, // Dietitian owns the diet
+          { client: { userId: auth.user!.id } }, // Client owns the diet
+        ],
+      },
+    });
+
+    if (!diet) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
+          { status: 404 }
+        )
+      );
     }
 
-    if (menuItemId) {
-      whereClause.menuItemId = parseInt(menuItemId);
+    // Build where clause for comments
+    const where: any = {
+      dietId: validatedParams.dietId,
+    };
+
+    if (validatedParams.ogunId) {
+      where.ogunId = validatedParams.ogunId;
     }
 
+    if (validatedParams.menuItemId) {
+      where.menuItemId = validatedParams.menuItemId;
+    }
+
+    // Get comments
     const comments = await prisma.dietComment.findMany({
-      where: whereClause,
+      where,
       include: {
         user: {
           select: {
@@ -167,83 +181,86 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        createdAt: "asc",
+        createdAt: "desc",
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      comments,
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        comments,
+        total: comments.length,
+      })
+    );
   } catch (error: any) {
     console.error("Error fetching comments:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch comments",
-      },
-      { status: 500 }
+
+    if (error instanceof z.ZodError) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Geçersiz parametreler", details: error.errors },
+          { status: 400 }
+        )
+      );
+    }
+
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Yorumlar yüklenirken bir hata oluştu" },
+        { status: 500 }
+      )
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest) {
+// DELETE /api/comments - Delete a comment
+export const DELETE = requireAuth(async (request: NextRequest, auth) => {
   try {
     const { searchParams } = new URL(request.url);
     const commentId = searchParams.get("id");
-    const userId = searchParams.get("userId");
 
-    if (!commentId || !userId) {
-      return NextResponse.json(
-        { error: "Missing required parameters: id, userId" },
-        { status: 400 }
+    if (!commentId) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Yorum ID gerekli" }, { status: 400 })
       );
     }
 
-    // Find the comment
-    const comment = await prisma.dietComment.findUnique({
-      where: { id: parseInt(commentId) },
+    // Find comment and verify ownership
+    const comment = await prisma.dietComment.findFirst({
+      where: {
+        id: parseInt(commentId),
+        userId: auth.user!.id, // Only the author can delete
+      },
     });
 
     if (!comment) {
-      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
-    }
-
-    // Check if user owns the comment or is a dietitian
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only allow deletion if user owns the comment or is a dietitian
-    if (comment.userId !== parseInt(userId) && user.role !== "dietitian") {
-      return NextResponse.json(
-        { error: "Unauthorized to delete this comment" },
-        { status: 403 }
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Yorum bulunamadı veya silme yetkiniz yok" },
+          { status: 404 }
+        )
       );
     }
 
-    // Delete the comment
+    // Delete comment
     await prisma.dietComment.delete({
-      where: { id: parseInt(commentId) },
+      where: {
+        id: comment.id,
+      },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Comment deleted successfully",
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        message: "Yorum başarıyla silindi",
+      })
+    );
   } catch (error: any) {
     console.error("Error deleting comment:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete comment",
-      },
-      { status: 500 }
+
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Yorum silinirken bir hata oluştu" },
+        { status: 500 }
+      )
     );
   }
-}
-
+});

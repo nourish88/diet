@@ -8,6 +8,7 @@ import DatePicker from "./CustomUI/Datepicker";
 import { useToast } from "./ui/use-toast";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { apiClient } from "@/lib/api-client";
 
 interface ImportantDate {
   id: number;
@@ -36,41 +37,38 @@ export default function ImportantDatesManager() {
 
   const fetchImportantDates = async () => {
     try {
-      const response = await fetch("/api/important-dates");
-      if (!response.ok) throw new Error("Failed to fetch important dates");
-      const data = await response.json();
+      console.log("🔄 ImportantDatesManager: Fetching important dates...");
+      const data = await apiClient.get("/api/important-dates");
+      console.log("📅 ImportantDatesManager: Received data:", data);
       setImportantDates(data);
     } catch (error) {
+      console.error("❌ ImportantDatesManager: Error fetching important dates:", error);
       toast({
-        title: "Error",
-        description: "Failed to fetch important dates",
+        title: "Hata",
+        description: "Önemli tarihler yüklenirken bir hata oluştu",
         variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this important date?"))
+    if (!confirm("Bu önemli tarihi silmek istediğinize emin misiniz?"))
       return;
 
     setIsDeleting(id);
     try {
-      const response = await fetch(`/api/important-dates/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Failed to delete important date");
+      await apiClient.delete(`/api/important-dates/${id}`);
 
       toast({
-        title: "Success",
-        description: "Important date deleted successfully",
+        title: "Başarılı",
+        description: "Önemli tarih başarıyla silindi",
       });
 
       fetchImportantDates();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete important date",
+        title: "Hata",
+        description: "Önemli tarih silinirken bir hata oluştu",
         variant: "destructive",
       });
     } finally {
@@ -106,23 +104,10 @@ export default function ImportantDatesManager() {
 
     setIsLoading(true);
     try {
-      const url = editingDate
-        ? `/api/important-dates/${editingDate.id}`
-        : "/api/important-dates";
-      const method = editingDate ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newDate),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.message ||
-            `Failed to ${editingDate ? "update" : "create"} important date`
-        );
+      if (editingDate) {
+        await apiClient.put(`/api/important-dates/${editingDate.id}`, newDate);
+      } else {
+        await apiClient.post("/api/important-dates", newDate);
       }
 
       setNewDate({
@@ -134,20 +119,20 @@ export default function ImportantDatesManager() {
       setEditingDate(null);
 
       toast({
-        title: "Success",
-        description: `Important date ${
-          editingDate ? "updated" : "created"
-        } successfully`,
+        title: "Başarılı",
+        description: `Önemli tarih ${
+          editingDate ? "güncellendi" : "oluşturuldu"
+        }`,
       });
 
       fetchImportantDates();
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Hata",
         description:
           error instanceof Error
             ? error.message
-            : `Failed to ${editingDate ? "update" : "create"} important date`,
+            : `Önemli tarih ${editingDate ? "güncellenirken" : "oluşturulurken"} bir hata oluştu`,
         variant: "destructive",
       });
     } finally {

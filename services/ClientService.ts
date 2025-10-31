@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { Client } from "@prisma/client";
+import { apiClient } from "@/lib/api-client";
 
 const ClientService = {
   // Create a new client
@@ -195,19 +196,7 @@ export const fetchClients = async (params?: {
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiClient.get(url);
 
     if (!data.clients || !Array.isArray(data.clients)) {
       throw new Error("Invalid data format received from server");

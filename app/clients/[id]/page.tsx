@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+import { supabase } from "@/lib/supabase";
 
 // Update the Client interface to match the actual data structure
 interface Client {
@@ -73,8 +74,29 @@ export default function ClientDetailPage() {
   const fetchClient = async () => {
     setIsLoading(true);
     try {
+      // Get authentication token from Supabase
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Lütfen giriş yapın",
+          variant: "destructive",
+        });
+        router.push("/login");
+        return;
+      }
+
       // Make sure the API endpoint includes diets in the response
-      const response = await fetch(`/api/clients/${clientId}`);
+      const response = await fetch(`/api/clients/${clientId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
       const data = await response.json();
       console.log(data, "data");
       if (!data.client) {
@@ -94,7 +116,12 @@ export default function ClientDetailPage() {
       if (!data.client.diets || !Array.isArray(data.client.diets)) {
         // Fetch diets for this client
         try {
-          const dietsResponse = await fetch(`/api/clients/${clientId}/diets`);
+          const dietsResponse = await fetch(`/api/clients/${clientId}/diets`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
           const dietsData = await dietsResponse.json();
 
           // Combine the client data with the diets data

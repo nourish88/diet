@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/lib/supabase";
 
 interface ImportantDate {
   id: number;
@@ -129,7 +130,18 @@ const DietFormBasicFields = ({
       const dietDate = new Date(diet.Tarih);
 
       try {
-        const response = await fetch("/api/important-dates");
+        // Get authentication token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        if (!token) return;
+        
+        const response = await fetch("/api/important-dates", {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
         if (!response.ok) throw new Error("Failed to fetch important dates");
 
         const importantDates: ImportantDate[] = await response.json();
@@ -145,32 +157,48 @@ const DietFormBasicFields = ({
     };
 
     // Check for birthday
-    if (selectedClientId) {
-      fetch(`/api/clients/${selectedClientId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          // Here, data is the entire response object with the client property
-          console.log(data, "data");
-
-          // Access the client object inside the response
-          const client = data.client;
-          console.log(client, "client");
-
-          // Now you can correctly access the birthdate
-          console.log(client.birthdate, "client.birthdate");
-          console.log(diet.Tarih, "diet.Tarih");
-
-          const birthdate = new Date(client.birthdate);
-          console.log(birthdate, "birthdate");
-          const dietDate = diet.Tarih ? new Date(diet.Tarih) : null;
-
-          setShowBirthdayCelebration(
-            isWithinBirthdayRange(birthdate, dietDate)
-          );
+    const checkBirthday = async () => {
+      if (!selectedClientId) return;
+      
+      try {
+        // Get authentication token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        if (!token) return;
+        
+        const response = await fetch(`/api/clients/${selectedClientId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
-    }
+        const data = await response.json();
+        
+        // Here, data is the entire response object with the client property
+        console.log(data, "data");
 
-    // Check for important dates
+        // Access the client object inside the response
+        const client = data.client;
+        console.log(client, "client");
+
+        // Now you can correctly access the birthdate
+        console.log(client.birthdate, "client.birthdate");
+        console.log(diet.Tarih, "diet.Tarih");
+
+        const birthdate = new Date(client.birthdate);
+        console.log(birthdate, "birthdate");
+        const dietDate = diet.Tarih ? new Date(diet.Tarih) : null;
+
+        setShowBirthdayCelebration(
+          isWithinBirthdayRange(birthdate, dietDate)
+        );
+      } catch (error) {
+        console.error("Error checking birthday:", error);
+      }
+    };
+
+    checkBirthday();
     checkImportantDates();
   }, [selectedClientId, diet.Tarih]);
 

@@ -32,6 +32,7 @@ model Client {
   dietitianId Int?         // NEW: Assign to specific dietitian
   dietitian   User?        @relation("ClientDietitian", fields: [dietitianId], references: [id])
   mealPhotos  MealPhoto[]
+  comments    Comment[]
 }
 
 model Diet {
@@ -147,6 +148,8 @@ model ImportantDate {
   endDate     DateTime
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  dietitianId Int?      // NEW: Assign to specific dietitian
+  dietitian   User?     @relation("ImportantDateDietitian", fields: [dietitianId], references: [id])
   
   // Add the opposite relation field
   diets       Diet[]
@@ -189,6 +192,8 @@ model DietTemplate {
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  dietitianId Int?           // NEW: Assign to specific dietitian
+  dietitian   User?          @relation("TemplateDietitian", fields: [dietitianId], references: [id])
   oguns       TemplateOgun[]
 }
 
@@ -224,6 +229,8 @@ model MealPreset {
   lastUsed        DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  dietitianId     Int?         // NEW: Assign to specific dietitian
+  dietitian       User?        @relation("PresetDietitian", fields: [dietitianId], references: [id])
   items           PresetItem[]
   
   @@index([mealType, isActive])
@@ -262,6 +269,12 @@ model User {
   // Relations for multi-dietitian support
   clients       Client[] @relation("ClientDietitian")
   diets         Diet[]   @relation("DietDietitian")
+  
+  // NEW: Relations for dietitian-owned resources
+  templates     DietTemplate[] @relation("TemplateDietitian")
+  importantDates ImportantDate[] @relation("ImportantDateDietitian")
+  presets       MealPreset[] @relation("PresetDietitian")
+  apiKeys       ApiKey[]
   
   @@index([supabaseId])
   @@index([email])
@@ -309,4 +322,25 @@ model NotificationPreference {
   comments      Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// API Key Management for External Applications
+model ApiKey {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique // Hashed API key
+  name        String   // Human-readable name for the key
+  appName     String   // "mobile_app", "website", "integration", etc.
+  permissions Json     // Allowed endpoints and operations
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  dietitianId Int
+  dietitian   User     @relation(fields: [dietitianId], references: [id], onDelete: Cascade)
+  
+  @@index([key])
+  @@index([dietitianId])
+  @@index([isActive, expiresAt])
 }

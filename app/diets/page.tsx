@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { apiClient } from "@/lib/api-client";
 
 import {
   Loader2,
@@ -31,65 +32,122 @@ interface Diet {
   };
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function DietsPage() {
   const [diets, setDiets] = useState<Diet[]>([]);
-  const [filteredDiets, setFilteredDiets] = useState<Diet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { toast, toasts, dismiss } = useToast();
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const { toast } = useToast();
   const router = useRouter();
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // Fetch diets with pagination
+  const loadDiets = useCallback(
+    async (pageNum: number, search: string, append: boolean = false) => {
+      try {
+        if (append) {
+          setIsLoadingMore(true);
+        } else {
+          setIsLoading(true);
+        }
+
+        const skip = pageNum * ITEMS_PER_PAGE;
+        const queryParams = new URLSearchParams();
+        queryParams.append("skip", skip.toString());
+        queryParams.append("take", ITEMS_PER_PAGE.toString());
+        if (search) {
+          queryParams.append("search", search);
+        }
+
+        const url = `/api/diets?${queryParams.toString()}`;
+        console.log("🔄 DietsPage: Fetching diets from:", url);
+        const data = await apiClient.get(url);
+        console.log("📋 DietsPage: Received data:", data);
+
+        if (append) {
+          setDiets((prev) => [...prev, ...data.diets]);
+        } else {
+          setDiets(data.diets);
+        }
+
+        setHasMore(data.hasMore);
+        setTotal(data.total);
+      } catch (error) {
+        console.error("❌ DietsPage: Error fetching diets:", error);
+        toast({
+          title: "Hata",
+          description: "Beslenme programları yüklenirken bir hata oluştu.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [toast]
+  );
+
+  // Initial load
   useEffect(() => {
-    fetchDiets();
+    loadDiets(0, searchTerm, false);
+    setPage(0);
   }, []);
 
+  // Search effect - reset and load from beginning
   useEffect(() => {
-    // Filter diets when the search term or diets list changes
-    if (searchTerm.trim() === "") {
-      setFilteredDiets(diets);
-    } else {
-      const lowerSearch = searchTerm.toLowerCase();
-      const filtered = diets.filter((diet) => {
-        const clientFullName =
-          `${diet.client.name} ${diet.client.surname}`.toLowerCase();
-        const dietId = diet.id.toString();
+    const timer = setTimeout(() => {
+      setPage(0);
+      loadDiets(0, searchTerm, false);
+    }, 300); // Debounce search
 
-        return (
-          clientFullName.includes(lowerSearch) ||
-          dietId.includes(lowerSearch) ||
-          (diet.tarih &&
-            new Date(diet.tarih)
-              .toLocaleDateString("tr-TR")
-              .includes(lowerSearch))
-        );
-      });
+    return () => clearTimeout(timer);
+  }, [searchTerm, loadDiets]);
 
-      setFilteredDiets(filtered);
+  // Load more when scrolling
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && !isLoading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadDiets(nextPage, searchTerm, true);
     }
-  }, [searchTerm, diets]);
+  }, [page, searchTerm, hasMore, isLoading, isLoadingMore, loadDiets]);
 
-  const fetchDiets = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/diets/all");
-      if (!response.ok) {
-        throw new Error("Failed to fetch diets");
+  // Setup intersection observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !isLoading &&
+          !isLoadingMore
+        ) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
-      const data = await response.json();
-      const dietsData = data.diets || [];
-      setDiets(dietsData);
-      setFilteredDiets(dietsData);
-    } catch (error) {
-      console.error("Error fetching diets:", error);
-      toast({
-        title: "Hata",
-        description: "Beslenme programları yüklenirken bir hata oluştu.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Tarih Belirtilmemiş";
@@ -144,7 +202,7 @@ export default function DietsPage() {
         </div>
         {searchTerm && (
           <p className="text-xs text-gray-500 mt-1">
-            "{searchTerm}" için {filteredDiets.length} sonuç bulundu
+            "{searchTerm}" için {total} sonuç bulundu
           </p>
         )}
       </div>
@@ -156,7 +214,7 @@ export default function DietsPage() {
             Beslenme programları yükleniyor...
           </span>
         </div>
-      ) : filteredDiets.length === 0 ? (
+      ) : diets.length === 0 ? (
         searchTerm ? (
           <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
             <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -201,8 +259,8 @@ export default function DietsPage() {
             </h2>
             <p className="text-sm text-blue-100 mt-1">
               {searchTerm
-                ? `"${searchTerm}" için ${filteredDiets.length} sonuç`
-                : `Toplam ${filteredDiets.length} program`}
+                ? `"${searchTerm}" için ${total} sonuç (${diets.length} yüklendi)`
+                : `Toplam ${total} program (${diets.length} yüklendi)`}
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -227,7 +285,7 @@ export default function DietsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredDiets.map((diet) => (
+                {diets.map((diet) => (
                   <tr
                     key={diet.id}
                     className="hover:bg-gray-50 transition-colors"
@@ -274,6 +332,28 @@ export default function DietsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-10" />
+
+          {/* Loading more indicator */}
+          {isLoadingMore && (
+            <div className="flex justify-center items-center py-4 border-t">
+              <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+              <span className="ml-2 text-gray-600">
+                Daha fazla yükleniyor...
+              </span>
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {!hasMore && diets.length > 0 && (
+            <div className="text-center py-4 border-t bg-gray-50">
+              <p className="text-sm text-gray-500">
+                Tüm beslenme programları yüklendi ({total} toplam)
+              </p>
+            </div>
+          )}
         </div>
       )}
       <Toaster />

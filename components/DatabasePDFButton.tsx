@@ -82,11 +82,16 @@ const DatabasePDFButton = ({
 
   const formatDateTR = (dateString: string | null | undefined) => {
     if (!dateString) return "Tarih Belirtilmemiş";
+    console.log("formatDateTR received:", dateString, typeof dateString);
     try {
       const date = new Date(dateString);
+      console.log("Parsed date:", date, "isValid:", !isNaN(date.getTime()));
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date");
+      }
       return format(date, "d MMMM yyyy", { locale: tr });
     } catch (error) {
-      console.error("Date parsing error:", error);
+      console.error("Date parsing error:", error, "Input:", dateString);
       return "Geçersiz Tarih";
     }
   };

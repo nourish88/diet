@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiClient } from "@/lib/api-client";
 
 interface ClientData {
   id?: number;
@@ -14,28 +15,21 @@ const useClientActions = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getClient = async (id: number) => {
-    const response = await fetch(`/api/clients/${id}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch client');
-    }
-    const data = await response.json();
+    const data = await apiClient.get(`/api/clients/${id}`);
     return data.client;
   };
 
-  const getClients = async () => {
+  const getClients = async (search?: string, take: number = 20) => {
     setIsLoading(true);
     try {
       console.log("Fetching clients from API...");
-      const response = await fetch("/api/clients");
-
-      if (!response.ok) {
-        throw new Error(`Failed to get clients: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const queryParams = new URLSearchParams();
+      if (search) queryParams.append("search", search);
+      queryParams.append("take", take.toString());
+      
+      const url = `/api/clients?${queryParams.toString()}`;
+      const data = await apiClient.get(url);
       console.log("Raw API response:", data); // Debug the entire response
-
-      // Since the API returns the array directly, return it
       return data;
     } catch (err: any) {
       console.error("Error getting clients:", err);
@@ -48,23 +42,10 @@ const useClientActions = () => {
 
   const updateClient = async (clientId: number, data: any) => {
     try {
-      const response = await fetch(`/api/clients/${clientId}`, {
-        method: 'PUT', // or 'PATCH' for partial updates
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update client');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.put(`/api/clients/${clientId}`, data);
       return result.client;
     } catch (error) {
-      console.error('Error updating client:', error);
+      console.error("Error updating client:", error);
       throw error;
     }
   };
@@ -74,15 +55,7 @@ const useClientActions = () => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/clients/${clientId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete client");
-      }
-
+      await apiClient.delete(`/api/clients/${clientId}`);
       return true;
     } catch (err: any) {
       console.error("Error deleting client:", err);

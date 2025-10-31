@@ -1,63 +1,85 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { requireAuth, addCorsHeaders } from "@/lib/api-auth";
+import { z } from "zod";
 
-export async function POST(request: NextRequest) {
+// Validation schemas
+const createMealPhotoSchema = z.object({
+  imageData: z.string().min(1, "Fotoğraf verisi gerekli"),
+  dietId: z.number().int().positive("Geçerli diyet ID gerekli"),
+  ogunId: z.number().int().positive("Geçerli öğün ID gerekli"),
+  clientId: z.number().int().positive("Geçerli danışan ID gerekli"),
+});
+
+const getMealPhotosSchema = z.object({
+  dietId: z.string().transform(Number),
+  ogunId: z.string().transform(Number).optional(),
+  clientId: z.string().transform(Number).optional(),
+});
+
+// POST /api/meal-photos - Upload a meal photo
+export const POST = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { imageData, dietId, ogunId, clientId } = await request.json();
+    const body = await request.json();
+    const validatedData = createMealPhotoSchema.parse(body);
 
-    if (!imageData || !dietId || !ogunId || !clientId) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: imageData, dietId, ogunId, clientId",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Verify diet exists
-    const diet = await prisma.diet.findUnique({
-      where: { id: dietId },
+    // Verify user has access to the diet
+    const diet = await prisma.diet.findFirst({
+      where: {
+        id: validatedData.dietId,
+        OR: [
+          { dietitianId: auth.user!.id }, // Dietitian owns the diet
+          { client: { userId: auth.user!.id } }, // Client owns the diet
+        ],
+      },
+      include: {
+        client: true,
+      },
     });
 
     if (!diet) {
-      return NextResponse.json({ error: "Diet not found" }, { status: 404 });
-    }
-
-    // Verify ogun exists and belongs to the diet
-    const ogun = await prisma.ogun.findFirst({
-      where: { id: ogunId, dietId },
-    });
-
-    if (!ogun) {
-      return NextResponse.json(
-        { error: "Meal not found or doesn't belong to this diet" },
-        { status: 404 }
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
+          { status: 404 }
+        )
       );
     }
 
-    // Verify client exists
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
+    // Verify ogun exists in the diet
+    const ogun = await prisma.ogun.findFirst({
+      where: {
+        id: validatedData.ogunId,
+        dietId: validatedData.dietId,
+      },
     });
 
-    if (!client) {
-      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if (!ogun) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Öğün bulunamadı" }, { status: 404 })
+      );
     }
 
-    // Set expiration date to 30 days from now
+    // Set expiration date (2 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 2);
 
-    // Create meal photo record
+    // Create meal photo
     const mealPhoto = await prisma.mealPhoto.create({
       data: {
-        imageData,
-        dietId,
-        ogunId,
-        clientId,
+        imageData: validatedData.imageData,
+        dietId: validatedData.dietId,
+        ogunId: validatedData.ogunId,
+        clientId: validatedData.clientId,
         expiresAt,
       },
       include: {
+        diet: {
+          select: {
+            id: true,
+            tarih: true,
+          },
+        },
         ogun: {
           select: {
             id: true,
@@ -74,50 +96,89 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      mealPhoto,
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        mealPhoto,
+        message: "Fotoğraf başarıyla yüklendi",
+      })
+    );
   } catch (error: any) {
     console.error("Error creating meal photo:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to create meal photo",
-      },
-      { status: 500 }
-    );
-  }
-}
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const dietId = searchParams.get("dietId");
-    const ogunId = searchParams.get("ogunId");
-    const clientId = searchParams.get("clientId");
-
-    if (!dietId) {
-      return NextResponse.json(
-        { error: "dietId is required" },
-        { status: 400 }
+    if (error instanceof z.ZodError) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Geçersiz veri", details: error.errors },
+          { status: 400 }
+        )
       );
     }
 
-    // Build where clause
-    const whereClause: any = { dietId: parseInt(dietId) };
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Fotoğraf yüklenirken bir hata oluştu" },
+        { status: 500 }
+      )
+    );
+  }
+});
 
-    if (ogunId) {
-      whereClause.ogunId = parseInt(ogunId);
+// GET /api/meal-photos - Get meal photos
+export const GET = requireAuth(async (request: NextRequest, auth) => {
+  try {
+    const { searchParams } = new URL(request.url);
+    const validatedParams = getMealPhotosSchema.parse({
+      dietId: searchParams.get("dietId"),
+      ogunId: searchParams.get("ogunId"),
+      clientId: searchParams.get("clientId"),
+    });
+
+    // Verify user has access to the diet
+    const diet = await prisma.diet.findFirst({
+      where: {
+        id: validatedParams.dietId,
+        OR: [
+          { dietitianId: auth.user!.id }, // Dietitian owns the diet
+          { client: { userId: auth.user!.id } }, // Client owns the diet
+        ],
+      },
+    });
+
+    if (!diet) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
+          { status: 404 }
+        )
+      );
     }
 
-    if (clientId) {
-      whereClause.clientId = parseInt(clientId);
+    // Build where clause for photos
+    const where: any = {
+      dietId: validatedParams.dietId,
+      expiresAt: {
+        gt: new Date(), // Only non-expired photos
+      },
+    };
+
+    if (validatedParams.ogunId) {
+      where.ogunId = validatedParams.ogunId;
     }
 
+    if (validatedParams.clientId) {
+      where.clientId = validatedParams.clientId;
+    }
+
+    // Get meal photos
     const mealPhotos = await prisma.mealPhoto.findMany({
-      where: whereClause,
+      where,
       include: {
+        diet: {
+          select: {
+            id: true,
+            tarih: true,
+          },
+        },
         ogun: {
           select: {
             id: true,
@@ -137,94 +198,85 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      mealPhotos,
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        mealPhotos,
+        total: mealPhotos.length,
+      })
+    );
   } catch (error: any) {
     console.error("Error fetching meal photos:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch meal photos",
-      },
-      { status: 500 }
+
+    if (error instanceof z.ZodError) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Geçersiz parametreler", details: error.errors },
+          { status: 400 }
+        )
+      );
+    }
+
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Fotoğraflar yüklenirken bir hata oluştu" },
+        { status: 500 }
+      )
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest) {
+// DELETE /api/meal-photos - Delete a meal photo
+export const DELETE = requireAuth(async (request: NextRequest, auth) => {
   try {
     const { searchParams } = new URL(request.url);
     const photoId = searchParams.get("id");
-    const userId = searchParams.get("userId");
 
-    if (!photoId || !userId) {
-      return NextResponse.json(
-        { error: "Missing required parameters: id, userId" },
-        { status: 400 }
+    if (!photoId) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Fotoğraf ID gerekli" }, { status: 400 })
       );
     }
 
-    // Find the meal photo
-    const mealPhoto = await prisma.mealPhoto.findUnique({
-      where: { id: parseInt(photoId) },
-      include: {
-        client: true,
+    // Find photo and verify access
+    const photo = await prisma.mealPhoto.findFirst({
+      where: {
+        id: parseInt(photoId),
+        OR: [
+          { client: { userId: auth.user!.id } }, // Client owns the photo
+          { diet: { dietitianId: auth.user!.id } }, // Dietitian owns the diet
+        ],
       },
     });
 
-    if (!mealPhoto) {
-      return NextResponse.json(
-        { error: "Meal photo not found" },
-        { status: 404 }
+    if (!photo) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Fotoğraf bulunamadı veya silme yetkiniz yok" },
+          { status: 404 }
+        )
       );
     }
 
-    // Check if user is authorized to delete
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      include: { client: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Allow deletion if:
-    // 1. User is a dietitian
-    // 2. User is the client who uploaded the photo
-    const isAuthorized =
-      user.role === "dietitian" ||
-      (user.client && user.client.id === mealPhoto.clientId);
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: "Unauthorized to delete this photo" },
-        { status: 403 }
-      );
-    }
-
-    // Delete the meal photo record
+    // Delete photo
     await prisma.mealPhoto.delete({
-      where: { id: parseInt(photoId) },
+      where: {
+        id: photo.id,
+      },
     });
 
-    // Note: Firebase Storage cleanup should be handled by a background job
-    // or by the client before calling this API
-
-    return NextResponse.json({
-      success: true,
-      message: "Meal photo deleted successfully",
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        message: "Fotoğraf başarıyla silindi",
+      })
+    );
   } catch (error: any) {
     console.error("Error deleting meal photo:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to delete meal photo",
-      },
-      { status: 500 }
+
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Fotoğraf silinirken bir hata oluştu" },
+        { status: 500 }
+      )
     );
   }
-}
+});

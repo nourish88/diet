@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client";
+
 export interface MealPreset {
   id: number;
   name: string;
@@ -28,19 +30,7 @@ const PresetService = {
         ? `/api/presets?mealType=${mealType}`
         : "/api/presets";
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await apiClient.get(url);
     } catch (error) {
       console.error("Error fetching presets:", error);
       return [];
@@ -58,20 +48,7 @@ const PresetService = {
     }>;
   }): Promise<MealPreset> {
     try {
-      const response = await fetch("/api/presets", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create preset");
-      }
-
-      return await response.json();
+      return await apiClient.post("/api/presets", data);
     } catch (error) {
       console.error("Error creating preset:", error);
       throw error;
@@ -84,20 +61,7 @@ const PresetService = {
     data: Partial<MealPreset>
   ): Promise<MealPreset> {
     try {
-      const response = await fetch(`/api/presets/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update preset");
-      }
-
-      return await response.json();
+      return await apiClient.put(`/api/presets/${id}`, data);
     } catch (error) {
       console.error("Error updating preset:", error);
       throw error;
@@ -107,17 +71,7 @@ const PresetService = {
   // Delete preset
   async deletePreset(id: number): Promise<void> {
     try {
-      const response = await fetch(`/api/presets/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete preset");
-      }
+      await apiClient.delete(`/api/presets/${id}`);
     } catch (error) {
       console.error("Error deleting preset:", error);
       throw error;
@@ -131,19 +85,7 @@ const PresetService = {
     patternsDetected: number;
   }> {
     try {
-      const response = await fetch("/api/presets/auto-generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to auto-generate presets");
-      }
-
-      return await response.json();
+      return await apiClient.post("/api/presets/auto-generate");
     } catch (error) {
       console.error("Error auto-generating presets:", error);
       throw error;

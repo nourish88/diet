@@ -2,136 +2,180 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-import { Link, router } from "expo-router";
-import { useAuth } from "../../hooks/useAuth";
-import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
+import { useAuthStore } from "@/features/auth/stores/auth-store";
 
 export default function RegisterScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+  const router = useRouter();
+  const { register, isLoading } = useAuthStore();
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
 
-  const handleRegister = async () => {
-    console.log("Register button pressed!");
-    console.log("Email:", email);
-    console.log("Password:", password);
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-    if (!email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
+  const validateForm = () => {
+    if (!formData.email) {
+      setError("E-posta adresi gereklidir");
+      return false;
     }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
+    if (!formData.email.includes("@")) {
+      setError("Geçerli bir e-posta adresi giriniz");
+      return false;
     }
-
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
+    if (!formData.password) {
+      setError("Şifre gereklidir");
+      return false;
     }
+    if (formData.password.length < 6) {
+      setError("Şifre en az 6 karakter olmalıdır");
+      return false;
+    }
+    if (!formData.confirmPassword) {
+      setError("Şifre tekrarı gereklidir");
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Şifreler eşleşmiyor");
+      return false;
+    }
+    return true;
+  };
 
-    console.log("Starting registration...");
-    setLoading(true);
+  const onSubmit = async () => {
     try {
-      const response = await signUp(email, password, "client");
-      console.log("Registration successful!");
+      setError("");
+      setSuccess("");
+      if (!validateForm()) return;
 
-      // Show reference code to client
-      if (response.user?.referenceCode) {
-        Alert.alert(
-          "Registration Successful!",
-          `Your reference code is:\n\n${response.user.referenceCode}\n\n` +
-            `Please send this code to your dietitian to activate your account.`,
-          [
-            {
-              text: "Copy Code",
-              onPress: async () => {
-                await Clipboard.setStringAsync(response.user.referenceCode);
-                Alert.alert("Copied!", "Reference code copied to clipboard");
-              },
-            },
-            { text: "OK" },
-          ]
-        );
-      }
+      await register(formData.email, formData.password, "client");
+      setSuccess("Kayıt başarılı! Onay bekleniyor...");
 
-      // Navigation will be handled by the auth hook
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      Alert.alert("Registration Failed", error.message);
-    } finally {
-      setLoading(false);
+      setTimeout(() => {
+        router.replace("/(auth)/login");
+      }, 2000);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Kayıt olurken bir hata oluştu";
+      setError(errorMessage);
     }
   };
+
+  const goToLogin = () => {
+    router.push("/(auth)/login");
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Kayıt olunuyor...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>Diet App</Text>
-        <Text style={styles.subtitle}>Create your client account</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Diet App</Text>
+          <Text style={styles.subtitle}>Yeni bir hesap oluşturun</Text>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.card}>
+            <Text style={styles.label}>E-posta</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="email@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={(value) => handleInputChange("email", value)}
+              value={formData.email}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+            <Text style={styles.label}>Şifre</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              secureTextEntry
+              autoCapitalize="none"
+              onChangeText={(value) => handleInputChange("password", value)}
+              value={formData.password}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+            <Text style={styles.label}>Şifre Tekrarı</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              secureTextEntry
+              autoCapitalize="none"
+              onChangeText={(value) =>
+                handleInputChange("confirmPassword", value)
+              }
+              value={formData.confirmPassword}
+            />
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? "Creating account..." : "Register"}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={onSubmit}
+              disabled={isLoading}
+            >
+              <Text style={styles.primaryButtonText}>Kayıt Ol</Text>
+            </TouchableOpacity>
 
-          <View style={styles.linkContainer}>
-            <Text style={styles.linkText}>Already have an account? </Text>
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.link}>Login</Text>
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {success && (
+              <View style={styles.successContainer}>
+                <Text style={styles.successText}>{success}</Text>
+              </View>
+            )}
+
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Zaten hesabınız var mı?</Text>
+              <TouchableOpacity
+                style={styles.outlineButton}
+                onPress={goToLogin}
+              >
+                <Text style={styles.outlineButtonText}>Giriş Yap</Text>
               </TouchableOpacity>
-            </Link>
+            </View>
+
+            <View style={styles.infoContainer}>
+              <Text style={styles.infoText}>
+                Kayıt olduktan sonra diyetisyeniniz tarafından onaylanmanız
+                gerekmektedir. Onay süreci hakkında bilgi için diyetisyeninizle
+                iletişime geçin.
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -139,30 +183,37 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 20,
+    alignItems: "center",
+    padding: 24,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#3b82f6",
     marginBottom: 8,
-    color: "#333",
   },
   subtitle: {
-    fontSize: 16,
-    textAlign: "center",
+    fontSize: 18,
+    color: "#64748b",
     marginBottom: 40,
-    color: "#666",
   },
-  form: {
+  card: {
+    width: "100%",
+    maxWidth: 400,
     backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
+    borderRadius: 12,
+    padding: 24,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -172,70 +223,107 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  roleContainer: {
-    marginBottom: 16,
-  },
-  roleLabel: {
-    fontSize: 16,
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#374151",
     marginBottom: 8,
-    color: "#333",
   },
-  roleButtons: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  roleButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
+  input: {
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#ddd",
-    alignItems: "center",
-  },
-  roleButtonActive: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
-  },
-  roleButtonText: {
+    borderColor: "#d1d5db",
+    borderRadius: 8,
     fontSize: 16,
-    color: "#333",
+    backgroundColor: "white",
+    color: "#111827",
+    marginBottom: 16,
   },
-  roleButtonTextActive: {
-    color: "white",
-    fontWeight: "600",
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    padding: 16,
+  primaryButton: {
+    backgroundColor: "#3b82f6",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 16,
   },
-  buttonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buttonText: {
+  primaryButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
   },
-  linkContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+    backgroundColor: "transparent",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
   },
-  linkText: {
-    color: "#666",
-  },
-  link: {
-    color: "#007AFF",
+  outlineButtonText: {
+    color: "#3b82f6",
+    fontSize: 16,
     fontWeight: "600",
+  },
+  errorContainer: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#dc2626",
+    textAlign: "center",
+    fontSize: 14,
+  },
+  successContainer: {
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successText: {
+    color: "#16a34a",
+    textAlign: "center",
+    fontSize: 14,
+  },
+  loginContainer: {
+    alignItems: "center",
+  },
+  loginText: {
+    color: "#64748b",
+    marginBottom: 8,
+    fontSize: 14,
+  },
+  infoContainer: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: "#eff6ff",
+    borderRadius: 8,
+  },
+  infoText: {
+    color: "#1e40af",
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#64748b",
   },
 });

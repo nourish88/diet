@@ -4,6 +4,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/lib/auth-context";
+import ConditionalLayout from "@/components/ConditionalLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,10 +22,11 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className={`${inter.className} bg-gray-50 min-h-screen`}>
-        <QueryProvider>
-          <Navbar />
-          <main className="pt-24">{children}</main>
-        </QueryProvider>
+        <AuthProvider>
+          <QueryProvider>
+            <ConditionalLayout>{children}</ConditionalLayout>
+          </QueryProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

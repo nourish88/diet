@@ -1,27 +1,28 @@
-import { Redirect } from "expo-router";
-import { useAuth } from "../hooks/useAuth";
-import { ActivityIndicator, View } from "react-native";
+import { useEffect } from "react";
+import { useRouter } from "expo-router";
+import { useAuthStore } from "@/features/auth/stores/auth-store";
+import { Loading } from "@/shared/ui/Loading";
 
-export default function Index() {
-  const { user, loading } = useAuth();
+export default function IndexScreen() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated && user) {
+        // Redirect based on user role
+        if (user.role === "dietitian") {
+          router.replace("/(dietitian)");
+        } else if (user.role === "client") {
+          router.replace("/(client)");
+        } else {
+          router.replace("/(auth)/login");
+        }
+      } else {
+        router.replace("/(auth)/login");
+      }
+    }
+  }, [isAuthenticated, user, isLoading, router]);
 
-  if (!user) {
-    return <Redirect href="/(auth)/login" />;
-  }
-
-  // Redirect based on user role
-  if (user.role === "dietitian") {
-    return <Redirect href="/(dietitian)" />;
-  } else {
-    return <Redirect href="/(client)" />;
-  }
+  return <Loading text="Yönlendiriliyor..." />;
 }
-

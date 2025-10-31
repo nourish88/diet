@@ -1,86 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/api-auth";
+import { addCorsHeaders } from "@/lib/cors";
 
 export async function GET(request: NextRequest) {
   try {
-    // Get top used besins
-    const topBesins = await prisma.besinUsageStats.findMany({
-      take: 20,
-      orderBy: [{ usageCount: "desc" }, { lastUsed: "desc" }],
-      include: {
-        besin: {
-          include: {
-            besinGroup: true,
-          },
-        },
+    // Authenticate request
+    const auth = await authenticateRequest(request);
+
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    const dietitianId = auth.user.id;
+
+    // Get total clients count for this dietitian
+    const totalClients = await prisma.client.count({
+      where: {
+        dietitianId: dietitianId,
       },
     });
 
-    // Get total diets count
-    const totalDiets = await prisma.diet.count();
+    // Get total diets count for this dietitian
+    const totalDiets = await prisma.diet.count({
+      where: {
+        dietitianId: dietitianId,
+      },
+    });
 
-    // Get diets this month
+    // Get diets this month for this dietitian
     const thisMonthStart = new Date();
     thisMonthStart.setDate(1);
     thisMonthStart.setHours(0, 0, 0, 0);
 
-    const dietsThisMonth = await prisma.diet.count({
+    const thisMonthDiets = await prisma.diet.count({
       where: {
+        dietitianId: dietitianId,
         createdAt: {
           gte: thisMonthStart,
         },
       },
     });
 
-    // Get diets last month
-    const lastMonthStart = new Date(thisMonthStart);
-    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-    const lastMonthEnd = new Date(thisMonthStart);
-    lastMonthEnd.setMilliseconds(-1);
+    // Pending approvals - this could be clients waiting for approval, etc.
+    // For now, let's just return 0 or implement if you have a pending system
+    const pendingApprovals = 0;
 
-    const dietsLastMonth = await prisma.diet.count({
-      where: {
-        createdAt: {
-          gte: lastMonthStart,
-          lte: lastMonthEnd,
-        },
-      },
-    });
-
-    // Calculate efficiency
-    const avgThisMonth = dietsThisMonth > 0 ? 8 : 15; // Simulated for now
-    const avgLastMonth = 15; // Simulated
-    const improvement =
-      avgLastMonth > 0
-        ? Math.round(((avgLastMonth - avgThisMonth) / avgLastMonth) * 100)
-        : 0;
-
-    return NextResponse.json({
-      topBesins: topBesins.map((stat) => ({
-        id: stat.besin.id,
-        name: stat.besin.name,
-        usageCount: stat.usageCount,
-        avgMiktar: stat.avgMiktar,
-        commonBirim: stat.commonBirim,
-        lastUsed: stat.lastUsed,
-        groupName: stat.besin.besinGroup?.name || "Diğer",
-      })),
-      totals: {
+    return addCorsHeaders(
+      NextResponse.json({
+        totalClients,
         totalDiets,
-        dietsThisMonth,
-        dietsLastMonth,
-      },
-      efficiency: {
-        avgTimeThisMonth: avgThisMonth,
-        avgTimeLastMonth: avgLastMonth,
-        improvement,
-      },
-    });
+        thisMonthDiets,
+        pendingApprovals,
+      })
+    );
   } catch (error) {
-    console.error("Error fetching analytics:", error);
-    return NextResponse.json(
-      { error: "İstatistikler yüklenirken bir hata oluştu" },
-      { status: 500 }
+    console.error("Error fetching dashboard stats:", error);
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: "İstatistikler yüklenirken bir hata oluştu" },
+        { status: 500 }
+      )
     );
   }
 }

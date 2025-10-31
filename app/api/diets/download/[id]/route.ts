@@ -163,6 +163,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error generating PDF:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "");
     return NextResponse.json(
       {
         error: "Error generating PDF",
@@ -170,7 +171,5 @@ export async function GET(
       },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

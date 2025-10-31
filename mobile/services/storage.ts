@@ -1,4 +1,5 @@
 import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system";
 import { apiClient } from "./api";
 
 class StorageService {
@@ -10,7 +11,7 @@ class StorageService {
   ): Promise<string> {
     try {
       // Compress the image
-      const compressedImage = await ImageManipulator.manipulatorAsync(
+  const compressedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           {
@@ -26,19 +27,13 @@ class StorageService {
         }
       );
 
-      // Convert to base64
-      const response = await fetch(compressedImage.uri);
-      const blob = await response.blob();
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      // Convert to base64 using FileSystem (expo) which works on mobile
+      const base64 = await FileSystem.readAsStringAsync(compressedImage.uri, {
+        encoding: "base64",
       });
+
+      // Return as data URL to match previous behavior
+      return `data:image/jpeg;base64,${base64}`;
     } catch (error) {
       console.error("Error processing meal photo:", error);
       throw error;
@@ -77,7 +72,7 @@ class StorageService {
   async uploadProfileImage(imageUri: string, userId: number): Promise<string> {
     try {
       // Compress the image
-      const compressedImage = await ImageManipulator.manipulatorAsync(
+  const compressedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           {
@@ -93,19 +88,12 @@ class StorageService {
         }
       );
 
-      // Convert to base64
-      const response = await fetch(compressedImage.uri);
-      const blob = await response.blob();
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      // Convert to base64 using FileSystem
+      const base64 = await FileSystem.readAsStringAsync(compressedImage.uri, {
+        encoding: "base64",
       });
+
+      return `data:image/jpeg;base64,${base64}`;
     } catch (error) {
       console.error("Error processing profile image:", error);
       throw error;

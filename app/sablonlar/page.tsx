@@ -24,9 +24,12 @@ export default function SablonlarPage() {
   const loadTemplates = async () => {
     try {
       setIsLoading(true);
+      console.log("🔄 SablonlarPage: Loading templates...");
       const data = await TemplateService.getTemplates();
+      console.log("📋 SablonlarPage: Templates loaded:", data);
       setTemplates(data);
     } catch (error) {
+      console.error("❌ SablonlarPage: Error loading templates:", error);
       toast({
         title: "Hata",
         description: "Şablonlar yüklenirken bir hata oluştu",

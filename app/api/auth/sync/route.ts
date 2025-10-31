@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { addCorsHeaders, handleCors } from "@/lib/cors";
 
 function generateReferenceCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -11,14 +12,19 @@ function generateReferenceCode(): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Handle CORS preflight
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   try {
     const { supabaseId, email, role, clientId } = await request.json();
 
     if (!supabaseId || !email || !role) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "Missing required fields: supabaseId, email, role" },
         { status: 400 }
       );
+      return addCorsHeaders(response);
     }
 
     // Check if user already exists
@@ -27,11 +33,26 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         user: existingUser,
         message: "User already exists",
       });
+      return addCorsHeaders(response);
+    }
+
+    // SECURITY: Prevent NEW dietitian creation through API
+    // But allow updating existing dietitians (checked above)
+    if (role === "dietitian") {
+      const response = NextResponse.json(
+        {
+          error:
+            "Dietitian accounts can only be created through Supabase admin panel",
+          code: "DIETITIAN_CREATION_FORBIDDEN",
+        },
+        { status: 403 }
+      );
+      return addCorsHeaders(response);
     }
 
     // Generate reference code for clients
@@ -50,7 +71,7 @@ export async function POST(request: NextRequest) {
         email,
         role,
         referenceCode,
-        isApproved: role === "dietitian", // Auto-approve dietitians
+        isApproved: false, // SECURITY: Clients need approval
       },
     });
 
@@ -72,33 +93,40 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user,
       message: "User created successfully",
     });
+    return addCorsHeaders(response);
   } catch (error: any) {
     console.error("Error syncing user:", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: false,
         error: error.message || "Failed to sync user",
       },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }
 
 export async function GET(request: NextRequest) {
+  // Handle CORS preflight
+  const corsResponse = handleCors(request);
+  if (corsResponse) return corsResponse;
+
   try {
     const { searchParams } = new URL(request.url);
     const supabaseId = searchParams.get("supabaseId");
 
     if (!supabaseId) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "supabaseId is required" },
         { status: 400 }
       );
+      return addCorsHeaders(response);
     }
 
     const user = await prisma.user.findUnique({
@@ -110,21 +138,27 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      const response = NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+      return addCorsHeaders(response);
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user,
     });
+    return addCorsHeaders(response);
   } catch (error: any) {
     console.error("Error fetching user:", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: false,
         error: error.message || "Failed to fetch user",
       },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }

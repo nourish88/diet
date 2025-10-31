@@ -1,64 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import {
+  requireOwnClient,
+  authenticateRequest,
+  requireDietitian,
+  AuthResult,
+} from "@/lib/api-auth";
+import { addCorsHeaders, handleCors } from "@/lib/cors";
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Auth
+    const auth = await authenticateRequest(request);
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    const { id } = await params;
+    const clientId = parseInt(id);
+
+    if (isNaN(clientId)) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    // SECURITY: Check if dietitian owns this client
+    const hasAccess = await requireOwnClient(clientId, auth);
+    if (!hasAccess) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied" }, { status: 403 })
+      );
+    }
+
     const client = await prisma.client.findUnique({
       where: {
-        id: parseInt(params.id)
+        id: clientId,
       },
       include: {
         diets: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
           select: {
             id: true,
             createdAt: true,
-            tarih: true
-          }
+            tarih: true,
+          },
         },
         bannedFoods: {
           include: {
-            besin: true
-          }
-        }
-      }
+            besin: true,
+          },
+        },
+      },
     });
 
     if (!client) {
-      return new NextResponse(JSON.stringify({ error: "Client not found" }), {
-        status: 404,
-      });
+      return addCorsHeaders(
+        NextResponse.json({ error: "Client not found" }, { status: 404 })
+      );
     }
 
-    return new NextResponse(JSON.stringify({ client }), {
-      status: 200,
-    });
+    return addCorsHeaders(NextResponse.json({ client }));
   } catch (error: any) {
     console.error("Error fetching client:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to fetch client" }),
-      { status: 500 }
+    return addCorsHeaders(
+      NextResponse.json({ error: "Failed to fetch client" }, { status: 500 })
     );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const clientId = parseInt(params.id);
+    const auth = await authenticateRequest(request);
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    const { id } = await params;
+    const clientId = parseInt(id);
     const data = await request.json();
 
     if (isNaN(clientId)) {
-      return NextResponse.json(
-        { error: "Invalid client ID" },
-        { status: 400 }
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    // SECURITY: Check if dietitian owns this client
+    const hasAccess = await requireOwnClient(clientId, auth);
+    if (!hasAccess) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied" }, { status: 403 })
       );
     }
 
@@ -86,7 +130,7 @@ export async function PUT(
         data: bannedBesins.map((banned: any) => ({
           clientId: clientId,
           besinId: banned.besinId,
-          reason: banned.reason || '',
+          reason: banned.reason || "",
         })),
       });
     }
@@ -99,44 +143,61 @@ export async function PUT(
       include: {
         diets: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
           select: {
             id: true,
             createdAt: true,
-            tarih: true
-          }
+            tarih: true,
+          },
         },
         bannedFoods: {
           include: {
-            besin: true
-          }
-        }
-      }
+            besin: true,
+          },
+        },
+      },
     });
 
-    return NextResponse.json({ client: finalClient }, { status: 200 });
+    return addCorsHeaders(NextResponse.json({ client: finalClient }));
   } catch (error: any) {
     console.error("Error updating client:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to update client" },
-      { status: 500 }
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Failed to update client" },
+        { status: 500 }
+      )
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const clientId = parseInt(params.id);
+    const auth = await authenticateRequest(request);
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    const { id } = await params;
+    const clientId = parseInt(id);
     const data = await request.json();
 
     if (isNaN(clientId)) {
-      return NextResponse.json(
-        { error: "Invalid client ID" },
-        { status: 400 }
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    // SECURITY: Check if dietitian owns this client
+    const hasAccess = await requireOwnClient(clientId, auth);
+    if (!hasAccess) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied" }, { status: 403 })
       );
     }
 
@@ -148,43 +209,60 @@ export async function PATCH(
       include: {
         diets: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
           select: {
             id: true,
             createdAt: true,
-            tarih: true
-          }
+            tarih: true,
+          },
         },
         bannedFoods: {
           include: {
-            besin: true
-          }
-        }
-      }
+            besin: true,
+          },
+        },
+      },
     });
 
-    return NextResponse.json({ client: updatedClient }, { status: 200 });
+    return addCorsHeaders(NextResponse.json({ client: updatedClient }));
   } catch (error: any) {
     console.error("Error updating client:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to update client" },
-      { status: 500 }
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Failed to update client" },
+        { status: 500 }
+      )
     );
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const clientId = parseInt(params.id);
+    const auth = await authenticateRequest(request);
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    const { id } = await params;
+    const clientId = parseInt(id);
 
     if (isNaN(clientId)) {
-      return NextResponse.json(
-        { error: "Invalid client ID" },
-        { status: 400 }
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    // SECURITY: Check if dietitian owns this client
+    const hasAccess = await requireOwnClient(clientId, auth);
+    if (!hasAccess) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied" }, { status: 403 })
       );
     }
 
@@ -194,12 +272,16 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ message: "Client deleted successfully" }, { status: 200 });
+    return addCorsHeaders(
+      NextResponse.json({ message: "Client deleted successfully" })
+    );
   } catch (error: any) {
     console.error("Error deleting client:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to delete client" },
-      { status: 500 }
+    return addCorsHeaders(
+      NextResponse.json(
+        { error: error.message || "Failed to delete client" },
+        { status: 500 }
+      )
     );
   }
 }

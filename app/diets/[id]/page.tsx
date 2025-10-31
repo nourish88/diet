@@ -10,11 +10,13 @@ import {
   Printer,
   Download,
   Trash2,
+  Clock,
   User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
+import { supabase } from "@/lib/supabase";
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
 const formatDateTR = (dateString: string | null | undefined | Date) => {
@@ -62,12 +64,40 @@ export default function DietDetailPage() {
   const fetchDiet = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/diets/${dietId}`);
+      // Get authentication token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Lütfen giriş yapın",
+          variant: "destructive",
+        });
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(`/api/diets/${dietId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch diet");
       }
       const data = await response.json();
-      setDiet(data.diet);
+      // Normalize field casing so UI consistently renders
+      const normalizedDiet = {
+        ...data.diet,
+        Hedef: data.diet?.Hedef ?? data.diet?.hedef ?? "",
+        Sonuc: data.diet?.Sonuc ?? data.diet?.sonuc ?? "",
+        Su: data.diet?.Su ?? data.diet?.su ?? "",
+        Fizik: data.diet?.Fizik ?? data.diet?.fizik ?? "",
+        Oguns: data.diet?.Oguns ?? data.diet?.oguns ?? [],
+      };
+      setDiet(normalizedDiet);
     } catch (error) {
       console.error("Error fetching diet:", error);
       toast({
@@ -86,8 +116,26 @@ export default function DietDetailPage() {
     }
 
     try {
+      // Get authentication token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Lütfen giriş yapın",
+          variant: "destructive",
+        });
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch(`/api/diets/${dietId}`, {
         method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
@@ -120,9 +168,26 @@ export default function DietDetailPage() {
     if (!diet?.client?.id || !dietId) return;
 
     try {
+      // Get authentication token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Lütfen giriş yapın",
+          variant: "destructive",
+        });
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch("/api/whatsapp/send-diet", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           clientId: diet.client.id,
           dietId: dietId,
@@ -230,9 +295,7 @@ export default function DietDetailPage() {
                 fullName: diet.client
                   ? `${diet.client.name} ${diet.client.surname}`.trim()
                   : "İsimsiz Danışan",
-                dietDate: diet.tarih
-                  ? formatDateTR(diet.tarih)
-                  : "Tarih Belirtilmemiş",
+                dietDate: diet.tarih || diet.createdAt || new Date().toISOString(),
                 weeklyResult: diet.sonuc || diet.Sonuc || "",
                 target: diet.hedef || diet.Hedef || "",
                 ogunler: (diet.oguns || diet.Oguns || []).map((ogun: any) => ({
@@ -250,20 +313,20 @@ export default function DietDetailPage() {
                 waterConsumption: diet.su || diet.Su || "",
                 physicalActivity: diet.fizik || diet.Fizik || "",
               }}
-              variant="outline"
-              className="bg-white text-indigo-700 hover:bg-indigo-50"
+              variant="ghost"
+              className="text-white hover:bg-indigo-700"
             />
             <Button
-              variant="outline"
-              className="bg-white text-green-600 hover:bg-green-50"
+              variant="ghost"
+              className="text-white hover:bg-indigo-700"
               onClick={handleSendViaWhatsApp}
               disabled={!diet.client?.phoneNumber}
             >
               📱 WhatsApp
             </Button>
             <Button
-              variant="outline"
-              className="bg-white text-red-600 hover:bg-red-50"
+              variant="ghost"
+              className="text-white hover:bg-red-600"
               onClick={handleDeleteDiet}
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -272,161 +335,107 @@ export default function DietDetailPage() {
           </div>
         </div>
 
-        <div className="p-6">
-          {/* Diet info section */}
-          <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 space-y-4">
+          {diet.client && (
             <div>
-              <h3 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">
-                Program Bilgileri
+              <h3 className="text-lg font-semibold mb-2 flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Danışan Bilgileri
               </h3>
+              <div className="border-l-4 border-indigo-500 pl-4">
+                <Link
+                  href={`/clients/${diet.clientId}`}
+                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  {diet.client.name} {diet.client.surname}
+                </Link>
+                <p className="text-sm text-gray-600">
+                  Diyet Tarihi: {formatDate(diet.tarih)}
+                </p>
+              </div>
+            </div>
+          )}
 
-              <div className="space-y-4">
-                <div>
-                  <span className="block text-sm font-medium text-gray-500">
-                    Müşteri
-                  </span>
-                  <Link
-                    href={`/clients/${diet.clientId}`}
-                    className="mt-1 text-indigo-600 hover:text-indigo-800 flex items-center"
-                  >
-                    <User className="h-4 w-4 mr-1" />
-                    {diet.client?.name} {diet.client?.surname}
-                  </Link>
-                </div>
-
-                <div>
-                  <span className="block text-sm font-medium text-gray-500">
-                    Program Tarihi
-                  </span>
-                  <span className="mt-1">{formatDate(diet.tarih)}</span>
-                </div>
-
-                {diet.Su && (
-                  <div>
-                    <span className="block text-sm font-medium text-gray-500">
-                      Su Tüketimi
-                    </span>
-                    <span className="mt-1">{diet.Su}</span>
+          {(diet.hedef || diet.sonuc || diet.su || diet.fizik || diet.Hedef || diet.Sonuc || diet.Su || diet.Fizik) && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Program Detayları</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(diet.hedef || diet.Hedef) && (
+                  <div className="border-l-4 border-yellow-500 pl-4">
+                    <p className="font-medium text-gray-700">Hedef</p>
+                    <p className="text-gray-600">{diet.hedef || diet.Hedef}</p>
                   </div>
                 )}
-
-                {diet.Fizik && (
-                  <div>
-                    <span className="block text-sm font-medium text-gray-500">
+                {(diet.sonuc || diet.Sonuc) && (
+                  <div className="border-l-4 border-green-500 pl-4">
+                    <p className="font-medium text-gray-700">Sonuç</p>
+                    <p className="text-gray-600">{diet.sonuc || diet.Sonuc}</p>
+                  </div>
+                )}
+                {(diet.su || diet.Su) && (
+                  <div className="border-l-4 border-blue-500 pl-4">
+                    <p className="font-medium text-gray-700">Su Tüketimi</p>
+                    <p className="text-gray-600">{diet.su || diet.Su}</p>
+                  </div>
+                )}
+                {(diet.fizik || diet.Fizik) && (
+                  <div className="border-l-4 border-purple-500 pl-4">
+                    <p className="font-medium text-gray-700">
                       Fiziksel Aktivite
-                    </span>
-                    <span className="mt-1">{diet.Fizik}</span>
+                    </p>
+                    <p className="text-gray-600">{diet.fizik || diet.Fizik}</p>
                   </div>
                 )}
               </div>
             </div>
+          )}
 
-            <div>
-              <h3 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">
-                Hedef ve Sonuç
-              </h3>
-
-              <div className="space-y-4">
-                {diet.Hedef && (
-                  <div>
-                    <span className="block text-sm font-medium text-gray-500">
-                      Hedef
-                    </span>
-                    <span className="mt-1">{diet.Hedef}</span>
-                  </div>
-                )}
-
-                {diet.Sonuc && (
-                  <div>
-                    <span className="block text-sm font-medium text-gray-500">
-                      Sonuç
-                    </span>
-                    <span className="mt-1">{diet.Sonuc}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Diet content section */}
           <div>
-            <h3 className="text-lg font-medium text-gray-800 border-b pb-2 mb-4">
-              Beslenme Programı İçeriği
-            </h3>
-
-            {/* Check for both possible property names */}
+            <h3 className="text-lg font-semibold mb-4">Öğünler</h3>
             {(diet.oguns && diet.oguns.length > 0) ||
             (diet.Oguns && diet.Oguns.length > 0) ? (
-              <div className="space-y-6">
-                {/* Use the property that exists */}
+              <div className="space-y-4">
                 {(diet.oguns || diet.Oguns).map((ogun: any, index: number) => (
                   <div
                     key={index}
-                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4"
                   >
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-medium text-gray-800">
+                      <h4 className="font-semibold text-gray-800">
                         {ogun.name || `Öğün ${index + 1}`}
                       </h4>
                       {ogun.time && (
-                        <span className="text-sm text-gray-500">
-                          Saat: {ogun.time}
+                        <span className="text-sm text-gray-600 flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {ogun.time}
                         </span>
                       )}
                     </div>
-
                     {ogun.items && ogun.items.length > 0 ? (
-                      <div className="mb-3">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th
-                                scope="col"
-                                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                              >
-                                Besin
-                              </th>
-                              <th
-                                scope="col"
-                                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                              >
-                                Miktar
-                              </th>
-                              <th
-                                scope="col"
-                                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                              >
-                                Birim
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {ogun.items.map((item: any, itemIndex: number) => (
-                              <tr key={itemIndex}>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                  {item.besin?.name || item.besin}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  {item.miktar}
-                                </td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                  {item.birim?.name || item.birim}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <ul className="space-y-2">
+                        {ogun.items.map((item: any, itemIndex: number) => (
+                          <li
+                            key={itemIndex}
+                            className="text-gray-700 flex items-start"
+                          >
+                            <span className="mr-2">•</span>
+                            <span>
+                              {item.besin?.name || item.besin} - {item.miktar}{" "}
+                              {item.birim?.name || item.birim}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     ) : (
-                      <p className="text-gray-500 italic text-sm">
-                        Bu öğün için besin öğesi eklenmemiş.
+                      <p className="text-gray-400 italic">
+                        Bu öğün için besin eklenmemiş
                       </p>
                     )}
-
                     {ogun.detail && (
-                      <div className="mt-3 text-sm">
-                        <span className="font-medium text-gray-700">Not: </span>
-                        <span className="text-gray-600">{ogun.detail}</span>
+                      <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Not:</span> {ogun.detail}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -434,7 +443,7 @@ export default function DietDetailPage() {
               </div>
             ) : (
               <p className="text-gray-500 italic">
-                Bu beslenme programında öğün bulunmuyor.
+                Bu beslenme programında öğün bulunmuyor
               </p>
             )}
           </div>

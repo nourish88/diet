@@ -1,10 +1,11 @@
 import DirectPDFButton from "./DirectPDFButton";
 import { Button } from "./ui/button";
 import { Diet } from "@/types/types";
-import { Save, Loader2, Plus, FileText } from "lucide-react";
+import { Save, Loader2, Plus, FileText, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "./ui/use-toast";
 import TemplateService from "@/services/TemplateService";
+import PresetService from "@/services/PresetService";
 
 // Create a separate component for the PDF button to ensure client-side only rendering
 
@@ -32,6 +33,7 @@ const DietFormActions = ({
 }: DietFormActionsProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isGeneratingPresets, setIsGeneratingPresets] = useState(false);
   const { toast } = useToast();
 
   // Add validation for phone number
@@ -81,6 +83,34 @@ const DietFormActions = ({
     isImportantDateCelebrated: diet.isImportantDateCelebrated,
     importantDateId: diet.importantDateId,
   });
+
+  const handleAutoGeneratePresets = async () => {
+    const confirmed = confirm(
+      "Son 30 diyetinizden otomatik olarak preset oluşturulacak. Devam etmek istiyor musunuz?"
+    );
+    
+    if (!confirmed) return;
+
+    setIsGeneratingPresets(true);
+    try {
+      const result = await PresetService.autoGeneratePresets();
+
+      toast({
+        title: "Başarılı",
+        description: `${result.presets.length} adet preset oluşturuldu! (${result.patternsDetected} pattern tespit edildi)`,
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error("Error auto-generating presets:", error);
+      toast({
+        title: "Hata",
+        description: error.message || "Preset oluşturulurken bir hata oluştu. En az 5 diyet gerekli.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPresets(false);
+    }
+  };
 
   const handleSaveAsTemplate = async () => {
     const templateName = prompt("Şablon adı girin:");
@@ -222,6 +252,26 @@ const DietFormActions = ({
           <>
             <FileText className="h-4 w-4 mr-2" />
             Şablon Olarak Kaydet
+          </>
+        )}
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleAutoGeneratePresets}
+        disabled={isGeneratingPresets}
+        className="border-purple-600 text-purple-600 hover:bg-purple-50"
+      >
+        {isGeneratingPresets ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Oluşturuluyor...
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Otomatik Preset Oluştur
           </>
         )}
       </Button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Diet } from "@/types/types";
 import AnalyticsService from "@/services/AnalyticsService";
+import { apiClient } from "@/lib/api-client";
 
 export function useDietActions() {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,22 +61,7 @@ export function useDietActions() {
       };
 
       // Make the API call
-      const response = await fetch("/api/diets", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(apiData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`
-        );
-      }
-
-      const result = await response.json();
+      const result = await apiClient.post("/api/diets", apiData);
 
       // Track usage in background (non-blocking)
       // Use API response data which has besin IDs instead of raw dietData

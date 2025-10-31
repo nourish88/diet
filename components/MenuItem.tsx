@@ -109,11 +109,11 @@ const MenuItem = ({
 
               // If a suggestion was selected, auto-fill miktar and birim
               if (suggestion) {
-                if (suggestion.miktar && !miktar) {
+                if (suggestion.miktar) {
                   setMiktar(suggestion.miktar);
                   updateParentState("miktar", suggestion.miktar);
                 }
-                if (suggestion.birim && !birim) {
+                if (suggestion.birim) {
                   setBirim(suggestion.birim);
                   updateParentState("birim", suggestion.birim);
                 }

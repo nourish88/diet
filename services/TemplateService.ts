@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client";
+
 export interface DietTemplate {
   id: number;
   name: string;
@@ -38,21 +40,12 @@ const TemplateService = {
         ? `/api/templates?category=${category}`
         : "/api/templates";
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log("🔍 TemplateService: Fetching templates from:", url);
+      const data = await apiClient.get(url);
+      console.log("📋 TemplateService: Received data:", data);
+      return data;
     } catch (error) {
-      console.error("Error fetching templates:", error);
+      console.error("❌ TemplateService: Error fetching templates:", error);
       throw error;
     }
   },
@@ -60,19 +53,7 @@ const TemplateService = {
   // Get template by ID
   async getTemplate(id: number): Promise<DietTemplate> {
     try {
-      const response = await fetch(`/api/templates/${id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      return await apiClient.get(`/api/templates/${id}`);
     } catch (error) {
       console.error("Error fetching template:", error);
       throw error;
@@ -91,20 +72,7 @@ const TemplateService = {
     oguns: any[];
   }): Promise<DietTemplate> {
     try {
-      const response = await fetch("/api/templates", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create template");
-      }
-
-      return await response.json();
+      return await apiClient.post("/api/templates", data);
     } catch (error) {
       console.error("Error creating template:", error);
       throw error;
@@ -117,20 +85,7 @@ const TemplateService = {
     data: Partial<DietTemplate>
   ): Promise<DietTemplate> {
     try {
-      const response = await fetch(`/api/templates/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update template");
-      }
-
-      return await response.json();
+      return await apiClient.put(`/api/templates/${id}`, data);
     } catch (error) {
       console.error("Error updating template:", error);
       throw error;
@@ -140,17 +95,7 @@ const TemplateService = {
   // Delete template
   async deleteTemplate(id: number): Promise<void> {
     try {
-      const response = await fetch(`/api/templates/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete template");
-      }
+      await apiClient.delete(`/api/templates/${id}`);
     } catch (error) {
       console.error("Error deleting template:", error);
       throw error;
@@ -160,20 +105,9 @@ const TemplateService = {
   // Use template to create diet
   async useTemplate(templateId: number, clientId: number): Promise<any> {
     try {
-      const response = await fetch(`/api/templates/${templateId}/use`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ clientId }),
+      return await apiClient.post(`/api/templates/${templateId}/use`, {
+        clientId,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to use template");
-      }
-
-      return await response.json();
     } catch (error) {
       console.error("Error using template:", error);
       throw error;

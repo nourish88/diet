@@ -307,6 +307,7 @@ const DietTable = ({
                                 <div className="no-print">
                                   <OgunQuickActions
                                     ogunName={ogun.name}
+                                    ogunItems={ogun.items}
                                     onApplyPreset={(preset) =>
                                       handleApplyPreset(index, preset)
                                     }

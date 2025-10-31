@@ -12,12 +12,23 @@ import {
   Settings,
   FileText,
   BarChart3,
+  LogOut,
+  User,
 } from "lucide-react";
 import Image from "next/image";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { user, databaseUser, signOut, loading } = useAuth();
 
   const isActive = (path: string) => {
     if (!pathname) return false;
@@ -25,6 +36,13 @@ const Navbar = () => {
     if (path !== "/" && pathname.startsWith(path)) return true;
     return false;
   };
+
+  // Don't show navbar on auth pages (login, register)
+  const isAuthPage =
+    pathname?.startsWith("/login") || pathname?.startsWith("/register");
+  if (isAuthPage) {
+    return null;
+  }
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -34,16 +52,64 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
-  const navItems = [
-    { href: "/", label: "Ana Sayfa", icon: Home },
-    { href: "/clients", label: "Danışanlar", icon: Users },
-    { href: "/pending-clients", label: "Bekleyen Onaylar", icon: Users },
-    { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
-    { href: "/sablonlar", label: "Şablonlar", icon: FileText },
-    { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
-    { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
-    { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
-  ];
+  const handleSignOut = async () => {
+    await signOut();
+    closeMenu();
+  };
+
+  // Filter nav items based on user role
+  const getNavItems = () => {
+    const allItems = [
+      { href: "/", label: "Ana Sayfa", icon: Home },
+      { href: "/clients", label: "Danışanlar", icon: Users },
+      { href: "/pending-clients", label: "Bekleyen Onaylar", icon: Users },
+      { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
+      { href: "/sablonlar", label: "Şablonlar", icon: FileText },
+      { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
+      { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
+      { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
+    ];
+
+    // If user is not authenticated, show no items (middleware will redirect to login)
+    if (!user || !databaseUser) {
+      return [];
+    }
+
+    // If user is not a dietitian, show limited items
+    if (databaseUser.role !== "dietitian") {
+      return allItems.filter((item) => ["/", "/diets"].includes(item.href));
+    }
+
+    return allItems;
+  };
+
+  const navItems = getNavItems();
+
+  // Don't render navigation items while loading
+  if (loading) {
+    return (
+      <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
+        <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
+          <Link href="/" className="flex items-center space-x-3">
+            <div className="relative">
+              <Image
+                src="/ezgi_evgin.png"
+                alt="Diyet Danışmanlık Logo"
+                width={120}
+                height={120}
+                priority
+              />
+            </div>
+            <div>
+              <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
+                Diyet Danışmanlık Hizmetleri
+              </span>
+            </div>
+          </Link>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
@@ -65,17 +131,46 @@ const Navbar = () => {
           </div>
         </Link>
 
-        <div className="flex md:hidden">
-          <button
-            type="button"
-            className="inline-flex items-center p-2 ml-3 text-gray-700 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            onClick={toggleMenu}
-            aria-controls="navbar-menu"
-            aria-expanded={isOpen}
-          >
-            <span className="sr-only">Open main menu</span>
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+        <div className="flex items-center space-x-4">
+          {/* User info and logout */}
+          {!loading && databaseUser && (
+            <div className="hidden md:flex items-center space-x-2">
+              <span className="text-sm text-gray-600">
+                {databaseUser.email}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Çıkış Yap
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
+          {/* Mobile menu button */}
+          <div className="flex md:hidden">
+            <button
+              type="button"
+              className="inline-flex items-center p-2 ml-3 text-gray-700 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              onClick={toggleMenu}
+              aria-controls="navbar-menu"
+              aria-expanded={isOpen}
+            >
+              <span className="sr-only">Open main menu</span>
+              {isOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div
@@ -94,7 +189,10 @@ const Navbar = () => {
                         ? "text-white bg-indigo-600 md:text-indigo-600 md:bg-transparent"
                         : "text-gray-700 hover:bg-gray-100 md:hover:bg-transparent md:hover:text-indigo-600"
                     }`}
-                    onClick={closeMenu}
+                    onClick={(e) => {
+                      console.log("🔗 Navbar link clicked:", item.href);
+                      closeMenu();
+                    }}
                   >
                     <Icon className="w-4 h-4 mr-2" />
                     {item.label}
@@ -102,6 +200,19 @@ const Navbar = () => {
                 </li>
               );
             })}
+
+            {/* Mobile logout */}
+            {!loading && databaseUser && (
+              <li className="md:hidden">
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center py-2 px-3 rounded-lg text-gray-700 hover:bg-gray-100 w-full text-left"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Çıkış Yap
+                </button>
+              </li>
+            )}
           </ul>
         </div>
       </div>

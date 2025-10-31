@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { fetchClients } from "@/services/ClientService";
+import { apiClient } from "@/lib/api-client";
 
 interface Client {
   id: number;
@@ -141,13 +142,7 @@ export default function ClientsPage() {
 
     setIsDeleting(id);
     try {
-      const response = await fetch(`/api/clients/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete client");
-      }
+      await apiClient.delete(`/api/clients/${id}`);
 
       toast({
         title: "Başarılı",

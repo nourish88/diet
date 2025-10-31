@@ -1,332 +1,554 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
+  SafeAreaView,
   Alert,
-  Linking,
+  Platform,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Stack } from "expo-router";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../../services/api";
+import { useAuthStore } from "@/features/auth/stores/auth-store";
+import api from "@/core/api/client";
+import { Loading } from "@/shared/ui/Loading";
+import { BottomNavbar } from "@/shared/components/BottomNavbar";
+import {
+  Calendar,
+  User,
+  Phone,
+  FileText,
+  ClipboardList,
+  PlusCircle,
+  Edit,
+  ChevronLeft,
+} from "lucide-react-native";
+
+interface Client {
+  id: number;
+  name: string;
+  surname: string;
+  birthdate: string | null;
+  phoneNumber?: string | null;
+  notes?: string | null;
+  illness?: string | null;
+  gender?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  diets: Array<{
+    id: number;
+    createdAt: string;
+    tarih?: string | null;
+  }>;
+  bannedFoods: Array<{
+    id: number;
+    besin: {
+      id: number;
+      name: string;
+    };
+    reason?: string;
+  }>;
+}
 
 export default function ClientDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const clientId = parseInt(id as string);
+  const { user } = useAuthStore();
 
-  const { data: clientData, isLoading: clientLoading } = useQuery({
-    queryKey: ["client", clientId],
-    queryFn: () => apiClient.getClient(clientId),
-  });
+  // Use React Query for caching
+  const {
+    data: client,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["client", id],
+    queryFn: async () => {
+      const response = await api.get(`/api/clients/${id}`);
 
-  const { data: dietsData, isLoading: dietsLoading } = useQuery({
-    queryKey: ["client-diets", clientId],
-    queryFn: () => apiClient.getDiets({ clientId }),
-  });
-
-  const client = clientData?.client;
-  const diets = dietsData?.diets || [];
-
-  const handleSendViaWhatsApp = async (dietId: number) => {
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/whatsapp/send-diet`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientId,
-            dietId,
-          }),
+      // Check if diets are included, if not fetch them
+      if (!response.client.diets || !Array.isArray(response.client.diets)) {
+        try {
+          const dietsResponse = await api.get(`/api/clients/${id}/diets`);
+          return {
+            ...response.client,
+            diets: dietsResponse.diets || [],
+          };
+        } catch (dietsError) {
+          console.error("Error fetching client diets:", dietsError);
+          return response.client;
         }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Open WhatsApp with the generated URL
-        const canOpen = await Linking.canOpenURL(data.whatsappURL);
-        if (canOpen) {
-          await Linking.openURL(data.whatsappURL);
-          Alert.alert(
-            "Success",
-            "WhatsApp opened! Tap 'Send' to deliver the message."
-          );
-        } else {
-          Alert.alert("Error", "WhatsApp is not installed on this device.");
-        }
-      } else {
-        Alert.alert("Error", data.error || "Failed to generate WhatsApp URL");
       }
+      return response.client;
+    },
+    enabled: !!id,
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  });
+
+  // Show error alert if query failed
+  useEffect(() => {
+    if (error) {
+      Alert.alert("Hata", "Danışan bilgileri yüklenirken bir hata oluştu.");
+    }
+  }, [error]);
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Belirtilmemiş";
+    try {
+      return new Date(dateString).toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
     } catch (error) {
-      Alert.alert("Error", "Failed to open WhatsApp. Please try again.");
+      return "Belirtilmemiş";
     }
   };
 
-  if (clientLoading || dietsLoading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+  if (isLoading) {
+    return <Loading text="Danışan bilgileri yükleniyor..." />;
   }
 
   if (!client) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Client not found</Text>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Danışan bulunamadı</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Client Information</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name:</Text>
-            <Text style={styles.infoValue}>
-              {client.name} {client.surname}
-            </Text>
-          </View>
-          {client.phoneNumber && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phone:</Text>
-              <Text style={styles.infoValue}>{client.phoneNumber}</Text>
-            </View>
-          )}
-          {client.birthdate && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Birthdate:</Text>
-              <Text style={styles.infoValue}>
-                {new Date(client.birthdate).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-          {client.gender !== null && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Gender:</Text>
-              <Text style={styles.infoValue}>
-                {client.gender === 1 ? "Male" : "Female"}
-              </Text>
-            </View>
-          )}
-          {client.notes && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Notes:</Text>
-              <Text style={styles.infoValue}>{client.notes}</Text>
-            </View>
-          )}
-        </View>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Diet History</Text>
-          <Text style={styles.dietCount}>
-            {diets.length} diet{diets.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.screenContent}
+      >
+        <View style={styles.wrapper}>
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={20} color="#667eea" />
+            <Text style={styles.backButtonText}>Danışan Listesi</Text>
+          </TouchableOpacity>
 
-        {diets.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No diets yet</Text>
-            <Text style={styles.emptySubtext}>
-              Create a diet plan for this client
-            </Text>
-          </View>
-        ) : (
-          diets.map((diet: any) => (
-            <View key={diet.id} style={styles.dietCard}>
+          {/* Header Card */}
+          <LinearGradient
+            colors={["#667eea", "#764ba2"]}
+            style={[styles.headerCard, styles.mb6]}
+          >
+            <View style={styles.headerTopRow}>
+              <View style={styles.headerTextGroup}>
+                <Text style={styles.headerTitle}>
+                  {client.name} {client.surname}
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                  Danışan #{client.id} | Kayıt: {formatDate(client.createdAt)}
+                </Text>
+              </View>
               <TouchableOpacity
-                style={styles.dietInfo}
-                onPress={() => router.push(`/(dietitian)/diets/${diet.id}`)}
+                onPress={() => router.push(`/clients/${client.id}/edit` as any)}
+                activeOpacity={0.7}
+                style={styles.headerEditBtn}
               >
-                <Text style={styles.dietDate}>
-                  {diet.tarih
-                    ? new Date(diet.tarih).toLocaleDateString()
-                    : "No date"}
-                </Text>
-                {diet.hedef && (
-                  <Text style={styles.dietGoal} numberOfLines={2}>
-                    {diet.hedef}
-                  </Text>
-                )}
-                <Text style={styles.dietMeals}>
-                  {diet.oguns?.length || 0} meal
-                  {diet.oguns?.length !== 1 ? "s" : ""}
-                </Text>
+                <Edit size={16} color="#ffffff" />
               </TouchableOpacity>
+            </View>
+          </LinearGradient>
 
-              <View style={styles.dietActions}>
-                <TouchableOpacity
-                  style={styles.whatsappButton}
-                  onPress={() => handleSendViaWhatsApp(diet.id)}
-                >
-                  <Text style={styles.whatsappButtonText}>📱 WhatsApp</Text>
-                </TouchableOpacity>
-                <Text style={styles.arrow}>→</Text>
+          {/* Personal Information Card */}
+          <View style={[styles.sectionCard, styles.mb4]}>
+            <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
+            <View style={styles.infoList}>
+              <View style={styles.infoItem}>
+                <View style={[styles.infoIcon, styles.bgIndigo]}>
+                  <Calendar size={18} color="#4338ca" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Doğum Tarihi</Text>
+                  <Text style={styles.infoValue}>
+                    {formatDate(client.birthdate)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={[styles.infoIcon, styles.bgPurple]}>
+                  <User size={18} color="#7c3aed" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Cinsiyet</Text>
+                  <Text style={styles.infoValue}>
+                    {client.gender === 1
+                      ? "Erkek"
+                      : client.gender === 2
+                      ? "Kadın"
+                      : "Belirtilmemiş"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={[styles.infoIcon, styles.bgBlue]}>
+                  <Phone size={18} color="#2563eb" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Telefon</Text>
+                  <Text style={styles.infoValue}>
+                    {client.phoneNumber || "Belirtilmemiş"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={[styles.infoIcon, styles.bgYellow]}>
+                  <FileText size={18} color="#f59e0b" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Hastalık</Text>
+                  <Text style={styles.infoValue}>
+                    {client.illness || "Belirtilmemiş"}
+                  </Text>
+                </View>
               </View>
             </View>
-          ))
-        )}
-      </View>
+          </View>
 
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() =>
-          router.push({
-            pathname: "/(dietitian)/diets/new",
-            params: { clientId: clientId.toString() },
-          })
-        }
-      >
-        <Text style={styles.createButtonText}>+ Create New Diet</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Notes Card */}
+          {client.notes && (
+            <View style={[styles.sectionCard, styles.mb4]}>
+              <Text style={styles.sectionTitle}>Notlar</Text>
+              <Text style={styles.notesText}>{client.notes}</Text>
+            </View>
+          )}
+
+          {/* Banned Foods Card */}
+          {client.bannedFoods && client.bannedFoods.length > 0 && (
+            <View style={[styles.sectionCard, styles.mb4]}>
+              <Text style={styles.sectionTitle}>Yasaklı Besinler</Text>
+              <View style={styles.bannedFoodsGrid}>
+                {client.bannedFoods.map((banned: Client["bannedFoods"][0]) => (
+                  <View key={banned.besin.id} style={styles.bannedFoodItem}>
+                    <Text style={styles.bannedFoodName}>
+                      {banned.besin.name}
+                    </Text>
+                    {banned.reason && (
+                      <Text style={styles.bannedFoodReason}>
+                        Sebep: {banned.reason}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Diets List Card */}
+          <View style={[styles.sectionCard, styles.mb8]}>
+            <View style={styles.dietsHeader}>
+              <View style={styles.dietsHeaderLeft}>
+                <ClipboardList size={18} color="#667eea" />
+                <Text style={[styles.sectionTitle, styles.dietsHeaderTitle]}>
+                  Beslenme Programları
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() =>
+                  router.push(`/diets/new?clientId=${client.id}` as any)
+                }
+                activeOpacity={0.7}
+                style={styles.addDietBtn}
+              >
+                <PlusCircle size={14} color="#ffffff" />
+                <Text style={styles.addDietBtnText}>Yeni</Text>
+              </TouchableOpacity>
+            </View>
+
+            {client.diets && client.diets.length > 0 ? (
+              <View style={styles.dietsList}>
+                {client.diets.map((diet: Client["diets"][0]) => (
+                  <TouchableOpacity
+                    key={diet.id}
+                    style={styles.dietItem}
+                    onPress={() => router.push(`/diets/${diet.id}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.dietItemContent}>
+                      <Text style={styles.dietItemTitle}>
+                        Beslenme Programı #{diet.id}
+                      </Text>
+                      <Text style={styles.dietItemDate}>
+                        Oluşturulma: {formatDate(diet.createdAt)}
+                      </Text>
+                    </View>
+                    {diet.tarih && (
+                      <View style={styles.dietDateBadge}>
+                        <Text style={styles.dietDateBadgeText}>
+                          {formatDate(diet.tarih)}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyDietsText}>Henüz diyet bulunmuyor.</Text>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      <BottomNavbar />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8fafc",
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  section: {
-    padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 12,
-  },
-  dietCount: {
-    fontSize: 14,
-    color: "#666",
-  },
-  infoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoRow: {
-    flexDirection: "row",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  infoLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#666",
-    width: 100,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#333",
+  screen: {
     flex: 1,
   },
-  dietCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+  screenContent: {
+    paddingBottom: 96,
+  },
+  wrapper: {
     padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dietInfo: {
-    flex: 1,
-  },
-  dietDate: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  dietGoal: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
-  dietMeals: {
-    fontSize: 12,
-    color: "#999",
-  },
-  dietActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  whatsappButton: {
-    backgroundColor: "#25D366",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  whatsappButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  arrow: {
-    fontSize: 24,
-    color: "#007AFF",
   },
   emptyContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 32,
+    flex: 1,
+    backgroundColor: "#f8fafc",
     alignItems: "center",
+    justifyContent: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: "#999",
-    marginBottom: 8,
+    color: "#64748b",
   },
-  emptySubtext: {
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  backButtonText: {
     fontSize: 14,
-    color: "#ccc",
+    color: "#667eea",
+    fontWeight: "600",
+    marginLeft: 4,
   },
-  createButton: {
-    backgroundColor: "#007AFF",
-    margin: 16,
+  headerCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  headerTextGroup: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.85)",
+  },
+  headerEditBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
     padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1f2937",
+    marginBottom: 12,
+  },
+  infoList: {
+    rowGap: 16,
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 18,
+  bgIndigo: {
+    backgroundColor: "#eef2ff",
+  },
+  bgPurple: {
+    backgroundColor: "#faf5ff",
+  },
+  bgBlue: {
+    backgroundColor: "#eff6ff",
+  },
+  bgYellow: {
+    backgroundColor: "#fffbeb",
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
     fontWeight: "600",
+    color: "#6b7280",
+    marginBottom: 2,
   },
-  errorText: {
-    fontSize: 16,
-    color: "#ff3b30",
+  infoValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1f2937",
+  },
+  notesText: {
+    fontSize: 14,
+    color: "#4b5563",
+    lineHeight: 20,
+  },
+  bannedFoodsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  bannedFoodItem: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 12,
+    padding: 12,
+    minWidth: "48%",
+    maxWidth: "100%",
+  },
+  bannedFoodName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#b91c1c",
+    marginBottom: 4,
+  },
+  bannedFoodReason: {
+    fontSize: 11,
+    color: "#dc2626",
+  },
+  dietsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  dietsHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  dietsHeaderTitle: {
+    marginBottom: 0,
+  },
+  addDietBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#667eea",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    columnGap: 6,
+  },
+  addDietBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#ffffff",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  dietsList: {
+    rowGap: 12,
+  },
+  dietItem: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#ffffff",
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dietItemContent: {
+    flex: 1,
+  },
+  dietItemTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 4,
+  },
+  dietItemDate: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  dietDateBadge: {
+    backgroundColor: "#eef2ff",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  dietDateBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#4f46e5",
+  },
+  emptyDietsText: {
+    fontSize: 13,
+    color: "#9ca3af",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  mb4: {
+    marginBottom: 16,
+  },
+  mb6: {
+    marginBottom: 24,
+  },
+  mb8: {
+    marginBottom: 32,
   },
 });

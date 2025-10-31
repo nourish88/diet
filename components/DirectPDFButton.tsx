@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 
 const formatDateTR = (dateString: string | null | undefined | Date) => {
   if (!dateString) return "Tarih Belirtilmemiş";
+  console.log("DirectPDF formatDateTR received:", dateString, typeof dateString);
   try {
     const date =
       typeof dateString === "string"
@@ -23,9 +24,13 @@ const formatDateTR = (dateString: string | null | undefined | Date) => {
         : dateString instanceof Date
         ? dateString
         : new Date();
+    console.log("DirectPDF parsed date:", date, "isValid:", !isNaN(date.getTime()));
+    if (isNaN(date.getTime())) {
+      throw new Error("Invalid date");
+    }
     return format(date, "d MMMM yyyy", { locale: tr });
   } catch (error) {
-    console.error("Date parsing error:", error);
+    console.error("DirectPDF date parsing error:", error, "Input:", dateString);
     return "Geçersiz Tarih";
   }
 };
@@ -83,7 +88,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   importantDateId,
   disabled,
   onError,
-  variant = "outline",
+  variant = "ghost",
   size = "sm",
   onClick,
   ...props
@@ -808,8 +813,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   return (
     <div className="flex gap-2">
       <Button
-        variant="outline"
-        size="sm"
+        variant={variant}
+        size={size}
         className={`gap-2 ${className}`}
         onClick={generatePDF}
         disabled={isLoading}
@@ -824,7 +829,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant={variant}
+        size={size}
         onClick={handleClick}
         className={className}
         disabled={disabled || isLoading}

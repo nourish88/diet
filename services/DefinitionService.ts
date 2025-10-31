@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client";
+
 export interface Definition {
   id: number;
   type: string;
@@ -14,23 +16,10 @@ const DefinitionService = {
   async getDefinitions(type?: DefinitionType): Promise<Definition[]> {
     try {
       const url = type ? `/api/definitions?type=${type}` : "/api/definitions";
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
+      return await apiClient.get(url);
     } catch (error) {
       console.error("Error fetching definitions:", error);
-      throw error;
+      return [];
     }
   },
 
@@ -40,21 +29,7 @@ const DefinitionService = {
     name: string
   ): Promise<Definition> {
     try {
-      const response = await fetch("/api/definitions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type, name }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create definition");
-      }
-
-      const data = await response.json();
-      return data;
+      return await apiClient.post("/api/definitions", { type, name });
     } catch (error) {
       console.error("Error creating definition:", error);
       throw error;
@@ -67,21 +42,7 @@ const DefinitionService = {
     data: { name?: string; isActive?: boolean }
   ): Promise<Definition> {
     try {
-      const response = await fetch(`/api/definitions/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update definition");
-      }
-
-      const result = await response.json();
-      return result;
+      return await apiClient.put(`/api/definitions/${id}`, data);
     } catch (error) {
       console.error("Error updating definition:", error);
       throw error;
@@ -91,17 +52,7 @@ const DefinitionService = {
   // Delete a definition
   async deleteDefinition(id: number): Promise<void> {
     try {
-      const response = await fetch(`/api/definitions/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete definition");
-      }
+      await apiClient.delete(`/api/definitions/${id}`);
     } catch (error) {
       console.error("Error deleting definition:", error);
       throw error;
