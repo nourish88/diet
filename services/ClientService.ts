@@ -192,7 +192,7 @@ export const fetchClients = async (params?: {
       queryParams.append("search", params.search);
     }
 
-    const url = `/api/clients${
+    const url = `/clients${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
 

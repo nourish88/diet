@@ -58,7 +58,9 @@ export default function ClientDetailPage() {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Danışan bilgileri yükleniyor...</span>
+          <span className="ml-2 text-gray-600">
+            Danışan bilgileri yükleniyor...
+          </span>
         </div>
       </div>
     );

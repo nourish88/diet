@@ -70,7 +70,10 @@ export async function authenticateSupabase(
   try {
     // Get token from Authorization header or cookies
     const authHeader = request.headers.get("authorization");
-    console.log("🔑 Auth header:", authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : "null");
+    console.log(
+      "🔑 Auth header:",
+      authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : "null"
+    );
     let token = authHeader?.replace("Bearer ", "");
 
     // If no Authorization header, try to find Supabase auth token from cookies
@@ -80,7 +83,7 @@ export async function authenticateSupabase(
         (cookie) =>
           cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token")
       );
-      
+
       if (authCookie?.value) {
         try {
           // Supabase stores session as JSON in cookie
@@ -97,19 +100,23 @@ export async function authenticateSupabase(
       console.log("❌ No token found in headers or cookies");
       return null;
     }
-    
+
     console.log("✅ Token found:", token.substring(0, 20) + "...");
 
     // Verify token with Supabase REST API (works in all runtimes)
     const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        apikey: supabaseAnonKey,
       },
     });
 
     if (!response.ok) {
-      console.log("❌ Supabase token verification failed:", response.status, response.statusText);
+      console.log(
+        "❌ Supabase token verification failed:",
+        response.status,
+        response.statusText
+      );
       return null;
     }
 
@@ -120,7 +127,7 @@ export async function authenticateSupabase(
       console.log("❌ No user in Supabase response");
       return null;
     }
-    
+
     console.log("✅ Supabase user verified:", user.id, user.email);
 
     // Get user from our database
@@ -132,13 +139,18 @@ export async function authenticateSupabase(
       console.log("❌ User not found in database for supabaseId:", user.id);
       return null;
     }
-    
+
     if (!databaseUser.isApproved) {
       console.log("❌ User not approved:", databaseUser.id, databaseUser.email);
       return null;
     }
-    
-    console.log("✅ Database user found:", databaseUser.id, databaseUser.email, databaseUser.role);
+
+    console.log(
+      "✅ Database user found:",
+      databaseUser.id,
+      databaseUser.email,
+      databaseUser.role
+    );
 
     return {
       id: databaseUser.id,
@@ -154,7 +166,11 @@ export async function authenticateSupabase(
 }
 
 export function requireAuth(
-  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
+  handler: (
+    request: NextRequest,
+    auth: AuthResult,
+    context?: any
+  ) => Promise<Response>
 ) {
   return async (request: NextRequest, context?: any) => {
     const auth = await authenticateRequest(request);
@@ -172,7 +188,11 @@ export function requireAuth(
 
 export function requireRole(allowedRoles: ("dietitian" | "client")[]) {
   return function (
-    handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
+    handler: (
+      request: NextRequest,
+      auth: AuthResult,
+      context?: any
+    ) => Promise<Response>
   ) {
     return async (request: NextRequest, context?: any) => {
       const auth = await authenticateRequest(request);
@@ -197,13 +217,21 @@ export function requireRole(allowedRoles: ("dietitian" | "client")[]) {
 }
 
 export function requireDietitian(
-  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
+  handler: (
+    request: NextRequest,
+    auth: AuthResult,
+    context?: any
+  ) => Promise<Response>
 ) {
   return requireRole(["dietitian"])(handler);
 }
 
 export function requireClient(
-  handler: (request: NextRequest, auth: AuthResult, context?: any) => Promise<Response>
+  handler: (
+    request: NextRequest,
+    auth: AuthResult,
+    context?: any
+  ) => Promise<Response>
 ) {
   return requireRole(["client"])(handler);
 }

@@ -57,7 +57,7 @@ export default function DietsPage() {
       const queryParams = new URLSearchParams();
       queryParams.append("skip", "0");
       queryParams.append("take", ITEMS_PER_PAGE.toString());
-      const url = `/api/diets?${queryParams.toString()}`;
+      const url = `/diets?${queryParams.toString()}`;
       return apiClient.get(url);
     },
     staleTime: 3 * 60 * 1000, // 3 minutes
@@ -91,7 +91,7 @@ export default function DietsPage() {
           queryParams.append("search", search);
         }
 
-        const url = `/api/diets?${queryParams.toString()}`;
+        const url = `/diets?${queryParams.toString()}`;
         console.log("🔄 DietsPage: Fetching diets from:", url);
         const data = await apiClient.get(url);
         console.log("📋 DietsPage: Received data:", data);
