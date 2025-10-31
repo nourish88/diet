@@ -1,5 +1,4 @@
 "use client";
-import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   Loader2,
-  Printer,
-  Download,
   Trash2,
   Clock,
   User,
@@ -16,7 +13,8 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
-import { createClient } from "@/lib/supabase-browser";
+import { useDiet, useDeleteDiet } from "@/hooks/useApi";
+import { apiClient } from "@/lib/api-client";
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
 const formatDateTR = (dateString: string | null | undefined | Date) => {
@@ -39,109 +37,25 @@ const formatDateTR = (dateString: string | null | undefined | Date) => {
 };
 
 export default function DietDetailPage() {
-  const [diet, setDiet] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
 
-  const dietId = params?.id ? Number(params.id) : null;
+  const dietId = params?.id ? Number(params.id) : undefined;
 
-  useEffect(() => {
-    if (!dietId || isNaN(dietId)) {
-      toast({
-        title: "Hata",
-        description: "Geçersiz beslenme programı ID'si",
-        variant: "destructive",
-      });
-      router.push("/diets");
-      return;
-    }
-
-    fetchDiet();
-  }, [dietId]);
-
-  const fetchDiet = async () => {
-    setIsLoading(true);
-    try {
-      // Get authentication token from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({
-          title: "Hata",
-          description: "Lütfen giriş yapın",
-          variant: "destructive",
-        });
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch(`/api/diets/${dietId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch diet");
-      }
-      const data = await response.json();
-      // Normalize field casing so UI consistently renders
-      const normalizedDiet = {
-        ...data.diet,
-        Hedef: data.diet?.Hedef ?? data.diet?.hedef ?? "",
-        Sonuc: data.diet?.Sonuc ?? data.diet?.sonuc ?? "",
-        Su: data.diet?.Su ?? data.diet?.su ?? "",
-        Fizik: data.diet?.Fizik ?? data.diet?.fizik ?? "",
-        Oguns: data.diet?.Oguns ?? data.diet?.oguns ?? [],
-      };
-      setDiet(normalizedDiet);
-    } catch (error) {
-      console.error("Error fetching diet:", error);
-      toast({
-        title: "Hata",
-        description: "Beslenme programı yüklenirken bir hata oluştu",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Use React Query hook for data fetching with automatic caching
+  const { data: diet, isLoading, error } = useDiet(dietId);
+  const deleteDietMutation = useDeleteDiet();
 
   const handleDeleteDiet = async () => {
     if (!confirm("Bu beslenme programını silmek istediğinize emin misiniz?")) {
       return;
     }
 
+    if (!dietId) return;
+
     try {
-      // Get authentication token from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({
-          title: "Hata",
-          description: "Lütfen giriş yapın",
-          variant: "destructive",
-        });
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch(`/api/diets/${dietId}`, {
-        method: "DELETE",
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete diet");
-      }
+      await deleteDietMutation.mutateAsync(dietId);
 
       toast({
         title: "Başarılı",
@@ -169,50 +83,19 @@ export default function DietDetailPage() {
     if (!diet?.client?.id || !dietId) return;
 
     try {
-      // Get authentication token from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({
-          title: "Hata",
-          description: "Lütfen giriş yapın",
-          variant: "destructive",
-        });
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch("/api/whatsapp/send-diet", {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientId: diet.client.id,
-          dietId: dietId,
-        }),
+      const data = await apiClient.post("/whatsapp/send-diet", {
+        clientId: diet.client.id,
+        dietId: dietId,
       });
 
-      const data = await response.json();
+      // Open WhatsApp with the generated URL
+      window.open(data.whatsappURL, "_blank");
 
-      if (response.ok) {
-        // Open WhatsApp with the generated URL
-        window.open(data.whatsappURL, "_blank");
-
-        toast({
-          title: "Başarılı",
-          description:
-            "WhatsApp açıldı! Mesajı göndermek için 'Gönder' butonuna basın.",
-        });
-      } else {
-        toast({
-          title: "Hata",
-          description: data.error || "WhatsApp URL oluşturulamadı",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Başarılı",
+        description:
+          "WhatsApp açıldı! Mesajı göndermek için 'Gönder' butonuna basın.",
+      });
     } catch (error) {
       toast({
         title: "Hata",
@@ -297,9 +180,9 @@ export default function DietDetailPage() {
                   ? `${diet.client.name} ${diet.client.surname}`.trim()
                   : "İsimsiz Danışan",
                 dietDate: diet.tarih || diet.createdAt || new Date().toISOString(),
-                weeklyResult: diet.sonuc || diet.Sonuc || "",
-                target: diet.hedef || diet.Hedef || "",
-                ogunler: (diet.oguns || diet.Oguns || []).map((ogun: any) => ({
+                weeklyResult: diet.sonuc || "",
+                target: diet.hedef || "",
+                ogunler: (diet.oguns || []).map((ogun: any) => ({
                   name: ogun.name || "",
                   time: ogun.time || "",
                   menuItems: (ogun.items || [])
@@ -311,8 +194,8 @@ export default function DietDetailPage() {
                     ),
                   notes: ogun.detail || "",
                 })),
-                waterConsumption: diet.su || diet.Su || "",
-                physicalActivity: diet.fizik || diet.Fizik || "",
+                waterConsumption: diet.su || "",
+                physicalActivity: diet.fizik || "",
               }}
               variant="ghost"
               className="text-white hover:bg-indigo-700"
@@ -357,34 +240,34 @@ export default function DietDetailPage() {
             </div>
           )}
 
-          {(diet.hedef || diet.sonuc || diet.su || diet.fizik || diet.Hedef || diet.Sonuc || diet.Su || diet.Fizik) && (
+          {(diet.hedef || diet.sonuc || diet.su || diet.fizik) && (
             <div>
               <h3 className="text-lg font-semibold mb-2">Program Detayları</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(diet.hedef || diet.Hedef) && (
+                {diet.hedef && (
                   <div className="border-l-4 border-yellow-500 pl-4">
                     <p className="font-medium text-gray-700">Hedef</p>
-                    <p className="text-gray-600">{diet.hedef || diet.Hedef}</p>
+                    <p className="text-gray-600">{diet.hedef}</p>
                   </div>
                 )}
-                {(diet.sonuc || diet.Sonuc) && (
+                {diet.sonuc && (
                   <div className="border-l-4 border-green-500 pl-4">
                     <p className="font-medium text-gray-700">Sonuç</p>
-                    <p className="text-gray-600">{diet.sonuc || diet.Sonuc}</p>
+                    <p className="text-gray-600">{diet.sonuc}</p>
                   </div>
                 )}
-                {(diet.su || diet.Su) && (
+                {diet.su && (
                   <div className="border-l-4 border-blue-500 pl-4">
                     <p className="font-medium text-gray-700">Su Tüketimi</p>
-                    <p className="text-gray-600">{diet.su || diet.Su}</p>
+                    <p className="text-gray-600">{diet.su}</p>
                   </div>
                 )}
-                {(diet.fizik || diet.Fizik) && (
+                {diet.fizik && (
                   <div className="border-l-4 border-purple-500 pl-4">
                     <p className="font-medium text-gray-700">
                       Fiziksel Aktivite
                     </p>
-                    <p className="text-gray-600">{diet.fizik || diet.Fizik}</p>
+                    <p className="text-gray-600">{diet.fizik}</p>
                   </div>
                 )}
               </div>
@@ -393,10 +276,9 @@ export default function DietDetailPage() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4">Öğünler</h3>
-            {(diet.oguns && diet.oguns.length > 0) ||
-            (diet.Oguns && diet.Oguns.length > 0) ? (
+            {diet.oguns && diet.oguns.length > 0 ? (
               <div className="space-y-4">
-                {(diet.oguns || diet.Oguns).map((ogun: any, index: number) => (
+                {diet.oguns.map((ogun: any, index: number) => (
                   <div
                     key={index}
                     className="border border-gray-200 rounded-lg p-4"

@@ -1,196 +1,76 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from './supabase-browser';
 
 /**
- * Centralized API client for all authenticated requests
- * Automatically handles authentication, error handling, and response parsing
+ * API Client - Automatic authentication injection for web
+ * Mobile app uses its own client in mobile/src/core/api/client.ts
  */
 class ApiClient {
-  private async getAuthHeaders(): Promise<HeadersInit> {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  private baseURL = '/api';
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
+  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
 
-      // Add authorization header if session exists
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-
-      return headers;
-    } catch (error) {
-      console.error("Error getting auth headers:", error);
-      return {
-        "Content-Type": "application/json",
-      };
+    // Auto-inject auth token from Supabase session
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
     }
-  }
 
-  private handleError(response: Response, context: string = "API call"): never {
-    if (response.status === 401) {
-      throw new Error("Authentication required. Please log in.");
-    } else if (response.status === 403) {
-      throw new Error(
-        "Access denied. You don't have permission for this action."
-      );
-    } else if (response.status === 404) {
-      throw new Error("Resource not found.");
-    } else if (response.status >= 500) {
-      throw new Error("Server error. Please try again later.");
-    }
-    throw new Error(`${context} failed with status: ${response.status}`);
-  }
-
-  /**
-   * Make an authenticated GET request
-   */
-  async get<T = any>(url: string, options: RequestInit = {}): Promise<T> {
-    const headers = await this.getAuthHeaders();
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { ...headers, ...options.headers },
-      cache: "no-store",
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,
+      headers,
     });
 
     if (!response.ok) {
-      this.handleError(response, `GET ${url}`);
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || `API Error: ${response.status}`);
     }
 
-    return response.json();
+    // Handle empty responses
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+    
+    return {} as T;
   }
 
-  /**
-   * Make an authenticated POST request
-   */
-  async post<T = any>(
-    url: string,
-    data?: any,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const headers = await this.getAuthHeaders();
+  get<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  }
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { ...headers, ...options.headers },
+  post<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
-      ...options,
     });
-
-    if (!response.ok) {
-      this.handleError(response, `POST ${url}`);
-    }
-
-    return response.json();
   }
 
-  /**
-   * Make an authenticated PUT request
-   */
-  async put<T = any>(
-    url: string,
-    data?: any,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const headers = await this.getAuthHeaders();
-
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: { ...headers, ...options.headers },
+  put<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
-      ...options,
     });
-
-    if (!response.ok) {
-      this.handleError(response, `PUT ${url}`);
-    }
-
-    return response.json();
   }
 
-  /**
-   * Make an authenticated PATCH request
-   */
-  async patch<T = any>(
-    url: string,
-    data?: any,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const headers = await this.getAuthHeaders();
-
-    const response = await fetch(url, {
-      method: "PATCH",
-      headers: { ...headers, ...options.headers },
+  patch<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
-      ...options,
     });
-
-    if (!response.ok) {
-      this.handleError(response, `PATCH ${url}`);
-    }
-
-    return response.json();
   }
 
-  /**
-   * Make an authenticated DELETE request
-   */
-  async delete<T = any>(url: string, options: RequestInit = {}): Promise<T> {
-    const headers = await this.getAuthHeaders();
-
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: { ...headers, ...options.headers },
-      ...options,
-    });
-
-    if (!response.ok) {
-      this.handleError(response, `DELETE ${url}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Make a raw authenticated request (for special cases)
-   */
-  async request(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = await this.getAuthHeaders();
-
-    const response = await fetch(url, {
-      headers: { ...headers, ...options.headers },
-      ...options,
-    });
-
-    return response;
+  delete<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient();
-
-// Legacy exports for backward compatibility
-export const authenticatedFetch = apiClient.request.bind(apiClient);
-export const handleApiError = (
-  response: Response,
-  context: string = "API call"
-) => {
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error("Authentication required. Please log in.");
-    } else if (response.status === 403) {
-      throw new Error(
-        "Access denied. You don't have permission for this action."
-      );
-    } else if (response.status === 404) {
-      throw new Error("Resource not found.");
-    } else if (response.status >= 500) {
-      throw new Error("Server error. Please try again later.");
-    }
-    throw new Error(`${context} failed with status: ${response.status}`);
-  }
-};

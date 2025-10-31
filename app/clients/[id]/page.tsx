@@ -1,8 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import useClientActions from "@/hooks/useClientActions";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,144 +13,21 @@ import {
   FileText,
   User,
   ChevronLeft,
+  Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
-import { createClient } from "@/lib/supabase-browser";
-
-// Update the Client interface to match the actual data structure
-interface Client {
-  id: number;
-  name: string;
-  surname: string;
-  birthdate: string | null;
-  phoneNumber?: string | null;
-  notes?: string | null;
-  illness?: string | null;
-  gender?: number | null;
-  createdAt: string;
-  updatedAt: string;
-  diets: Array<{
-    id: number;
-    createdAt: string;
-    tarih?: string | null;
-  }>;
-  bannedFoods: Array<{
-    id: number;
-    besin: {
-      id: number;
-      name: string;
-    };
-    reason?: string;
-  }>;
-}
+import { useClient } from "@/hooks/useApi";
 
 export default function ClientDetailPage() {
-  const [client, setClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const { toast } = useToast(); // Destructure all needed properties
+  const { toast } = useToast();
   const params = useParams();
-  const supabase = createClient();
   const router = useRouter();
 
-  const clientId = params?.id ? Number(params.id) : null;
+  const clientId = params?.id ? Number(params.id) : undefined;
 
-  useEffect(() => {
-    if (!clientId || isNaN(clientId)) {
-      toast({
-        title: "Hata",
-        description: "Geçersiz müşteri ID'si",
-        variant: "destructive",
-      });
-      router.push("/clients");
-      return;
-    }
-
-    fetchClient();
-  }, [clientId]);
-
-  const fetchClient = async () => {
-    setIsLoading(true);
-    try {
-      // Get authentication token from Supabase
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({
-          title: "Hata",
-          description: "Lütfen giriş yapın",
-          variant: "destructive",
-        });
-        router.push("/login");
-        return;
-      }
-
-      // Make sure the API endpoint includes diets in the response
-      const response = await fetch(`/api/clients/${clientId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
-      console.log(data, "data");
-      if (!data.client) {
-        toast({
-          title: "Hata",
-          description: "Danışan bulunamadı",
-          variant: "destructive",
-        });
-        router.push("/clients");
-        return;
-      }
-
-      // Log the received data to debug
-      console.log("Received client data:", data.client);
-
-      // If diets are not included in the API response, fetch them separately
-      if (!data.client.diets || !Array.isArray(data.client.diets)) {
-        // Fetch diets for this client
-        try {
-          const dietsResponse = await fetch(`/api/clients/${clientId}/diets`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          const dietsData = await dietsResponse.json();
-
-          // Combine the client data with the diets data
-          const clientWithDiets = {
-            ...data.client,
-            diets: dietsData.diets || [],
-          };
-
-          console.log("Client with diets:", clientWithDiets);
-          setClient(clientWithDiets);
-        } catch (dietsError) {
-          console.error("Error fetching client diets:", dietsError);
-          // Still set the client data even if diets fetch fails
-          setClient(data.client);
-        }
-      } else {
-        // Diets are already included in the client data
-        setClient(data.client);
-      }
-    } catch (error) {
-      console.error("Error fetching client:", error);
-      toast({
-        title: "Hata",
-        description: "Danışan bilgileri yüklenirken bir hata oluştu",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Use React Query hook for data fetching with automatic caching
+  const { data: client, isLoading, error } = useClient(clientId);
 
   // Update the formatDate function to properly handle the date format
   const formatDate = (dateString: string | null | undefined) => {
@@ -182,10 +57,30 @@ export default function ClientDetailPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-12 w-12 bg-indigo-300 rounded-full mb-4"></div>
-            <div className="h-4 w-40 bg-indigo-300 rounded mb-3"></div>
-            <div className="h-3 w-32 bg-indigo-200 rounded"></div>
+          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <span className="ml-2 text-gray-600">Danışan bilgileri yükleniyor...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="text-center py-16">
+          <h3 className="text-lg font-medium text-gray-900">
+            Danışan bulunamadı
+          </h3>
+          <p className="mt-2 text-gray-500">
+            Aradığınız danışan mevcut değil veya silinmiş olabilir.
+          </p>
+          <div className="mt-6">
+            <Button
+              onClick={() => router.push("/clients")}
+              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+            >
+              Danışan Listesine Dön
+            </Button>
           </div>
         </div>
       </div>
@@ -277,9 +172,9 @@ export default function ClientDetailPage() {
                 <div>
                   <h4 className="font-medium text-gray-700">Cinsiyet</h4>
                   <p className="text-gray-600">
-                    {client.gender === 1
+                    {client.gender === 1 || client.gender === "1"
                       ? "Erkek"
-                      : client.gender === 2
+                      : client.gender === 2 || client.gender === "2"
                       ? "Kadın"
                       : "Belirtilmemiş"}
                   </p>

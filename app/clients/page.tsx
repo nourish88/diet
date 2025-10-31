@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { fetchClients } from "@/services/ClientService";
 import { apiClient } from "@/lib/api-client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Client {
   id: number;
@@ -36,13 +37,38 @@ export default function ClientsPage() {
   const [page, setPage] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Cache first page load with React Query
+  const { data: cachedFirstPage } = useQuery({
+    queryKey: ['clients-list-first-page'],
+    queryFn: async () => {
+      console.log("🔄 FETCHING first page of clients from API");
+      return fetchClients({
+        skip: 0,
+        take: ITEMS_PER_PAGE,
+        search: undefined,
+      });
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  });
 
   // Fetch clients with pagination
   const loadClients = useCallback(
     async (pageNum: number, search: string, append: boolean = false) => {
       try {
+        // Use cached first page if available (page 0, no search)
+        if (pageNum === 0 && !search && cachedFirstPage && !append) {
+          console.log("💾 USING CACHED first page of clients");
+          setClients(cachedFirstPage.clients);
+          setHasMore(cachedFirstPage.hasMore);
+          setTotal(cachedFirstPage.total);
+          setIsLoading(false);
+          return;
+        }
+
         if (append) {
           setIsLoadingMore(true);
         } else {
@@ -76,7 +102,7 @@ export default function ClientsPage() {
         setIsLoadingMore(false);
       }
     },
-    [toast]
+    [toast, cachedFirstPage]
   );
 
   // Initial load

@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import prisma from "./prisma";
 import { authenticateApiKey, AuthenticatedApiKey } from "./api-key-auth";
 
@@ -69,8 +68,6 @@ export async function authenticateSupabase(
   request: NextRequest
 ): Promise<AuthenticatedUser | null> {
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
     // Get token from Authorization header or cookies
     const authHeader = request.headers.get("authorization");
     console.log("🔑 Auth header:", authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : "null");
@@ -103,14 +100,24 @@ export async function authenticateSupabase(
     
     console.log("✅ Token found:", token.substring(0, 20) + "...");
 
-    // Verify token with Supabase
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
+    // Verify token with Supabase REST API (works in all runtimes)
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseAnonKey,
+      },
+    });
 
-    if (error || !user) {
-      console.log("❌ Supabase token verification failed:", error?.message || "No user");
+    if (!response.ok) {
+      console.log("❌ Supabase token verification failed:", response.status, response.statusText);
+      return null;
+    }
+
+    const userData = await response.json();
+    const user = userData;
+
+    if (!user || !user.id) {
+      console.log("❌ No user in Supabase response");
       return null;
     }
     

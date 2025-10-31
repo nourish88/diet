@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/lib/api-client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Loader2,
@@ -44,13 +45,38 @@ export default function DietsPage() {
   const [page, setPage] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Cache first page load with React Query
+  const { data: cachedFirstPage } = useQuery({
+    queryKey: ['diets-list-first-page'],
+    queryFn: async () => {
+      console.log("🔄 FETCHING first page of diets from API");
+      const queryParams = new URLSearchParams();
+      queryParams.append("skip", "0");
+      queryParams.append("take", ITEMS_PER_PAGE.toString());
+      const url = `/api/diets?${queryParams.toString()}`;
+      return apiClient.get(url);
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+  });
 
   // Fetch diets with pagination
   const loadDiets = useCallback(
     async (pageNum: number, search: string, append: boolean = false) => {
       try {
+        // Use cached first page if available (page 0, no search)
+        if (pageNum === 0 && !search && cachedFirstPage && !append) {
+          console.log("💾 USING CACHED first page of diets");
+          setDiets(cachedFirstPage.diets);
+          setHasMore(cachedFirstPage.hasMore);
+          setTotal(cachedFirstPage.total);
+          setIsLoading(false);
+          return;
+        }
+
         if (append) {
           setIsLoadingMore(true);
         } else {
@@ -90,7 +116,7 @@ export default function DietsPage() {
         setIsLoadingMore(false);
       }
     },
-    [toast]
+    [toast, cachedFirstPage]
   );
 
   // Initial load
