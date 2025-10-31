@@ -80,9 +80,24 @@ export async function GET(request: NextRequest) {
       LIMIT 10
     `;
 
-    // Format response to match frontend expectations
+    // Get pending approvals count
+    const pendingApprovals = await prisma.user.count({
+      where: {
+        role: "client",
+        isApproved: false,
+      },
+    });
+
+    // Format response to match mobile and web expectations
     return addCorsHeaders(
       NextResponse.json({
+        // Mobile dashboard format (flat structure)
+        totalClients,
+        totalDiets,
+        thisMonthDiets,
+        pendingApprovals,
+        
+        // Web analytics page format (nested structure for backward compatibility)
         topBesins: topBesins.map((b) => ({
           id: b.id,
           name: b.name,
