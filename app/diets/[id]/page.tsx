@@ -64,8 +64,8 @@ export default function DietDetailPage() {
       });
 
       // Redirect to diets list or client detail
-      if (diet && diet.clientId) {
-        router.push(`/clients/${diet.clientId}`);
+      if (diet && diet.client?.id) {
+        router.push(`/clients/${diet.client.id}`);
       } else {
         router.push("/diets");
       }
@@ -169,12 +169,11 @@ export default function DietDetailPage() {
               Beslenme Programı #{diet.id}
             </h2>
             <p className="text-sm text-blue-100 mt-1">
-              Oluşturulma: {formatDate(diet.createdAt)}
+              Oluşturulma: {formatDate(diet.createdAt ?? null)}
             </p>
           </div>
           <div className="flex space-x-2">
             <DirectPDFButton
-              diet={diet}
               pdfData={{
                 fullName: diet.client
                   ? `${diet.client.name} ${diet.client.surname}`.trim()
@@ -228,10 +227,10 @@ export default function DietDetailPage() {
               </h3>
               <div className="border-l-4 border-indigo-500 pl-4">
                 <Link
-                  href={`/clients/${diet.clientId}`}
+                  href={`/clients/${diet.client?.id}`}
                   className="text-indigo-600 hover:text-indigo-800 font-medium"
                 >
-                  {diet.client.name} {diet.client.surname}
+                  {diet.client?.name} {diet.client?.surname}
                 </Link>
                 <p className="text-sm text-gray-600">
                   Diyet Tarihi: {formatDate(diet.tarih)}

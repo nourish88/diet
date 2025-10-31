@@ -5,6 +5,8 @@ import { apiClient } from '@/lib/api-client';
 export interface Diet {
   id: number;
   tarih: string;
+  createdAt?: string;
+  updatedAt?: string;
   hedef?: string | null;
   sonuc?: string | null;
   su?: string | null;
@@ -14,6 +16,7 @@ export interface Diet {
     id: number;
     name: string;
     surname: string;
+    phoneNumber?: string | null;
   };
   oguns?: Array<{
     id: number;
