@@ -62,12 +62,12 @@ const Navbar = () => {
     const allItems = [
       { href: "/", label: "Ana Sayfa", icon: Home },
       { href: "/clients", label: "Danışanlar", icon: Users },
-      { href: "/pending-clients", label: "Bekleyen Onaylar", icon: Users },
       { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
       { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
+      { href: "/pending-clients", label: "Mobil App İçin Onay Bekleyenler", icon: Users },
     ];
 
     // If user is not authenticated, show no items (middleware will redirect to login)
