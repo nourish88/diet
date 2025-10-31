@@ -65,15 +65,15 @@ export function useDietActions() {
 
       // Track usage in background (non-blocking)
       // Use API response data which has besin IDs instead of raw dietData
-      console.log("🔥 Tracking usage from API response:", result.diet);
+      console.log("🔥 Tracking usage from API response:", result);
       const trackingItems = AnalyticsService.extractTrackingItems(
-        result.diet?.oguns || []
+        result?.oguns || []
       );
       console.log("🔥 Extracted tracking items:", trackingItems);
       AnalyticsService.trackBesinUsage(trackingItems);
 
       setIsLoading(false);
-      return result.diet;
+      return result;
     } catch (error) {
       setIsLoading(false);
       console.error("Error saving diet:", error);

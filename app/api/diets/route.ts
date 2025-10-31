@@ -85,12 +85,7 @@ export const POST = requireDietitian(
         },
       });
 
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          diet: diet,
-        })
-      );
+      return addCorsHeaders(NextResponse.json(diet));
     } catch (error) {
       console.error("Error creating diet:", error);
       return addCorsHeaders(

@@ -16,7 +16,7 @@ const useClientActions = () => {
 
   const getClient = async (id: number) => {
     const data = await apiClient.get(`/clients/${id}`);
-    return data.client;
+    return data;
   };
 
   const getClients = async (search?: string, take: number = 20) => {
@@ -43,7 +43,7 @@ const useClientActions = () => {
   const updateClient = async (clientId: number, data: any) => {
     try {
       const result = await apiClient.put(`/clients/${clientId}`, data);
-      return result.client;
+      return result;
     } catch (error) {
       console.error("Error updating client:", error);
       throw error;
