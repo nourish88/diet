@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, addCorsHeaders } from "@/lib/api-auth";
+import { requireAuth } from "@/lib/api-auth";
+import { addCorsHeaders } from "@/lib/cors";
 import { z } from "zod";
 
 // Validation schemas
