@@ -42,11 +42,6 @@ const nextConfig = {
   },
   // Exclude mobile directory from Next.js build
   pageExtensions: ["tsx", "ts", "jsx", "js"],
-  experimental: {
-    externalDir: true,
-  },
-  // Exclude mobile directory
-  exclude: ["mobile/**/*"],
 };
 
 module.exports = nextConfig;
