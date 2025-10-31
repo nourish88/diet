@@ -168,7 +168,7 @@ export default function ClientsPage() {
 
     setIsDeleting(id);
     try {
-      await apiClient.delete(`/api/clients/${id}`);
+      await apiClient.delete(`/clients/${id}`);
 
       toast({
         title: "Başarılı",

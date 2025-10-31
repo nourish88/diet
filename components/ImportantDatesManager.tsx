@@ -57,7 +57,7 @@ export default function ImportantDatesManager() {
 
     setIsDeleting(id);
     try {
-      await apiClient.delete(`/api/important-dates/${id}`);
+      await apiClient.delete(`/important-dates/${id}`);
 
       toast({
         title: "Başarılı",

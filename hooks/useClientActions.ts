@@ -15,7 +15,7 @@ const useClientActions = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getClient = async (id: number) => {
-    const data = await apiClient.get(`/api/clients/${id}`);
+    const data = await apiClient.get(`/clients/${id}`);
     return data.client;
   };
 
@@ -27,7 +27,7 @@ const useClientActions = () => {
       if (search) queryParams.append("search", search);
       queryParams.append("take", take.toString());
       
-      const url = `/api/clients?${queryParams.toString()}`;
+      const url = `/clients?${queryParams.toString()}`;
       const data = await apiClient.get(url);
       console.log("Raw API response:", data); // Debug the entire response
       return data;
@@ -42,7 +42,7 @@ const useClientActions = () => {
 
   const updateClient = async (clientId: number, data: any) => {
     try {
-      const result = await apiClient.put(`/api/clients/${clientId}`, data);
+      const result = await apiClient.put(`/clients/${clientId}`, data);
       return result.client;
     } catch (error) {
       console.error("Error updating client:", error);
@@ -55,7 +55,7 @@ const useClientActions = () => {
     setError(null);
 
     try {
-      await apiClient.delete(`/api/clients/${clientId}`);
+      await apiClient.delete(`/clients/${clientId}`);
       return true;
     } catch (err: any) {
       console.error("Error deleting client:", err);

@@ -61,7 +61,7 @@ const PresetService = {
     data: Partial<MealPreset>
   ): Promise<MealPreset> {
     try {
-      return await apiClient.put(`/api/presets/${id}`, data);
+      return await apiClient.put(`/presets/${id}`, data);
     } catch (error) {
       console.error("Error updating preset:", error);
       throw error;
@@ -71,7 +71,7 @@ const PresetService = {
   // Delete preset
   async deletePreset(id: number): Promise<void> {
     try {
-      await apiClient.delete(`/api/presets/${id}`);
+      await apiClient.delete(`/presets/${id}`);
     } catch (error) {
       console.error("Error deleting preset:", error);
       throw error;
