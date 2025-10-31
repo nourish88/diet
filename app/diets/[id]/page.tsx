@@ -3,13 +3,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  ChevronLeft,
-  Loader2,
-  Trash2,
-  Clock,
-  User,
-} from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, Clock, User } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
@@ -178,7 +172,8 @@ export default function DietDetailPage() {
                 fullName: diet.client
                   ? `${diet.client.name} ${diet.client.surname}`.trim()
                   : "İsimsiz Danışan",
-                dietDate: diet.tarih || diet.createdAt || new Date().toISOString(),
+                dietDate:
+                  diet.tarih || diet.createdAt || new Date().toISOString(),
                 weeklyResult: diet.sonuc || "",
                 target: diet.hedef || "",
                 ogunler: (diet.oguns || []).map((ogun: any) => ({
@@ -316,7 +311,8 @@ export default function DietDetailPage() {
                     {ogun.detail && (
                       <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
                         <p className="text-sm text-gray-700">
-                          <span className="font-medium">Not:</span> {ogun.detail}
+                          <span className="font-medium">Not:</span>{" "}
+                          {ogun.detail}
                         </p>
                       </div>
                     )}

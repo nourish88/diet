@@ -27,7 +27,7 @@ export const BottomNavbar: React.FC<BottomNavbarProps> = () => {
       id: "home",
       route: "/(dietitian)",
       icon: Home,
-      label: "Ana Sayfa",
+      label: "Anasayfa",
     },
     {
       id: "clients",

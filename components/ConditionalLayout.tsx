@@ -23,7 +23,7 @@ export default function ConditionalLayout({
   return (
     <>
       <Navbar />
-      <main className="pt-24">{children}</main>
+      <main className="pt-32 lg:pt-24">{children}</main>
     </>
   );
 }

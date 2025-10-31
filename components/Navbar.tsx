@@ -69,7 +69,7 @@ const Navbar = () => {
       { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
       {
         href: "/pending-clients",
-        label: "puOnay Bekleyenler",
+        label: "Onay Bekleyenler",
         icon: Users,
       },
     ];
@@ -138,7 +138,7 @@ const Navbar = () => {
         <div className="flex items-center space-x-4">
           {/* User info and logout */}
           {!loading && databaseUser && (
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden lg:flex items-center space-x-2">
               <span className="text-sm text-gray-600">
                 {databaseUser.email}
               </span>
@@ -159,7 +159,7 @@ const Navbar = () => {
           )}
 
           {/* Mobile menu button */}
-          <div className="flex md:hidden">
+          <div className="flex lg:hidden">
             <button
               type="button"
               className="inline-flex items-center p-2 ml-3 text-gray-700 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
@@ -178,10 +178,10 @@ const Navbar = () => {
         </div>
 
         <div
-          className={`${isOpen ? "block" : "hidden"} w-full md:block md:w-auto`}
+          className={`${isOpen ? "block" : "hidden"} w-full lg:block lg:w-auto`}
           id="navbar-menu"
         >
-          <ul className="flex flex-col mt-4 p-4 md:p-0 font-medium md:flex-row md:space-x-8 md:mt-0 md:border-0 bg-white md:bg-transparent border-gray-200 rounded-lg border md:border-none">
+          <ul className="flex flex-col mt-4 p-4 md:p-0 font-medium lg:flex-row lg:space-x-4 xl:space-x-8 lg:mt-0 lg:border-0 bg-white lg:bg-transparent border-gray-200 rounded-lg border lg:border-none">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -190,8 +190,8 @@ const Navbar = () => {
                     href={item.href}
                     className={`flex items-center py-2 px-3 rounded-lg ${
                       isActive(item.href)
-                        ? "text-white bg-indigo-600 md:text-indigo-600 md:bg-transparent"
-                        : "text-gray-700 hover:bg-gray-100 md:hover:bg-transparent md:hover:text-indigo-600"
+                        ? "text-white bg-indigo-600 lg:text-indigo-600 lg:bg-transparent"
+                        : "text-gray-700 hover:bg-gray-100 lg:hover:bg-transparent lg:hover:text-indigo-600"
                     }`}
                     onClick={(e) => {
                       console.log("🔗 Navbar link clicked:", item.href);
@@ -207,7 +207,7 @@ const Navbar = () => {
 
             {/* Mobile logout */}
             {!loading && databaseUser && (
-              <li className="md:hidden">
+              <li className="lg:hidden">
                 <button
                   onClick={handleSignOut}
                   className="flex items-center py-2 px-3 rounded-lg text-gray-700 hover:bg-gray-100 w-full text-left"
