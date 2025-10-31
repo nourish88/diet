@@ -32,7 +32,6 @@ model Client {
   dietitianId Int?         // NEW: Assign to specific dietitian
   dietitian   User?        @relation("ClientDietitian", fields: [dietitianId], references: [id])
   mealPhotos  MealPhoto[]
-  comments    Comment[]
 }
 
 model Diet {
