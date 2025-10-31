@@ -15,7 +15,7 @@ const DefinitionService = {
   // Get all definitions by type
   async getDefinitions(type?: DefinitionType): Promise<Definition[]> {
     try {
-      const url = type ? `/api/definitions?type=${type}` : "/api/definitions";
+      const url = type ? `/definitions?type=${type}` : "/definitions";
       return await apiClient.get(url);
     } catch (error) {
       console.error("Error fetching definitions:", error);
@@ -42,7 +42,7 @@ const DefinitionService = {
     data: { name?: string; isActive?: boolean }
   ): Promise<Definition> {
     try {
-      return await apiClient.put(`/api/definitions/${id}`, data);
+      return await apiClient.put(`/definitions/${id}`, data);
     } catch (error) {
       console.error("Error updating definition:", error);
       throw error;
@@ -52,7 +52,7 @@ const DefinitionService = {
   // Delete a definition
   async deleteDefinition(id: number): Promise<void> {
     try {
-      await apiClient.delete(`/api/definitions/${id}`);
+      await apiClient.delete(`/definitions/${id}`);
     } catch (error) {
       console.error("Error deleting definition:", error);
       throw error;
