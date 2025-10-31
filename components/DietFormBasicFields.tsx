@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-browser";
 
 interface ImportantDate {
   id: number;
@@ -70,6 +70,7 @@ const DietFormBasicFields = ({
   // Add console.log to debug incoming props
   console.log("DietFormBasicFields received diet:", diet);
 
+  const supabase = createClient();
   const [showBirthdayCelebration, setShowBirthdayCelebration] = useState(false);
   const [importantDate, setImportantDate] = useState<ImportantDate | null>(
     null

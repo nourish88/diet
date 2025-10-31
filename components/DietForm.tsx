@@ -25,7 +25,7 @@ import TemplateService from "@/services/TemplateService";
 import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-browser";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -33,6 +33,7 @@ interface DietFormProps {
 }
 
 const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
+  const supabase = createClient();
   const [diet, setDiet] = useState<Diet>({
     ...initialDiet,
   });

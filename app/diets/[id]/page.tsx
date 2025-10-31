@@ -16,7 +16,7 @@ import {
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-browser";
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
 const formatDateTR = (dateString: string | null | undefined | Date) => {
@@ -44,6 +44,7 @@ export default function DietDetailPage() {
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
+  const supabase = createClient();
 
   const dietId = params?.id ? Number(params.id) : null;
 

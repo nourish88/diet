@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-browser";
 
 // Update the Client interface to match the actual data structure
 interface Client {
@@ -53,6 +53,7 @@ export default function ClientDetailPage() {
 
   const { toast } = useToast(); // Destructure all needed properties
   const params = useParams();
+  const supabase = createClient();
   const router = useRouter();
 
   const clientId = params?.id ? Number(params.id) : null;

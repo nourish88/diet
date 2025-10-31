@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-browser";
 
 interface Client {
   id: number;
@@ -35,6 +35,7 @@ const ClientSelector = ({
   selectedClientId,
   selectedClientName,
 }: ClientSelectorProps) => {
+  const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
