@@ -310,18 +310,18 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
 
-      if (data.diet) {
+      if (data && data.id) {
         // Create the UI diet with correct field mapping from API response
         const uiDiet = {
-          ...convertDbDietToUiDiet(data.diet, targetClientId),
+          ...convertDbDietToUiDiet(data, targetClientId),
           // Use the correct field names from API response
-          Su: data.diet.su || "",
-          Fizik: data.diet.fizik || "",
-          Sonuc: data.diet.sonuc || "",
-          Hedef: data.diet.hedef || "",
-          dietitianNote: data.diet.dietitianNote || "",
+          Su: data.su || "",
+          Fizik: data.fizik || "",
+          Sonuc: data.sonuc || "",
+          Hedef: data.hedef || "",
+          dietitianNote: data.dietitianNote || "",
           Tarih:
-            data.diet.tarih || data.diet.createdAt || new Date().toISOString(),
+            data.tarih || data.createdAt || new Date().toISOString(),
         };
 
         setDiet(uiDiet);

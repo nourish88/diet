@@ -67,7 +67,7 @@ export async function GET(
       );
     }
 
-    return addCorsHeaders(NextResponse.json({ client }));
+    return addCorsHeaders(NextResponse.json(client));
   } catch (error: any) {
     console.error("Error fetching client:", error);
     return addCorsHeaders(
@@ -159,7 +159,7 @@ export async function PUT(
       },
     });
 
-    return addCorsHeaders(NextResponse.json({ client: finalClient }));
+    return addCorsHeaders(NextResponse.json(finalClient));
   } catch (error: any) {
     console.error("Error updating client:", error);
     return addCorsHeaders(
@@ -225,7 +225,7 @@ export async function PATCH(
       },
     });
 
-    return addCorsHeaders(NextResponse.json({ client: updatedClient }));
+    return addCorsHeaders(NextResponse.json(updatedClient));
   } catch (error: any) {
     console.error("Error updating client:", error);
     return addCorsHeaders(

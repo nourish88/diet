@@ -128,7 +128,7 @@ export async function GET(
           : (diet as any).updatedAt,
     };
 
-    return addCorsHeaders(NextResponse.json({ diet: normalized }));
+    return addCorsHeaders(NextResponse.json(normalized));
   } catch (error) {
     console.error("Error fetching diet:", error);
     return addCorsHeaders(

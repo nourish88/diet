@@ -43,7 +43,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ diet });
+    return NextResponse.json(diet);
   } catch (error) {
     console.error("Error in GET /api/diets/latest/[clientId]:", error);
     return NextResponse.json(
