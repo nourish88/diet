@@ -50,8 +50,13 @@ export default function DietitianDashboard() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Use React Query for caching dashboard stats
-  const { data: statsData, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery({
-    queryKey: ['dashboard-stats'],
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useQuery({
+    queryKey: ["dashboard-stats"],
     queryFn: async () => {
       return await api.get("/api/analytics/stats");
     },
@@ -59,8 +64,12 @@ export default function DietitianDashboard() {
   });
 
   // Use React Query for caching recent diets
-  const { data: recentDietsData, isLoading: dietsLoading, refetch: refetchDiets } = useQuery({
-    queryKey: ['recent-diets'],
+  const {
+    data: recentDietsData,
+    isLoading: dietsLoading,
+    refetch: refetchDiets,
+  } = useQuery({
+    queryKey: ["recent-diets"],
     queryFn: async () => {
       return await api.get("/api/diets?skip=0&take=5");
     },
@@ -170,14 +179,6 @@ export default function DietitianDashboard() {
             >
               <PlusCircle size={20} color="#fff" />
               <Text style={styles.actionButtonText}>Yeni Diyet</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push("/(dietitian)/templates")}
-            >
-              <FileText size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Şablonlar</Text>
             </TouchableOpacity>
           </View>
         </View>
