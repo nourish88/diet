@@ -27,8 +27,8 @@ const PresetService = {
   async getPresets(mealType?: string): Promise<MealPreset[]> {
     try {
       const url = mealType
-        ? `/api/presets?mealType=${mealType}`
-        : "/api/presets";
+        ? `/presets?mealType=${mealType}`
+        : "/presets";
 
       return await apiClient.get(url);
     } catch (error) {

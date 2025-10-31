@@ -142,7 +142,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
           : "Yeni danışan oluşturuldu",
       });
 
-      onSuccess(isEdit ? initialData.id : data.client.id);
+      onSuccess(isEdit ? initialData.id : data.id);
     } catch (error) {
       console.error("Form submission error:", error);
       toast({

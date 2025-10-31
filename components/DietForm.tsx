@@ -100,22 +100,22 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           throw new Error(data.error || "Failed to fetch client");
         }
 
-        if (data.client) {
-          setSelectedClientId(data.client.id);
-          setSelectedClientName(`${data.client.name} ${data.client.surname}`);
+        if (data && data.id) {
+          setSelectedClientId(data.id);
+          setSelectedClientName(`${data.name} ${data.surname}`);
 
           // Set client data here instead of in a separate effect
           setClientData({
-            illness: data.client.illness,
-            bannedFoods: data.client.bannedFoods || [],
+            illness: data.illness,
+            bannedFoods: data.bannedFoods || [],
           });
-          const phone = data.client.phoneNumber
-            ? "+90" + data.client.phoneNumber
+          const phone = data.phoneNumber
+            ? "+90" + data.phoneNumber
             : undefined;
           setClientPhoneNumber(phone);
 
           // Load latest diet for this client
-          await loadLatestDiet(data.client.id);
+          await loadLatestDiet(data.id);
         }
       } catch (error) {
         console.error("Error fetching initial client:", error);
@@ -243,9 +243,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           if (!response.ok) return;
 
           const data = await response.json();
-          const client = data.client;
+          const client = data;
 
-          if (!client) return;
+          if (!client || !client.id) return;
 
           // Set client name for display
           setSelectedClientName(`${client.name} ${client.surname}`);
@@ -320,8 +320,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           Sonuc: data.sonuc || "",
           Hedef: data.hedef || "",
           dietitianNote: data.dietitianNote || "",
-          Tarih:
-            data.tarih || data.createdAt || new Date().toISOString(),
+          Tarih: data.tarih || data.createdAt || new Date().toISOString(),
         };
 
         setDiet(uiDiet);

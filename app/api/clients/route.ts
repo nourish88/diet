@@ -143,7 +143,7 @@ export const POST = requireDietitian(
 
       console.log("Created client:", client);
 
-      return addCorsHeaders(NextResponse.json({ client }, { status: 201 }));
+      return addCorsHeaders(NextResponse.json(client, { status: 201 }));
     } catch (error: any) {
       console.error("Error creating client:", error);
 

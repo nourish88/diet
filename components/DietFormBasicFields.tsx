@@ -176,11 +176,11 @@ const DietFormBasicFields = ({
         });
         const data = await response.json();
         
-        // Here, data is the entire response object with the client property
+        // Here, data is the unwrapped client object
         console.log(data, "data");
 
-        // Access the client object inside the response
-        const client = data.client;
+        // Access the client object directly
+        const client = data;
         console.log(client, "client");
 
         // Now you can correctly access the birthdate
