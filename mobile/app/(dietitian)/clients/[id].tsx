@@ -70,19 +70,19 @@ export default function ClientDetailScreen() {
       const response = await api.get(`/api/clients/${id}`);
 
       // Check if diets are included, if not fetch them
-      if (!response.client.diets || !Array.isArray(response.client.diets)) {
+      if (!response.diets || !Array.isArray(response.diets)) {
         try {
           const dietsResponse = await api.get(`/api/clients/${id}/diets`);
           return {
-            ...response.client,
+            ...response,
             diets: dietsResponse.diets || [],
           };
         } catch (dietsError) {
           console.error("Error fetching client diets:", dietsError);
-          return response.client;
+          return response;
         }
       }
-      return response.client;
+      return response;
     },
     enabled: !!id,
     staleTime: 3 * 60 * 1000, // 3 minutes
