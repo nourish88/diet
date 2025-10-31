@@ -38,7 +38,7 @@ export default function ImportantDatesManager() {
   const fetchImportantDates = async () => {
     try {
       console.log("🔄 ImportantDatesManager: Fetching important dates...");
-      const data = await apiClient.get("/api/important-dates");
+      const data = await apiClient.get("/important-dates");
       console.log("📅 ImportantDatesManager: Received data:", data);
       setImportantDates(data);
     } catch (error) {
@@ -105,9 +105,9 @@ export default function ImportantDatesManager() {
     setIsLoading(true);
     try {
       if (editingDate) {
-        await apiClient.put(`/api/important-dates/${editingDate.id}`, newDate);
+        await apiClient.put(`/important-dates/${editingDate.id}`, newDate);
       } else {
-        await apiClient.post("/api/important-dates", newDate);
+        await apiClient.post("/important-dates", newDate);
       }
 
       setNewDate({

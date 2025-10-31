@@ -48,7 +48,7 @@ const PresetService = {
     }>;
   }): Promise<MealPreset> {
     try {
-      return await apiClient.post("/api/presets", data);
+      return await apiClient.post("/presets", data);
     } catch (error) {
       console.error("Error creating preset:", error);
       throw error;
@@ -85,7 +85,7 @@ const PresetService = {
     patternsDetected: number;
   }> {
     try {
-      return await apiClient.post("/api/presets/auto-generate");
+      return await apiClient.post("/presets/auto-generate");
     } catch (error) {
       console.error("Error auto-generating presets:", error);
       throw error;

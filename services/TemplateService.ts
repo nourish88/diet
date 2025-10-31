@@ -72,7 +72,7 @@ const TemplateService = {
     oguns: any[];
   }): Promise<DietTemplate> {
     try {
-      return await apiClient.post("/api/templates", data);
+      return await apiClient.post("/templates", data);
     } catch (error) {
       console.error("Error creating template:", error);
       throw error;

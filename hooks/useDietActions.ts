@@ -61,7 +61,7 @@ export function useDietActions() {
       };
 
       // Make the API call
-      const result = await apiClient.post("/api/diets", apiData);
+      const result = await apiClient.post("/diets", apiData);
 
       // Track usage in background (non-blocking)
       // Use API response data which has besin IDs instead of raw dietData

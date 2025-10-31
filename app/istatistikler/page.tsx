@@ -50,7 +50,7 @@ export default function IstatistiklerPage() {
     try {
       setIsLoading(true);
       console.log("🔄 IstatistiklerPage: Loading analytics...");
-      const data = await apiClient.get("/api/analytics/stats");
+      const data = await apiClient.get("/analytics/stats");
       console.log("📊 IstatistiklerPage: Analytics loaded:", data);
       setAnalyticsData(data);
     } catch (error) {

@@ -29,7 +29,7 @@ const DefinitionService = {
     name: string
   ): Promise<Definition> {
     try {
-      return await apiClient.post("/api/definitions", { type, name });
+      return await apiClient.post("/definitions", { type, name });
     } catch (error) {
       console.error("Error creating definition:", error);
       throw error;
