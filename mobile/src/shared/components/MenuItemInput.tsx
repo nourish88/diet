@@ -213,28 +213,31 @@ export default function MenuItemInput({
             <FlatList
               data={besinSuggestions}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item: suggestion }) => (
-                <TouchableOpacity
-                  style={styles.suggestionItem}
-                  onPress={() => handleSelectBesin(suggestion)}
-                >
-                  <View style={styles.suggestionContent}>
-                    <Text style={styles.suggestionName}>
-                      {suggestion.name}
-                    </Text>
-                    {suggestion.miktar && suggestion.birim && (
-                      <Text style={styles.suggestionDetails}>
-                        {suggestion.miktar} {suggestion.birim}
+              renderItem={({ item: suggestion }) => {
+                if (!suggestion || typeof suggestion !== 'object') return null;
+                return (
+                  <TouchableOpacity
+                    style={styles.suggestionItem}
+                    onPress={() => handleSelectBesin(suggestion)}
+                  >
+                    <View style={styles.suggestionContent}>
+                      <Text style={styles.suggestionName}>
+                        {suggestion.name || ''}
                       </Text>
-                    )}
-                    {suggestion.usageCount && suggestion.usageCount > 0 && (
-                      <Text style={styles.usageCount}>
-                        {suggestion.usageCount}× kullanıldı
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              )}
+                      {suggestion.miktar && suggestion.birim && (
+                        <Text style={styles.suggestionDetails}>
+                          {String(suggestion.miktar)} {String(suggestion.birim)}
+                        </Text>
+                      )}
+                      {suggestion.usageCount && suggestion.usageCount > 0 && (
+                        <Text style={styles.usageCount}>
+                          {String(suggestion.usageCount)}× kullanıldı
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 searchTerm.length >= 2 ? (
                   <View style={styles.emptyContainer}>
