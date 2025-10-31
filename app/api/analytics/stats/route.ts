@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
         bg.name as "groupName",
         COUNT(mi.id) as "usageCount"
       FROM "Besin" b
-      LEFT JOIN "BesinGroup" bg ON b."besinGroupId" = bg.id
+      LEFT JOIN "BesinGroup" bg ON b."groupId" = bg.id
       INNER JOIN "MenuItem" mi ON mi."besinId" = b.id
       INNER JOIN "Ogun" o ON mi."ogunId" = o.id
       INNER JOIN "Diet" d ON o."dietId" = d.id
