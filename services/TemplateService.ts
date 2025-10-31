@@ -37,8 +37,8 @@ const TemplateService = {
   async getTemplates(category?: string): Promise<DietTemplate[]> {
     try {
       const url = category
-        ? `/api/templates?category=${category}`
-        : "/api/templates";
+        ? `/templates?category=${category}`
+        : "/templates";
 
       console.log("🔍 TemplateService: Fetching templates from:", url);
       const data = await apiClient.get(url);
@@ -53,7 +53,7 @@ const TemplateService = {
   // Get template by ID
   async getTemplate(id: number): Promise<DietTemplate> {
     try {
-      return await apiClient.get(`/api/templates/${id}`);
+      return await apiClient.get(`/templates/${id}`);
     } catch (error) {
       console.error("Error fetching template:", error);
       throw error;
@@ -85,7 +85,7 @@ const TemplateService = {
     data: Partial<DietTemplate>
   ): Promise<DietTemplate> {
     try {
-      return await apiClient.put(`/api/templates/${id}`, data);
+      return await apiClient.put(`/templates/${id}`, data);
     } catch (error) {
       console.error("Error updating template:", error);
       throw error;
@@ -95,7 +95,7 @@ const TemplateService = {
   // Delete template
   async deleteTemplate(id: number): Promise<void> {
     try {
-      await apiClient.delete(`/api/templates/${id}`);
+      await apiClient.delete(`/templates/${id}`);
     } catch (error) {
       console.error("Error deleting template:", error);
       throw error;
@@ -105,7 +105,7 @@ const TemplateService = {
   // Use template to create diet
   async useTemplate(templateId: number, clientId: number): Promise<any> {
     try {
-      return await apiClient.post(`/api/templates/${templateId}/use`, {
+      return await apiClient.post(`/templates/${templateId}/use`, {
         clientId,
       });
     } catch (error) {
