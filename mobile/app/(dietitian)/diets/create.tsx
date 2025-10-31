@@ -129,6 +129,58 @@ export default function DietCreateScreen({
     }
   }, [templateId]);
 
+  // Load latest diet when client is selected
+  useEffect(() => {
+    if (selectedClientId && !templateId) {
+      loadLatestDiet(selectedClientId);
+    }
+  }, [selectedClientId]);
+
+  const loadLatestDiet = async (clientId: number) => {
+    try {
+      console.log("📥 Loading latest diet for client:", clientId);
+      const latestDiet = await api.get<any>(`/api/diets/latest/${clientId}`);
+      
+      if (latestDiet && latestDiet.id) {
+        console.log("✅ Latest diet loaded:", latestDiet.id);
+        
+        // Populate form with latest diet data (excluding ID and date)
+        setDiet({
+          Tarih: new Date().toISOString(), // Always new date
+          Hedef: latestDiet.hedef || "",
+          Sonuc: latestDiet.sonuc || "",
+          Su: latestDiet.su || "",
+          Fizik: latestDiet.fizik || "",
+          dietitianNote: latestDiet.dietitianNote || "",
+        });
+
+        // Populate oguns if available
+        if (latestDiet.oguns && Array.isArray(latestDiet.oguns)) {
+          const mappedOguns = latestDiet.oguns.map((ogun: any) => ({
+            name: ogun.name || "",
+            time: ogun.time || "",
+            detail: ogun.detail || "",
+            items: (ogun.items || [{ besin: "", miktar: "", birim: "" }]).map((item: any) => ({
+              besin: item.besin?.name || item.besin || "",
+              miktar: item.miktar || "",
+              birim: item.birim?.name || item.birim || "",
+            })),
+          }));
+          setOguns(sortOgunsByTime(mappedOguns));
+        }
+        
+        Alert.alert("✅ Başarılı", "Son diyet yüklendi ve form dolduruldu");
+      }
+    } catch (error: any) {
+      // 404 is expected if no previous diet exists
+      if (error.response?.status === 404) {
+        console.log("ℹ️ No previous diet found for client");
+      } else {
+        console.error("❌ Error loading latest diet:", error);
+      }
+    }
+  };
+
   const loadTemplate = async (id: number) => {
     try {
       setIsLoadingTemplate(true);
