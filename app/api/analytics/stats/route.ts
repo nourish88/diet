@@ -44,20 +44,65 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Pending approvals - this could be clients waiting for approval, etc.
-    // For now, let's just return 0 or implement if you have a pending system
-    const pendingApprovals = 0;
+    // Get last month's diets for comparison
+    const lastMonthStart = new Date();
+    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+    lastMonthStart.setDate(1);
+    lastMonthStart.setHours(0, 0, 0, 0);
+    const lastMonthEnd = new Date(thisMonthStart);
+    lastMonthEnd.setTime(lastMonthEnd.getTime() - 1);
 
+    const lastMonthDiets = await prisma.diet.count({
+      where: {
+        dietitianId: dietitianId,
+        createdAt: {
+          gte: lastMonthStart,
+          lte: lastMonthEnd,
+        },
+      },
+    });
+
+    // Get top used besins (top 10)
+    const topBesins = await prisma.$queryRaw<any[]>`
+      SELECT 
+        b.id,
+        b.name,
+        bg.name as "groupName",
+        COUNT(mi.id) as "usageCount"
+      FROM "Besin" b
+      LEFT JOIN "BesinGroup" bg ON b."besinGroupId" = bg.id
+      INNER JOIN "MenuItem" mi ON mi."besinId" = b.id
+      INNER JOIN "Ogun" o ON mi."ogunId" = o.id
+      INNER JOIN "Diet" d ON o."dietId" = d.id
+      WHERE d."dietitianId" = ${dietitianId}
+      GROUP BY b.id, b.name, bg.name
+      ORDER BY "usageCount" DESC
+      LIMIT 10
+    `;
+
+    // Format response to match frontend expectations
     return addCorsHeaders(
       NextResponse.json({
-        totalClients,
-        totalDiets,
-        thisMonthDiets,
-        pendingApprovals,
+        topBesins: topBesins.map((b) => ({
+          id: b.id,
+          name: b.name,
+          groupName: b.groupName,
+          usageCount: Number(b.usageCount),
+        })),
+        totals: {
+          totalDiets: totalDiets,
+          dietsThisMonth: thisMonthDiets,
+          dietsLastMonth: lastMonthDiets,
+        },
+        efficiency: {
+          avgTimeThisMonth: 0, // Placeholder
+          avgTimeLastMonth: 0, // Placeholder
+          improvement: 0, // Placeholder
+        },
       })
     );
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
+    console.error("Error fetching analytics stats:", error);
     return addCorsHeaders(
       NextResponse.json(
         { error: "İstatistikler yüklenirken bir hata oluştu" },
