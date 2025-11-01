@@ -216,7 +216,6 @@ export async function POST(
       });
 
       // If photos provided, create them
-      let createdPhotos = [];
       if (photos && photos.length > 0 && auth.user!.role === "client") {
         const photoData = photos.map((photo: any) => ({
           imageData: photo.imageData,
@@ -228,11 +227,11 @@ export async function POST(
           expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
         }));
 
-        createdPhotos = await tx.mealPhoto.createMany({
+        const createResult = await tx.mealPhoto.createMany({
           data: photoData,
         });
 
-        console.log(`📸 Created ${photos.length} photos for message ${message.id}`);
+        console.log(`📸 Created ${createResult.count} photos for message ${message.id}`);
       }
 
       // Fetch complete message with photos
