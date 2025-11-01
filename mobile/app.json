@@ -41,12 +41,18 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share meal photos with your dietitian."
+          "photosPermission": "The app accesses your photos to let you share meal photos with your dietitian.",
+          "cameraPermission": "The app accesses your camera to let you take meal photos and share them with your dietitian."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ad7183f3-4069-4359-a20e-9f99d46f6318"
+      }
     }
   }
 }

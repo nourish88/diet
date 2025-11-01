@@ -14,10 +14,13 @@ import {
   User,
   ChevronLeft,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { useClient } from "@/hooks/useApi";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase-browser";
 
 export default function ClientDetailPage() {
   const { toast } = useToast();
@@ -28,6 +31,41 @@ export default function ClientDetailPage() {
 
   // Use React Query hook for data fetching with automatic caching
   const { data: client, isLoading, error } = useClient(clientId);
+
+  // Fetch unread message counts
+  const { data: unreadData } = useQuery({
+    queryKey: ["unreadMessages", clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      
+      // Get Supabase session for auth token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log("⚠️ No session found");
+        return null;
+      }
+
+      const response = await fetch(`/api/clients/${clientId}/unread-messages`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`, // ← SORUN BURADA EKSİKTİ!
+        },
+      });
+      
+      if (!response.ok) {
+        console.log("❌ Unread messages API error:", response.status);
+        return null;
+      }
+      
+      const data = await response.json();
+      return data;
+    },
+    enabled: !!clientId,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   // Update the formatDate function to properly handle the date format
   const formatDate = (dateString: string | null | undefined) => {
@@ -248,11 +286,13 @@ export default function ClientDetailPage() {
                 {client.diets.map((diet) => (
                   <div
                     key={diet.id}
-                    className="border border-gray-200 rounded-md p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/diets/${diet.id}`)}
+                    className="border border-gray-200 rounded-md p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex justify-between items-center">
-                      <div>
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => router.push(`/diets/${diet.id}`)}
+                      >
                         <div className="font-medium">
                           Beslenme Programı #{diet.id}
                         </div>
@@ -260,11 +300,32 @@ export default function ClientDetailPage() {
                           Oluşturulma: {formatDate(diet.createdAt)}
                         </div>
                       </div>
-                      {diet.tarih && (
-                        <div className="text-sm text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                          Program Tarihi: {formatDate(diet.tarih)}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {diet.tarih && (
+                          <div className="text-sm text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                            Program Tarihi: {formatDate(diet.tarih)}
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(
+                              `/clients/${client.id}/messages?dietId=${diet.id}`
+                            );
+                          }}
+                          className="flex items-center gap-2 relative"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Mesajlaşma
+                          {unreadData?.unreadByDiet?.[diet.id] > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                              {unreadData.unreadByDiet[diet.id]}
+                            </span>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

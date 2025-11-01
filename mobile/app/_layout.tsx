@@ -31,7 +31,15 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
         }}
-      />
+      >
+        <Stack.Screen
+          name="pending-approval"
+          options={{
+            title: "Onay Bekleniyor",
+            headerShown: false,
+          }}
+        />
+      </Stack>
       <StatusBar style="auto" />
     </QueryClientProvider>
   );

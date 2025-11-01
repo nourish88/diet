@@ -1,15 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/api-auth";
+import { addCorsHeaders } from "@/lib/cors";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // AUTH: Require authentication
+    const auth = await authenticateRequest(request);
+    if (!auth.user) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
     const clientId = parseInt(params.id);
 
     if (isNaN(clientId)) {
-      return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
     }
 
     // Verify client exists
@@ -20,12 +32,40 @@ export async function GET(
         name: true,
         surname: true,
         phoneNumber: true,
+        userId: true,
+        dietitianId: true,
       },
     });
 
     if (!client) {
-      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+      return addCorsHeaders(
+        NextResponse.json({ error: "Client not found" }, { status: 404 })
+      );
     }
+
+    // SECURITY: Check authorization
+    // - Client can only access their own diets
+    // - Dietitian can access their own clients' diets
+    const isOwnClient = auth.user.role === "client" && client.userId === auth.user.id;
+    const isOwnDietitian = auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+
+    if (!isOwnClient && !isOwnDietitian) {
+      console.log("🔒 Access denied:", {
+        userRole: auth.user.role,
+        userId: auth.user.id,
+        clientUserId: client.userId,
+        clientDietitianId: client.dietitianId,
+      });
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied to this client's diets" }, { status: 403 })
+      );
+    }
+
+    console.log("✅ Access granted:", {
+      userRole: auth.user.role,
+      userId: auth.user.id,
+      clientId: client.id,
+    });
 
     // Get all diets for the client with mobile-optimized data
     const diets = await prisma.diet.findMany({
@@ -144,20 +184,25 @@ export async function GET(
       mealPhotos: diet.mealPhotos,
     }));
 
-    return NextResponse.json({
-      success: true,
-      client,
-      diets: mobileDiets,
-    });
+    return addCorsHeaders(
+      NextResponse.json({
+        success: true,
+        client,
+        diets: mobileDiets,
+      })
+    );
   } catch (error: any) {
     console.error("Error fetching client diets:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Failed to fetch client diets",
-      },
-      { status: 500 }
+    return addCorsHeaders(
+      NextResponse.json(
+        {
+          success: false,
+          error: error.message || "Failed to fetch client diets",
+        },
+        { status: 500 }
+      )
     );
   }
 }
+
 

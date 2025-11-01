@@ -16,7 +16,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
 import api from "@/core/api/client";
 import { Loading } from "@/shared/ui/Loading";
-import { BottomNavbar } from "@/shared/components/BottomNavbar";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as SecureStore from "expo-secure-store";
@@ -28,6 +27,8 @@ import {
   Camera,
   Calendar,
   User,
+  ArrowLeft,
+  List,
 } from "lucide-react-native";
 
 interface DietDetail {
@@ -65,6 +66,7 @@ export default function ClientDietDetailScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuthStore();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Use React Query for caching
   const {
@@ -73,14 +75,18 @@ export default function ClientDietDetailScreen() {
     error,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ["diet", id],
+    queryKey: ["diet", id, user?.client?.id],
     queryFn: async () => {
-      console.log("🔄 FETCHING diet from API:", id);
-      const response = await api.get(`/api/diets/${id}`);
-      console.log("✅ RECEIVED diet data:", id);
+      if (!user?.client?.id) {
+        throw new Error("Client ID not found");
+      }
+      
+      console.log("🔄 FETCHING diet from API:", { dietId: id, clientId: user.client.id });
+      const response = await api.get(`/api/clients/${user.client.id}/diets/${id}`);
+      console.log("✅ RECEIVED diet data:", response);
       return response.diet || response;
     },
-    enabled: !!id,
+    enabled: !!id && !!user?.client?.id,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
@@ -95,6 +101,28 @@ export default function ClientDietDetailScreen() {
       );
     }
   }, [diet, dataUpdatedAt, id]);
+
+  // Load unread message count
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (!user?.client?.id || !id) return;
+
+      try {
+        const response = await api.get(`/api/clients/${user.client.id}/unread-messages`);
+        if (response.success && response.unreadByDiet) {
+          setUnreadCount(response.unreadByDiet[Number(id)] || 0);
+        }
+      } catch (error) {
+        console.error("❌ Error loading unread count:", error);
+      }
+    };
+
+    loadUnreadCount();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [user?.client?.id, id]);
 
   // Show error alert if query failed
   useEffect(() => {
@@ -182,6 +210,26 @@ export default function ClientDietDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Custom Navigation Header */}
+      <View style={styles.navHeader}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.navButton}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={24} color="#ffffff" />
+          <Text style={styles.navButtonText}>Geri</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/diets")}
+          style={styles.navButton}
+          activeOpacity={0.7}
+        >
+          <List size={24} color="#ffffff" />
+          <Text style={styles.navButtonText}>Diyetlerim</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.screen}
@@ -342,8 +390,8 @@ export default function ClientDietDetailScreen() {
               <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
               <View style={styles.actionsRow}>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.mr2]}
-                  onPress={() => console.log("Yorum yap")}
+                  style={[styles.actionBtn, styles.fullWidth]}
+                  onPress={() => router.push(`/diets/${diet.id}/messages`)}
                   activeOpacity={0.7}
                 >
                   <MessageCircle
@@ -351,19 +399,12 @@ export default function ClientDietDetailScreen() {
                     color="#667eea"
                     style={styles.iconSpacing}
                   />
-                  <Text style={styles.actionText}>Yorum Yap</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.ml2]}
-                  onPress={() => console.log("Fotoğraf yükle")}
-                  activeOpacity={0.7}
-                >
-                  <Camera
-                    size={18}
-                    color="#667eea"
-                    style={styles.iconSpacing}
-                  />
-                  <Text style={styles.actionText}>Fotoğraf</Text>
+                  <Text style={styles.actionText}>Diyetisyenimle İletişime Geç</Text>
+                  {unreadCount > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -388,8 +429,6 @@ export default function ClientDietDetailScreen() {
           </LinearGradient>
         </View>
       </ScrollView>
-
-      <BottomNavbar />
     </SafeAreaView>
   );
 }
@@ -399,11 +438,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
+  navHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#667eea",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#5a67d8",
+  },
+  navButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  },
+  navButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   screen: {
     flex: 1,
   },
   screenContent: {
-    paddingBottom: 96,
+    paddingBottom: 24,
   },
   wrapper: {
     padding: 16,
@@ -673,6 +736,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#374151",
     fontWeight: "600",
+    flex: 1,
+  },
+  unreadBadge: {
+    backgroundColor: "#ef4444",
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  unreadBadgeText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
   },
   pdfBtn: {
     flexDirection: "row",
@@ -703,4 +782,8 @@ const styles = StyleSheet.create({
   ml2: {
     marginLeft: 8,
   },
+  fullWidth: {
+    flex: 1,
+  },
 });
+

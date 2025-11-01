@@ -15,9 +15,11 @@ import { useAuthStore } from "@/features/auth/stores/auth-store";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, isLoading } = useAuthStore();
+  const { register, isLoading, user } = useAuthStore();
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [referenceCode, setReferenceCode] = useState<string>("");
+  const [showReferenceCode, setShowReferenceCode] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -63,11 +65,19 @@ export default function RegisterScreen() {
       if (!validateForm()) return;
 
       await register(formData.email, formData.password, "client");
-      setSuccess("Kayıt başarılı! Onay bekleniyor...");
-
-      setTimeout(() => {
-        router.replace("/(auth)/login");
-      }, 2000);
+      
+      // Get the user to access reference code
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.referenceCode) {
+        setReferenceCode(currentUser.referenceCode);
+        setShowReferenceCode(true);
+        setSuccess("Kayıt başarılı! Referans kodunuzu diyetisyeninize iletin.");
+      } else {
+        setSuccess("Kayıt başarılı! Onay bekleniyor...");
+        setTimeout(() => {
+          router.replace("/(auth)/login");
+        }, 2000);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Kayıt olurken bir hata oluştu";
@@ -156,15 +166,38 @@ export default function RegisterScreen() {
               </View>
             )}
 
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Zaten hesabınız var mı?</Text>
-              <TouchableOpacity
-                style={styles.outlineButton}
-                onPress={goToLogin}
-              >
-                <Text style={styles.outlineButtonText}>Giriş Yap</Text>
-              </TouchableOpacity>
-            </View>
+            {showReferenceCode && referenceCode && (
+              <View style={styles.referenceCodeContainer}>
+                <Text style={styles.referenceCodeTitle}>
+                  Referans Kodunuz
+                </Text>
+                <View style={styles.referenceCodeBox}>
+                  <Text style={styles.referenceCodeText}>{referenceCode}</Text>
+                </View>
+                <Text style={styles.referenceCodeInfo}>
+                  Bu kodu diyetisyeninize iletin. Diyetisyeniniz bu kod ile
+                  sizi kendi danışan listesine ekleyecektir.
+                </Text>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => router.replace("/(auth)/login")}
+                >
+                  <Text style={styles.primaryButtonText}>Giriş Sayfasına Git</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!showReferenceCode && (
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginText}>Zaten hesabınız var mı?</Text>
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  onPress={goToLogin}
+                >
+                  <Text style={styles.outlineButtonText}>Giriş Yap</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.infoContainer}>
               <Text style={styles.infoText}>
@@ -314,6 +347,44 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 12,
     lineHeight: 18,
+  },
+  referenceCodeContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "#eff6ff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+  },
+  referenceCodeTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1e40af",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  referenceCodeBox: {
+    backgroundColor: "#ffffff",
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "#3b82f6",
+    marginBottom: 12,
+  },
+  referenceCodeText: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1e40af",
+    textAlign: "center",
+    letterSpacing: 2,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
+  referenceCodeInfo: {
+    fontSize: 13,
+    color: "#1e40af",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,

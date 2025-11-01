@@ -14,26 +14,41 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, UserPlus, Stethoscope } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loginType, setLoginType] = useState<"dietitian" | "client">("dietitian");
   const { signIn, user, databaseUser, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  // Redirect when user is authenticated
+  // Redirect when user is authenticated - based on role
   useEffect(() => {
     if (!loading && user && databaseUser) {
-      console.log("🔄 Redirecting authenticated user to home");
-      console.log("🔄 User:", user?.email);
-      console.log("🔄 Database user:", databaseUser?.email);
+      console.log("🔄 Redirecting authenticated user");
+      console.log("🔄 User:", user?.email, "Role:", databaseUser?.role);
 
-      // Use window.location for more reliable redirect
-      console.log("🔄 Using window.location.href for redirect");
-      window.location.href = "/";
+      // Redirect based on role
+      if (databaseUser.role === "client") {
+        // Check if client is approved
+        if (!databaseUser.isApproved) {
+          console.log("👤 Client not approved, redirecting to pending-approval");
+          window.location.href = "/pending-approval";
+        } else {
+          console.log("👤 Client approved, redirecting to /client");
+          window.location.href = "/client";
+        }
+      } else if (databaseUser.role === "dietitian") {
+        console.log("👨‍⚕️ Dietitian, redirecting to /");
+        window.location.href = "/";
+      } else {
+        // Unknown role, redirect to home
+        window.location.href = "/";
+      }
     }
   }, [user, databaseUser, loading]);
 
@@ -69,17 +84,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Giriş Yap
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-1 pb-4">
+          <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
+            Hoş Geldiniz
           </CardTitle>
-          <CardDescription className="text-center">
-            Hesabınıza giriş yapın
+          <CardDescription className="text-center text-gray-600">
+            Giriş yapmak için bilgilerinizi girin
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Login Type Selector */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setLoginType("dietitian")}
+              className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg border-2 transition-all ${
+                loginType === "dietitian"
+                  ? "bg-indigo-50 border-indigo-600 text-indigo-700"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              <Stethoscope className="w-5 h-5" />
+              <span className="font-medium">Diyetisyen</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginType("client")}
+              className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg border-2 transition-all ${
+                loginType === "client"
+                  ? "bg-blue-50 border-blue-600 text-blue-700"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              <User className="w-5 h-5" />
+              <span className="font-medium">Danışan</span>
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-posta</Label>
@@ -103,22 +146,68 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className={`w-full ${
+                loginType === "dietitian" 
+                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                  : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              }`}
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Giriş yapılıyor...
                 </>
               ) : (
-                "Giriş Yap"
+                <>
+                  {loginType === "dietitian" ? (
+                    <>
+                      <Stethoscope className="mr-2 h-4 w-4" />
+                      Diyetisyen Girişi
+                    </>
+                  ) : (
+                    <>
+                      <User className="mr-2 h-4 w-4" />
+                      Danışan Girişi
+                    </>
+                  )}
+                </>
               )}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            <span className="text-gray-600">
-              Hesap oluşturmak için sistem yöneticisi ile iletişime geçin.
-            </span>
-          </div>
+
+          {/* Client Registration Link */}
+          {loginType === "client" && (
+            <div className="mt-6 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">veya</span>
+                </div>
+              </div>
+              <Link
+                href="/register-client"
+                className="mt-4 w-full inline-flex items-center justify-center space-x-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium"
+              >
+                <UserPlus className="w-5 h-5" />
+                <span>Danışan Kaydı Oluştur</span>
+              </Link>
+              <p className="mt-3 text-xs text-gray-500">
+                Hesabınız yok mu? Kayıt olun ve diyetisyeninizle eşleşin
+              </p>
+            </div>
+          )}
+
+          {/* Dietitian Info */}
+          {loginType === "dietitian" && (
+            <div className="mt-4 text-center text-sm text-gray-600">
+              Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime geçin.
+            </div>
+          )}
 
           {/* Debug: Manual redirect button */}
           {user && databaseUser && (

@@ -25,6 +25,7 @@ import {
   LogOut,
   User,
   Stethoscope,
+  MessageCircle,
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
@@ -38,16 +39,23 @@ interface DashboardStats {
     id: number;
     tarih: string;
     client: {
+      id: number;
       name: string;
       surname: string;
     };
   }>;
 }
 
+interface UnreadMessagesByDiet {
+  [dietId: string]: number;
+}
+
 export default function DietitianDashboard() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadByDiet, setUnreadByDiet] = useState<UnreadMessagesByDiet>({});
 
   // Use React Query for caching dashboard stats
   const {
@@ -88,7 +96,48 @@ export default function DietitianDashboard() {
   };
 
   const onRefresh = async () => {
-    await Promise.all([refetchStats(), refetchDiets()]);
+    await Promise.all([refetchStats(), refetchDiets(), loadUnreadCount()]);
+  };
+
+  useEffect(() => {
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  const loadUnreadCount = async () => {
+    try {
+      if (!user?.id) {
+        console.log("⚠️ No user ID, skipping unread count load");
+        return;
+      }
+      console.log("📧 Loading unread count for dietitian...");
+      const response = await api.get(`/api/unread-messages/list`);
+      console.log("📧 Unread count response:", response);
+      if (response.success) {
+        const count = response.totalUnread || 0;
+        console.log(`📧 Setting unread count to: ${count}`);
+        setUnreadCount(count);
+        
+        // Build a map of dietId -> unread count
+        const dietMap: UnreadMessagesByDiet = {};
+        if (response.conversations && Array.isArray(response.conversations)) {
+          response.conversations.forEach((conv: any) => {
+            dietMap[conv.dietId] = conv.unreadCount || 0;
+          });
+        }
+        setUnreadByDiet(dietMap);
+        console.log("📧 Unread by diet:", dietMap);
+      } else {
+        console.log("⚠️ Response not successful:", response);
+      }
+    } catch (error) {
+      console.error("❌ Error loading unread count:", error);
+    }
+  };
+
+  const goToUnreadMessages = () => {
+    router.push("/(dietitian)/unread-messages");
   };
 
   const handleLogout = async () => {
@@ -161,6 +210,31 @@ export default function DietitianDashboard() {
           </View>
         </View>
 
+        {/* Unread Messages Card */}
+        <TouchableOpacity
+          style={styles.unreadMessagesCard}
+          onPress={goToUnreadMessages}
+        >
+          <View style={styles.unreadMessagesContent}>
+            <View style={styles.unreadMessagesHeader}>
+              <MessageCircle size={24} color="#3b82f6" />
+              <Text style={styles.unreadMessagesTitle}>
+                Okunmamış Mesajlar
+              </Text>
+            </View>
+            <Text style={styles.unreadMessagesDescription}>
+              {unreadCount > 0
+                ? `${unreadCount} yeni mesajınız var`
+                : "Okunmamış mesajınız yok"}
+            </Text>
+          </View>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
@@ -187,21 +261,35 @@ export default function DietitianDashboard() {
         {stats?.recentDiets && stats.recentDiets.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Son Diyetler</Text>
-            {stats.recentDiets.map((diet) => (
-              <TouchableOpacity
-                key={diet.id}
-                style={styles.dietCard}
-                onPress={() => router.push(`/(dietitian)/diets/${diet.id}`)}
-              >
-                <View style={styles.dietCardContent}>
-                  <Text style={styles.dietClientName}>
-                    {diet.client.name} {diet.client.surname}
-                  </Text>
-                  <Text style={styles.dietDate}>{diet.tarih}</Text>
-                </View>
-                <FileText size={16} color="#6b7280" />
-              </TouchableOpacity>
-            ))}
+            {stats.recentDiets.map((diet) => {
+              const dietUnreadCount = unreadByDiet[diet.id] || 0;
+              return (
+                <TouchableOpacity
+                  key={diet.id}
+                  style={styles.dietCard}
+                  onPress={() => router.push(`/(dietitian)/diets/${diet.id}`)}
+                >
+                  <View style={styles.dietCardContent}>
+                    <View style={styles.dietCardHeader}>
+                      <Text style={styles.dietClientName}>
+                        {diet.client.name} {diet.client.surname}
+                      </Text>
+                      {dietUnreadCount > 0 && (
+                        <View style={styles.dietUnreadBadge}>
+                          <Text style={styles.dietUnreadBadgeText}>
+                            {dietUnreadCount}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.dietDate}>
+                      Beslenme Programı #{diet.id} • {diet.tarih}
+                    </Text>
+                  </View>
+                  <FileText size={16} color="#6b7280" />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -451,14 +539,83 @@ const styles = StyleSheet.create({
   dietCardContent: {
     flex: 1,
   },
+  dietCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   dietClientName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1f2937",
-    marginBottom: 4,
+    marginRight: 8,
+  },
+  dietUnreadBadge: {
+    backgroundColor: "#ef4444",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dietUnreadBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
   },
   dietDate: {
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  unreadMessagesCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: "#3b82f6",
+  },
+  unreadMessagesContent: {
+    flex: 1,
+  },
+  unreadMessagesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  unreadMessagesTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1f2937",
+    marginLeft: 8,
+  },
+  unreadMessagesDescription: {
     fontSize: 14,
     color: "#6b7280",
   },
+  unreadBadge: {
+    backgroundColor: "#ef4444",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadBadgeText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
 });
+

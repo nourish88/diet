@@ -8,9 +8,24 @@ export default function ClientLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("🏠 Client Layout check:", {
+      isAuthenticated,
+      role: user?.role,
+      isApproved: user?.isApproved,
+    });
+
     // Redirect if not authenticated or not a client
     if (!isAuthenticated || user?.role !== "client") {
+      console.log("❌ Not client or not authenticated, redirecting to login");
       router.replace("/(auth)/login");
+      return;
+    }
+
+    // Redirect if client is not approved
+    if (user?.role === "client" && !user?.isApproved) {
+      console.log("⏸️ Client not approved, redirecting to pending approval");
+      // Use router.push instead of replace to allow back navigation
+      router.push("/pending-approval");
     }
   }, [isAuthenticated, user, router]);
 
@@ -40,3 +55,4 @@ export default function ClientLayout() {
     </Stack>
   );
 }
+

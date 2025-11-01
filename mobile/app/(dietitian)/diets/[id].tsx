@@ -54,6 +54,7 @@ interface DietDetail {
     }>;
   }>;
   client: {
+    id: number;
     name: string;
     surname: string;
   };
@@ -64,6 +65,7 @@ export default function DietDetailScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuthStore();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Use React Query for caching
   const {
@@ -104,6 +106,29 @@ export default function DietDetailScreen() {
       );
     }
   }, [error]);
+
+  // Load unread messages count for this diet
+  useEffect(() => {
+    if (diet?.client?.id && id) {
+      loadUnreadCount();
+    }
+  }, [diet?.client?.id, id]);
+
+  const loadUnreadCount = async () => {
+    try {
+      if (!diet?.client?.id) return;
+      const clientId = (diet.client as any).id;
+      console.log(`📧 Loading unread count for diet ${id}, client ${clientId}`);
+      const response = await api.get(`/api/clients/${clientId}/unread-messages`);
+      if (response.success && response.unreadByDiet) {
+        const count = response.unreadByDiet[id as string] || 0;
+        console.log(`📧 Unread count for diet ${id}: ${count}`);
+        setUnreadCount(count);
+      }
+    } catch (error) {
+      console.error("❌ Error loading unread count:", error);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("tr-TR");
@@ -338,6 +363,37 @@ export default function DietDetailScreen() {
               </View>
             </LinearGradient>
           ) : null}
+
+          {/* Client Messages Button for Dietitian */}
+          {user?.role === "dietitian" && diet.client && (
+            <TouchableOpacity
+              style={styles.clientMessagesCard}
+              onPress={() => {
+                const clientId = (diet.client as any).id;
+                router.push(`/(dietitian)/clients/${clientId}/messages?dietId=${id}`);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.clientMessagesContent}>
+                <View style={styles.clientMessagesHeader}>
+                  <MessageCircle size={24} color="#667eea" />
+                  <Text style={styles.clientMessagesTitle}>
+                    Danışan Mesajları
+                  </Text>
+                </View>
+                <Text style={styles.clientMessagesDescription}>
+                  {unreadCount > 0
+                    ? `${unreadCount} okunmamış mesaj`
+                    : "Danışanınızla mesajlaşın"}
+                </Text>
+              </View>
+              {unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Meals Card */}
           <LinearGradient
@@ -730,5 +786,53 @@ const styles = StyleSheet.create({
   },
   ml2: {
     marginLeft: 8,
+  },
+  clientMessagesCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: "#667eea",
+  },
+  clientMessagesContent: {
+    flex: 1,
+  },
+  clientMessagesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  clientMessagesTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginLeft: 8,
+  },
+  clientMessagesDescription: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  unreadBadge: {
+    backgroundColor: "#ef4444",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadBadgeText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

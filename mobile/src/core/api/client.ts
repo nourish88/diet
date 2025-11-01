@@ -1,5 +1,5 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import * as SecureStore from "expo-secure-store";
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import SecureStorage, { STORAGE_KEYS } from "../storage/secure-storage";
 
 // API Client configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
@@ -15,18 +15,25 @@ const apiClient: AxiosInstance = axios.create({
 
 // Request interceptor to add the auth token
 apiClient.interceptors.request.use(
-  async (config: AxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await SecureStore.getItemAsync("supabase_token");
-      if (token && config.headers) {
+      // Use the same SecureStorage instance as auth store
+      const token = await SecureStorage.getItem(STORAGE_KEYS.SUPABASE_TOKEN);
+      console.log("🔑 Interceptor - Token from SecureStorage:", token ? "✅ Found" : "❌ Not found");
+      
+      if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log("✅ Token added to headers:", `Bearer ${token.substring(0, 20)}...`);
+      } else {
+        console.log("⚠️ No token in SecureStorage");
       }
     } catch (error) {
-      console.error("Error getting auth token:", error);
+      console.error("❌ Error getting auth token:", error);
     }
     return config;
   },
   (error) => {
+    console.error("❌ Request interceptor error:", error);
     return Promise.reject(error);
   }
 );
@@ -45,13 +52,14 @@ apiClient.interceptors.response.use(
       if (error.response.status === 401 || error.response.status === 403) {
         // Clear stored token
         try {
-          await SecureStore.deleteItemAsync("supabase_token");
+          await SecureStorage.deleteItem(STORAGE_KEYS.SUPABASE_TOKEN);
+          console.log("🗑️ Token cleared due to 401/403");
         } catch (storageError) {
           console.error("Error clearing token:", storageError);
         }
 
         // Redirect to login (handled by auth store)
-        console.log("Unauthorized access - redirecting to login");
+        console.log("❌ Unauthorized access - token may be expired");
         // You might want to dispatch a global logout action here
       }
       return Promise.reject(
@@ -76,37 +84,49 @@ apiClient.interceptors.response.use(
 // Wrapper for API calls
 const api = {
   // Generic methods
-  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-    apiClient.get(url, config).then((response) => response.data),
+  get: <T = any>(url: string, config?: any): Promise<T> => {
+    console.log("📤 API GET:", url);
+    return apiClient.get(url, config).then((response) => response.data);
+  },
 
   post: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> =>
-    apiClient.post(url, data, config).then((response) => response.data),
+    config?: any
+  ): Promise<T> => {
+    console.log("📤 API POST:", url);
+    return apiClient.post(url, data, config).then((response) => response.data);
+  },
 
   put: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> =>
-    apiClient.put(url, data, config).then((response) => response.data),
+    config?: any
+  ): Promise<T> => {
+    console.log("📤 API PUT:", url);
+    return apiClient.put(url, data, config).then((response) => response.data);
+  },
 
   patch: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> =>
-    apiClient.patch(url, data, config).then((response) => response.data),
+    config?: any
+  ): Promise<T> => {
+    console.log("📤 API PATCH:", url);
+    return apiClient.patch(url, data, config).then((response) => response.data);
+  },
 
-  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-    apiClient.delete(url, config).then((response) => response.data),
+  delete: <T = any>(url: string, config?: any): Promise<T> => {
+    console.log("📤 API DELETE:", url);
+    return apiClient.delete(url, config).then((response) => response.data);
+  },
 
   // Raw axios instance for special cases
   instance: apiClient,
 };
 
 export default api;
+
+
 
 

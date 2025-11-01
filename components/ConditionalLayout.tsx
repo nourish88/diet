@@ -12,11 +12,17 @@ export default function ConditionalLayout({
 }: ConditionalLayoutProps) {
   const pathname = usePathname();
 
-  // Don't show navbar and padding on auth pages
+  // Don't show navbar on auth pages
   const isAuthPage =
-    pathname?.startsWith("/login") || pathname?.startsWith("/register");
+    pathname?.startsWith("/login") || 
+    pathname?.startsWith("/register") ||
+    pathname?.startsWith("/pending-approval");
 
-  if (isAuthPage) {
+  // Don't show navbar on client pages (they have their own minimal layout)
+  const isClientPage = pathname?.startsWith("/client");
+
+  // Return without navbar for auth and client pages
+  if (isAuthPage || isClientPage) {
     return <main>{children}</main>;
   }
 

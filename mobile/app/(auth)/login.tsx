@@ -52,10 +52,13 @@ export default function LoginScreen() {
       if (!validateForm()) return;
 
       await login(formData.email, formData.password);
-      router.replace("/(dietitian)");
+      
+      // Let index.tsx handle routing based on role and approval status
+      router.replace("/");
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Giriş yapılırken bir hata oluştu";
+      console.error("Login error:", err);
       setError(errorMessage);
     }
   };

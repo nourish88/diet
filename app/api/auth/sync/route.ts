@@ -118,12 +118,42 @@ export async function GET(request: NextRequest) {
   if (corsResponse) return corsResponse;
 
   try {
+    // Get supabaseId from query params OR from Authorization header
     const { searchParams } = new URL(request.url);
-    const supabaseId = searchParams.get("supabaseId");
+    let supabaseId = searchParams.get("supabaseId");
+
+    // If supabaseId not in query params, try to get it from Authorization header
+    if (!supabaseId) {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        
+        // Verify token with Supabase
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        
+        if (error || !user) {
+          console.log("❌ Invalid or expired token");
+          const response = NextResponse.json(
+            { error: "Unauthorized" },
+            { status: 401 }
+          );
+          return addCorsHeaders(response);
+        }
+        
+        supabaseId = user.id;
+        console.log("✅ Extracted supabaseId from token:", supabaseId);
+      }
+    }
 
     if (!supabaseId) {
       const response = NextResponse.json(
-        { error: "supabaseId is required" },
+        { error: "supabaseId is required (via query param or Authorization header)" },
         { status: 400 }
       );
       return addCorsHeaders(response);
