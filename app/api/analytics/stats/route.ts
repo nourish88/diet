@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Authenticate request

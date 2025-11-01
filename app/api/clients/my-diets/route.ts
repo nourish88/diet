@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { requireClient, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // GET - Get logged-in client's diets
 export const GET = requireClient(
   async (request: NextRequest, auth: AuthResult) => {
