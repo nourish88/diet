@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import DatabasePDFButton from "@/components/DatabasePDFButton";
 
 interface DietDetail {
   id: number;
@@ -173,6 +174,14 @@ export default function ClientDietDetailPage() {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Diyetlerime Dön
           </Link>
+          <DatabasePDFButton
+            diet={diet}
+            className="bg-white text-blue-600 hover:bg-blue-50"
+            size="sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Diyeti İndir
+          </DatabasePDFButton>
         </div>
         <h1 className="text-3xl font-bold mb-2">Beslenme Programı #{diet.id}</h1>
         <div className="flex items-center text-blue-100">
