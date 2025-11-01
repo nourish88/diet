@@ -45,7 +45,7 @@ interface Ogun {
 export default function ClientMessagesPage() {
   const router = useRouter();
   const params = useParams();
-  const dietId = params.id as string;
+  const dietId = (params?.id as string) || "";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [oguns, setOguns] = useState<Ogun[]>([]);
@@ -86,6 +86,12 @@ export default function ClientMessagesPage() {
 
   const loadData = async () => {
     try {
+      // Early return if dietId is missing
+      if (!dietId) {
+        console.error("❌ Diet ID is missing");
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { session },
