@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q") || "";
+    // Use nextUrl.searchParams instead of request.url for better compatibility
+    const query = request.nextUrl.searchParams.get("q") || "";
 
     if (!query || query.length < 2) {
       return NextResponse.json({ suggestions: [] });

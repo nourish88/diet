@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type");
 
     const whereClause: any = {

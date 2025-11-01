@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -52,7 +55,7 @@ export async function DELETE(
 ) {
   try {
     const clientId = parseInt(params.id);
-    const searchParams = new URL(request.url).searchParams;
+    const searchParams = request.nextUrl.searchParams;
     const besinId = parseInt(searchParams.get("besinId") || "");
 
     await prisma.bannedFood.delete({

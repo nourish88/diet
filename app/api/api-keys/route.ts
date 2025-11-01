@@ -4,6 +4,9 @@ import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { generateApiKey, hashApiKey } from "@/lib/api-key-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // GET /api/api-keys - List all API keys for the authenticated dietitian
 export const GET = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
@@ -168,7 +171,7 @@ export const PUT = requireDietitian(
 export const DELETE = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
     try {
-      const { searchParams } = new URL(request.url);
+      const searchParams = request.nextUrl.searchParams;
       const id = searchParams.get("id");
 
       if (!id) {

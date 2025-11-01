@@ -3,10 +3,13 @@ import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const GET = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
     try {
-      const { searchParams } = new URL(request.url);
+      const searchParams = request.nextUrl.searchParams;
       const mealType = searchParams.get("mealType");
 
       const whereClause: any = {

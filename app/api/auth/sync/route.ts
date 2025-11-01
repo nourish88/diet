@@ -112,6 +112,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   // Handle CORS preflight
   const corsResponse = handleCors(request);
@@ -119,8 +122,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Get supabaseId from query params OR from Authorization header
-    const { searchParams } = new URL(request.url);
-    let supabaseId = searchParams.get("supabaseId");
+    let supabaseId = request.nextUrl.searchParams.get("supabaseId");
 
     // If supabaseId not in query params, try to get it from Authorization header
     if (!supabaseId) {

@@ -4,6 +4,9 @@ import { requireAuth } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { z } from "zod";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // Validation schemas
 const createMealPhotoSchema = z.object({
   imageData: z.string().min(1, "Fotoğraf verisi gerekli"),
@@ -127,7 +130,7 @@ export const POST = requireAuth(async (request: NextRequest, auth) => {
 // GET /api/meal-photos - Get meal photos
 export const GET = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const validatedParams = getMealPhotosSchema.parse({
       dietId: searchParams.get("dietId"),
       ogunId: searchParams.get("ogunId"),
@@ -229,7 +232,7 @@ export const GET = requireAuth(async (request: NextRequest, auth) => {
 // DELETE /api/meal-photos - Delete a meal photo
 export const DELETE = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const photoId = searchParams.get("id");
 
     if (!photoId) {

@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult, requireOwnClient } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export const POST = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
     // Handle CORS preflight
@@ -104,7 +107,7 @@ export const POST = requireDietitian(
 export const GET = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
     try {
-      const { searchParams } = new URL(request.url);
+      const searchParams = request.nextUrl.searchParams;
       const clientId = searchParams.get("clientId");
       const skip = parseInt(searchParams.get("skip") || "0");
       const take = parseInt(searchParams.get("take") || "50");

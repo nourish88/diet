@@ -4,6 +4,9 @@ import { requireAuth } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { z } from "zod";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // Validation schemas
 const createCommentSchema = z.object({
   content: z.string().min(1, "Yorum içeriği gerekli"),
@@ -113,7 +116,7 @@ export const POST = requireAuth(async (request: NextRequest, auth) => {
 // GET /api/comments - Get comments for a diet
 export const GET = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const validatedParams = getCommentsSchema.parse({
       dietId: searchParams.get("dietId"),
       ogunId: searchParams.get("ogunId"),
@@ -216,7 +219,7 @@ export const GET = requireAuth(async (request: NextRequest, auth) => {
 // DELETE /api/comments - Delete a comment
 export const DELETE = requireAuth(async (request: NextRequest, auth) => {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const commentId = searchParams.get("id");
 
     if (!commentId) {
