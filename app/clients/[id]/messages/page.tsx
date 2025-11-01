@@ -47,8 +47,8 @@ export default function ClientMessagesPage() {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const clientId = params.id as string;
-  const dietId = searchParams.get("dietId") as string;
+  const clientId = (params?.id as string) || "";
+  const dietId = searchParams?.get("dietId") || "";
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +117,12 @@ export default function ClientMessagesPage() {
 
   const loadMessages = async () => {
     try {
+      // Early return if IDs are missing
+      if (!clientId || !dietId) {
+        console.error("❌ Client ID or Diet ID is missing");
+        return;
+      }
+
       setLoading(true);
       const headers = await getAuthHeaders();
       const response = await fetch(
@@ -139,6 +145,11 @@ export default function ClientMessagesPage() {
 
   const loadClientInfo = async () => {
     try {
+      if (!clientId) {
+        console.error("❌ Client ID is missing");
+        return;
+      }
+
       const headers = await getAuthHeaders();
       const response = await fetch(`/api/clients/${clientId}`, { headers });
       const data = await response.json();
@@ -152,6 +163,11 @@ export default function ClientMessagesPage() {
 
   const markMessagesAsRead = async (messageIds: number[]) => {
     try {
+      if (!clientId || !dietId) {
+        console.error("❌ Client ID or Diet ID is missing");
+        return;
+      }
+
       const headers = await getAuthHeaders();
       const response = await fetch(
         `/api/clients/${clientId}/diets/${dietId}/messages`,
@@ -185,6 +201,11 @@ export default function ClientMessagesPage() {
 
   const sendMessage = async () => {
     if (!messageText.trim()) return;
+
+    if (!clientId || !dietId) {
+      console.error("❌ Client ID or Diet ID is missing");
+      return;
+    }
 
     try {
       setSending(true);

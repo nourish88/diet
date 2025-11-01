@@ -47,7 +47,7 @@ interface DietDetail {
 export default function ClientDietDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const dietId = params.id as string;
+  const dietId = (params?.id as string) || "";
 
   const [diet, setDiet] = useState<DietDetail | null>(null);
   const [clientId, setClientId] = useState<number | null>(null);
@@ -61,6 +61,12 @@ export default function ClientDietDetailPage() {
 
   const loadDiet = async () => {
     try {
+      // Early return if dietId is missing
+      if (!dietId) {
+        console.error("❌ Diet ID is missing");
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { session },
