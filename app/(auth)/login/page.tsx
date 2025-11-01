@@ -94,38 +94,38 @@ export default function LoginPage() {
             Giriş yapmak için bilgilerinizi girin
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {/* Login Type Selector */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 w-full">
             <button
               type="button"
               onClick={() => setLoginType("dietitian")}
-              className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg border-2 transition-all ${
+              className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
                 loginType === "dietitian"
                   ? "bg-indigo-50 border-indigo-600 text-indigo-700"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
               }`}
             >
-              <Stethoscope className="w-5 h-5" />
-              <span className="font-medium">Diyetisyen</span>
+              <Stethoscope className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium whitespace-nowrap">Diyetisyen</span>
             </button>
             <button
               type="button"
               onClick={() => setLoginType("client")}
-              className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-lg border-2 transition-all ${
+              className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
                 loginType === "client"
                   ? "bg-blue-50 border-blue-600 text-blue-700"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
               }`}
             >
-              <User className="w-5 h-5" />
-              <span className="font-medium">Danışan</span>
+              <User className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium whitespace-nowrap">Danışan</span>
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-posta</Label>
+          <form onSubmit={handleSubmit} className="space-y-4 w-full">
+            <div className="space-y-2 w-full">
+              <Label htmlFor="email" className="block">E-posta</Label>
               <Input
                 id="email"
                 type="email"
@@ -133,10 +133,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="w-full"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Şifre</Label>
+            <div className="space-y-2 w-full">
+              <Label htmlFor="password" className="block">Şifre</Label>
               <Input
                 id="password"
                 type="password"
@@ -144,6 +145,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="w-full"
               />
             </div>
             <Button 
