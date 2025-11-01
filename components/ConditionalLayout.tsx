@@ -19,13 +19,15 @@ export default function ConditionalLayout({
     pathname?.startsWith("/pending-approval");
 
   // Don't show navbar on client pages (they have their own minimal layout)
-  const isClientPage = pathname?.startsWith("/client");
+  // IMPORTANT: Only hide for /client/* pages, NOT /clients/* pages
+  const isClientPage = pathname?.startsWith("/client") && !pathname?.startsWith("/clients");
 
   // Return without navbar for auth and client pages
   if (isAuthPage || isClientPage) {
     return <main>{children}</main>;
   }
 
+  // Show navbar for all other pages (including /clients/*)
   return (
     <>
       <Navbar />
