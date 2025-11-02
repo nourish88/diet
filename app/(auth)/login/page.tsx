@@ -28,6 +28,13 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  // Debug: Log loginType changes
+  useEffect(() => {
+    console.log("🔵 loginType changed:", loginType);
+  }, [loginType]);
+
+  // Removed handleRegisterClick - using Link component instead (no form submit possible)
+
   // Redirect when user is authenticated - based on role
   useEffect(() => {
     if (!loading && user && databaseUser) {
@@ -127,7 +134,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 w-full">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 w-full"
+            id="login-form"
+          >
             <div className="space-y-2 w-full">
               <Label htmlFor="email" className="block">
                 E-posta
@@ -188,7 +199,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Client Registration Link - Outside form to prevent submission */}
+          {/* Client Registration Link - COMPLETELY OUTSIDE form */}
           {loginType === "client" && (
             <div className="mt-6 w-full">
               <div className="relative mb-4">
@@ -199,27 +210,22 @@ export default function LoginPage() {
                   <span className="px-2 bg-white text-gray-500">veya</span>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.nativeEvent?.stopImmediatePropagation();
-                  
-                  console.log("🔗 Button clicked - loginType:", loginType);
-                  console.log("🔗 Navigating to /register-client");
-                  
-                  // Use router.push instead of window.location to prevent page reload
-                  router.push("/register-client");
-                  
-                  return false;
-                }}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-all font-medium"
+              {/* Use Link to navigate to register-client */}
+              <Link
+                href="/register-client"
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-all font-medium bg-white text-center"
+                data-testid="register-client-button"
               >
                 <UserPlus className="w-5 h-5" />
                 <span>Danışan Kaydı Oluştur</span>
-              </Button>
+              </Link>
+              {/* Debug info */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="mt-2 text-xs text-gray-400 text-center">
+                  Debug: loginType={loginType}, router=
+                  {router ? "ready" : "not ready"}
+                </div>
+              )}
               <p className="mt-3 text-xs text-gray-500 text-center">
                 Hesabınız yok mu? Kayıt olun ve diyetisyeninizle eşleşin
               </p>

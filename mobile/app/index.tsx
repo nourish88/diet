@@ -49,3 +49,4 @@ export default function IndexScreen() {
   return <Loading text="Yönlendiriliyor..." />;
 }
 
+

@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register"];
+  const publicRoutes = ["/login", "/register", "/register-client", "/pending-approval"];
   if (publicRoutes.includes(pathname)) {
     return response;
   }
