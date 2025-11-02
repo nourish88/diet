@@ -7,8 +7,10 @@ import {
   RefreshControl,
   StyleSheet,
   SafeAreaView,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
 import api from "@/core/api/client";
 import { Loading } from "@/shared/ui/Loading";
@@ -18,8 +20,11 @@ import {
   ChevronRight,
   Clock,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react-native";
 import { ClientBottomNav } from "@/shared/components/ClientBottomNav";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://diet-six.vercel.app";
 
 interface ClientDiet {
   id: number;
@@ -156,14 +161,26 @@ export default function ClientDietsListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Beslenme Programlarım</Text>
-        <Text style={styles.headerSubtitle}>
-          {diets.length > 0
-            ? `${diets.length} program`
-            : "Henüz program yok"}
-        </Text>
+      <Stack.Screen options={{ headerShown: false }} />
+      {/* Navbar */}
+      <View style={styles.navbar}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
+        <View style={styles.navbarLogoContainer}>
+          <Image
+            source={{
+              uri: `${API_BASE_URL}/ezgi_evgin-removebg-preview.png`,
+            }}
+            style={styles.navbarLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.navbarRight} />
       </View>
 
       {/* Diets List */}
@@ -290,22 +307,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9fafb",
   },
-  header: {
+  navbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: "#ffffff",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
+  backButton: {
+    padding: 8,
+    width: 40,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#6b7280",
+  navbarLogoContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navbarLogo: {
+    width: 100,
+    height: 40,
+  },
+  navbarRight: {
+    width: 40,
   },
   scrollView: {
     flex: 1,

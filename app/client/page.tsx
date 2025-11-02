@@ -134,6 +134,15 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-12">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <img
+            src="/ezgi_evgin-removebg-preview.png"
+            alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
+            className="max-w-[180px] h-auto"
+            style={{ width: "180px", height: "auto" }}
+          />
+        </div>
         {/* Welcome Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Dimensions,
   Modal,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://diet-six.vercel.app";
 
 interface DashboardStats {
   totalClients: number;
@@ -172,6 +174,17 @@ export default function DietitianDashboard() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+
+        {/* Logo Card */}
+        <View style={styles.logoCard}>
+          <Image
+            source={{
+              uri: `${API_BASE_URL}/ezgi_evgin.png`,
+            }}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
@@ -452,11 +465,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
   },
+  logoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 10,
+    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logo: {
+    width: "100%",
+    height: 80,
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginTop: 20,
   },
   statCard: {
     backgroundColor: "#fff",

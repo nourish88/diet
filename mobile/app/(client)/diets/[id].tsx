@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack } from "expo-router";
@@ -28,7 +29,6 @@ import {
   Calendar,
   User,
   ArrowLeft,
-  List,
 } from "lucide-react-native";
 
 interface DietDetail {
@@ -60,6 +60,8 @@ interface DietDetail {
     surname: string;
   };
 }
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://diet-six.vercel.app";
 
 export default function ClientDietDetailScreen() {
   const router = useRouter();
@@ -222,20 +224,21 @@ export default function ClientDietDetailScreen() {
       <View style={styles.navHeader}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={styles.navButton}
+          style={styles.backButton}
           activeOpacity={0.7}
         >
-          <ArrowLeft size={24} color="#ffffff" />
-          <Text style={styles.navButtonText}>Geri</Text>
+          <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push("/diets")}
-          style={styles.navButton}
-          activeOpacity={0.7}
-        >
-          <List size={24} color="#ffffff" />
-          <Text style={styles.navButtonText}>Diyetlerim</Text>
-        </TouchableOpacity>
+        <View style={styles.navbarLogoContainer}>
+          <Image
+            source={{
+              uri: `${API_BASE_URL}/ezgi_evgin-removebg-preview.png`,
+            }}
+            style={styles.navbarLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.navbarRight} />
       </View>
 
       <ScrollView
@@ -449,27 +452,29 @@ const styles = StyleSheet.create({
   },
   navHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#667eea",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#5a67d8",
+    borderBottomColor: "#e5e7eb",
   },
-  navButton: {
-    flexDirection: "row",
+  backButton: {
+    padding: 8,
+    width: 40,
+  },
+  navbarLogoContainer: {
+    flex: 1,
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    justifyContent: "center",
   },
-  navButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
+  navbarLogo: {
+    width: 100,
+    height: 40,
+  },
+  navbarRight: {
+    width: 40,
   },
   screen: {
     flex: 1,

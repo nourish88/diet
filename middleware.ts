@@ -59,6 +59,23 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Skip middleware for static files
+  const staticFileExtensions = [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".json",
+    ".js",
+    ".css",
+  ];
+  if (staticFileExtensions.some((ext) => pathname.endsWith(ext))) {
+    return response;
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     "/login",
@@ -89,10 +106,10 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - _next (static files and images)
+     * - favicon.ico, manifest.json (static files)
+     * - Static file extensions are handled by checking pathname in middleware
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next|favicon.ico|manifest.json).*)",
   ],
 };

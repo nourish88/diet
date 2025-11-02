@@ -9,9 +9,12 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://diet-six.vercel.app";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -87,7 +90,14 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <Text style={styles.title}>Diet App</Text>
+          {/* Logo */}
+          <Image
+            source={{
+              uri: `${API_BASE_URL}/ezgi_evgin-removebg-preview.png`,
+            }}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.subtitle}>Hesabınıza giriş yapın</Text>
 
           <View style={styles.card}>
@@ -159,6 +169,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
+  logo: {
+    width: 240,
+    height: 240,
+    marginBottom: 4,
+  },
   title: {
     fontSize: 36,
     fontWeight: "800",
@@ -168,7 +183,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     color: "#64748b",
-    marginBottom: 40,
+    marginBottom: 24,
   },
   card: {
     width: "100%",

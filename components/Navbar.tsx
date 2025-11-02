@@ -15,7 +15,6 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,12 +95,11 @@ const Navbar = () => {
         <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
           <Link href="/" className="flex items-center space-x-3">
             <div className="relative">
-              <Image
+              <img
                 src="/ezgi_evgin.png"
                 alt="Diyet Danışmanlık Logo"
-                width={120}
-                height={120}
-                priority
+                className="w-[120px] h-auto"
+                style={{ width: "120px", height: "auto" }}
               />
             </div>
             <div>
@@ -120,12 +118,15 @@ const Navbar = () => {
       <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
         <Link href="/" className="flex items-center space-x-3">
           <div className="relative">
-            <Image
-              src="/ezgi_evgin.png"
+            <img
+              src={
+                databaseUser?.role === "client"
+                  ? "/ezgi_evgin-removebg-preview.png"
+                  : "/ezgi_evgin.png"
+              }
               alt="Diyet Danışmanlık Logo"
-              width={120}
-              height={120}
-              priority
+              className="w-[120px] h-auto"
+              style={{ width: "120px", height: "auto" }}
             />
           </div>
           <div>

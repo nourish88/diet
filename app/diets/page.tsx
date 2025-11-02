@@ -190,6 +190,15 @@ export default function DietsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Logo - Show for client role */}
+      <div className="flex justify-center mb-6">
+        <img
+          src="/ezgi_evgin-removebg-preview.png"
+          alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
+          className="max-w-[150px] h-auto"
+          style={{ width: "150px", height: "auto" }}
+        />
+      </div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">
           Beslenme Programları

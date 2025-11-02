@@ -6,12 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
 import { UtensilsCrossed, User, MessageCircle } from "lucide-react-native";
 import api from "@/core/api/client";
 import { ClientBottomNav } from "@/shared/components/ClientBottomNav";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://diet-six.vercel.app";
 
 export default function ClientDashboard() {
   const router = useRouter();
@@ -50,14 +53,23 @@ export default function ClientDashboard() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        {/* Logo Card */}
+        <View style={styles.logoCard}>
+          <Image
+            source={{
+              uri: `${API_BASE_URL}/ezgi_evgin-removebg-preview.png`,
+            }}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.welcomeText}>Hoş Geldiniz</Text>
-            <Text style={styles.userName}>
-              {user?.client?.name} {user?.client?.surname}
-            </Text>
-          </View>
+          <Text style={styles.welcomeText}>Hoş Geldiniz</Text>
+          <Text style={styles.userName}>
+            {user?.client?.name} {user?.client?.surname}
+          </Text>
         </View>
 
         {/* User Info Card */}
@@ -135,6 +147,24 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingBottom: 100, // Space for bottom navigation
+  },
+  logoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    margin: 16,
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logo: {
+    width: "100%",
+    height: 80,
   },
   header: {
     padding: 20,
