@@ -182,8 +182,8 @@ export default function LoginPage() {
 
           {/* Client Registration Link */}
           {loginType === "client" && (
-            <div className="mt-6 text-center">
-              <div className="relative">
+            <div className="mt-6 w-full">
+              <div className="relative mb-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300"></div>
                 </div>
@@ -191,14 +191,19 @@ export default function LoginPage() {
                   <span className="px-2 bg-white text-gray-500">veya</span>
                 </div>
               </div>
-              <Link
-                href="/register-client"
-                className="mt-4 w-full inline-flex items-center justify-center space-x-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log("🔗 Navigating to /register-client");
+                  router.push("/register-client");
+                }}
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium"
               >
                 <UserPlus className="w-5 h-5" />
                 <span>Danışan Kaydı Oluştur</span>
-              </Link>
-              <p className="mt-3 text-xs text-gray-500">
+              </button>
+              <p className="mt-3 text-xs text-gray-500 text-center">
                 Hesabınız yok mu? Kayıt olun ve diyetisyeninizle eşleşin
               </p>
             </div>
