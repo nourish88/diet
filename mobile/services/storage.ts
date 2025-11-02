@@ -11,7 +11,7 @@ class StorageService {
   ): Promise<string> {
     try {
       // Compress the image
-  const compressedImage = await ImageManipulator.manipulateAsync(
+      const compressedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           {
@@ -72,7 +72,7 @@ class StorageService {
   async uploadProfileImage(imageUri: string, userId: number): Promise<string> {
     try {
       // Compress the image
-  const compressedImage = await ImageManipulator.manipulateAsync(
+      const compressedImage = await ImageManipulator.manipulateAsync(
         imageUri,
         [
           {

@@ -80,9 +80,14 @@ export default function ClientDietDetailScreen() {
       if (!user?.client?.id) {
         throw new Error("Client ID not found");
       }
-      
-      console.log("🔄 FETCHING diet from API:", { dietId: id, clientId: user.client.id });
-      const response = await api.get(`/api/clients/${user.client.id}/diets/${id}`);
+
+      console.log("🔄 FETCHING diet from API:", {
+        dietId: id,
+        clientId: user.client.id,
+      });
+      const response = await api.get(
+        `/api/clients/${user.client.id}/diets/${id}`
+      );
       console.log("✅ RECEIVED diet data:", response);
       return response.diet || response;
     },
@@ -108,7 +113,9 @@ export default function ClientDietDetailScreen() {
       if (!user?.client?.id || !id) return;
 
       try {
-        const response = await api.get(`/api/clients/${user.client.id}/unread-messages`);
+        const response = await api.get(
+          `/api/clients/${user.client.id}/unread-messages`
+        );
         if (response.success && response.unreadByDiet) {
           setUnreadCount(response.unreadByDiet[Number(id)] || 0);
         }
@@ -399,7 +406,9 @@ export default function ClientDietDetailScreen() {
                     color="#667eea"
                     style={styles.iconSpacing}
                   />
-                  <Text style={styles.actionText}>Diyetisyenimle İletişime Geç</Text>
+                  <Text style={styles.actionText}>
+                    Diyetisyenimle İletişime Geç
+                  </Text>
                   {unreadCount > 0 && (
                     <View style={styles.unreadBadge}>
                       <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
@@ -786,5 +795,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
-

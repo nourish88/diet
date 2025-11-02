@@ -119,7 +119,9 @@ export default function DietDetailScreen() {
       if (!diet?.client?.id) return;
       const clientId = (diet.client as any).id;
       console.log(`📧 Loading unread count for diet ${id}, client ${clientId}`);
-      const response = await api.get(`/api/clients/${clientId}/unread-messages`);
+      const response = await api.get(
+        `/api/clients/${clientId}/unread-messages`
+      );
       if (response.success && response.unreadByDiet) {
         const count = response.unreadByDiet[id as string] || 0;
         console.log(`📧 Unread count for diet ${id}: ${count}`);
@@ -370,7 +372,9 @@ export default function DietDetailScreen() {
               style={styles.clientMessagesCard}
               onPress={() => {
                 const clientId = (diet.client as any).id;
-                router.push(`/(dietitian)/clients/${clientId}/messages?dietId=${id}`);
+                router.push(
+                  `/(dietitian)/clients/${clientId}/messages?dietId=${id}`
+                );
               }}
               activeOpacity={0.7}
             >
