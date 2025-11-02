@@ -21,7 +21,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [loginType, setLoginType] = useState<"dietitian" | "client">("dietitian");
+  const [loginType, setLoginType] = useState<"dietitian" | "client">(
+    "dietitian"
+  );
   const { signIn, user, databaseUser, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -36,7 +38,9 @@ export default function LoginPage() {
       if (databaseUser.role === "client") {
         // Check if client is approved
         if (!databaseUser.isApproved) {
-          console.log("👤 Client not approved, redirecting to pending-approval");
+          console.log(
+            "👤 Client not approved, redirecting to pending-approval"
+          );
           window.location.href = "/pending-approval";
         } else {
           console.log("👤 Client approved, redirecting to /client");
@@ -125,7 +129,9 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4 w-full">
             <div className="space-y-2 w-full">
-              <Label htmlFor="email" className="block">E-posta</Label>
+              <Label htmlFor="email" className="block">
+                E-posta
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -137,7 +143,9 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2 w-full">
-              <Label htmlFor="password" className="block">Şifre</Label>
+              <Label htmlFor="password" className="block">
+                Şifre
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -148,10 +156,10 @@ export default function LoginPage() {
                 className="w-full"
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className={`w-full ${
-                loginType === "dietitian" 
+                loginType === "dietitian"
                   ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                   : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
               }`}
@@ -191,18 +199,23 @@ export default function LoginPage() {
                   <span className="px-2 bg-white text-gray-500">veya</span>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🔗 Button clicked - loginType:", loginType);
                   console.log("🔗 Navigating to /register-client");
-                  router.push("/register-client");
+                  
+                  // Use window.location for immediate navigation
+                  window.location.href = "/register-client";
                 }}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium"
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-all font-medium"
               >
                 <UserPlus className="w-5 h-5" />
                 <span>Danışan Kaydı Oluştur</span>
-              </button>
+              </Button>
               <p className="mt-3 text-xs text-gray-500 text-center">
                 Hesabınız yok mu? Kayıt olun ve diyetisyeninizle eşleşin
               </p>
@@ -212,7 +225,8 @@ export default function LoginPage() {
           {/* Dietitian Info */}
           {loginType === "dietitian" && (
             <div className="mt-4 text-center text-sm text-gray-600">
-              Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime geçin.
+              Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime
+              geçin.
             </div>
           )}
 
