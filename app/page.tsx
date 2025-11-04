@@ -12,9 +12,10 @@ import {
   MessageCircle,
   Clock,
   ChevronRight,
+  TrendingUp,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase-browser";
 
 interface UnreadConversation {
@@ -34,12 +35,39 @@ interface UnreadConversation {
   }>;
 }
 
+interface DashboardStats {
+  totalClients: number;
+  totalDiets: number;
+  thisMonthDiets: number;
+  pendingApprovals: number;
+}
+
+interface RecentDiet {
+  id: number;
+  tarih: string;
+  client: {
+    id: number;
+    name: string;
+    surname: string;
+  };
+}
+
+interface UnreadMessagesByDiet {
+  [dietId: string]: number;
+}
+
 export default function Home() {
   const router = useRouter();
   const [conversations, setConversations] = useState<UnreadConversation[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  
+  // Mobile dashboard stats
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [recentDiets, setRecentDiets] = useState<RecentDiet[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [unreadByDiet, setUnreadByDiet] = useState<UnreadMessagesByDiet>({});
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -47,10 +75,61 @@ export default function Home() {
 
   useEffect(() => {
     if (userRole === "dietitian") {
-      const interval = setInterval(loadUnreadMessages, 30000);
+      const interval = setInterval(() => {
+        loadUnreadMessages();
+        loadDashboardData();
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [userRole]);
+
+  const loadDashboardData = async () => {
+    try {
+      setStatsLoading(true);
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        console.log("⚠️ No session found, skipping dashboard data");
+        return;
+      }
+
+      // Load dashboard stats
+      const statsResponse = await fetch("/api/analytics/stats", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setDashboardStats({
+          totalClients: statsData.totalClients || 0,
+          totalDiets: statsData.totalDiets || 0,
+          thisMonthDiets: statsData.thisMonthDiets || 0,
+          pendingApprovals: statsData.pendingApprovals || 0,
+        });
+      }
+
+      // Load recent diets
+      const dietsResponse = await fetch("/api/diets?skip=0&take=5", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (dietsResponse.ok) {
+        const dietsData = await dietsResponse.json();
+        setRecentDiets(dietsData.diets || []);
+      }
+    } catch (error) {
+      console.error("❌ Error loading dashboard data:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const checkAuthAndLoadData = async () => {
     try {
@@ -89,7 +168,8 @@ export default function Home() {
           console.log("👨‍⚕️ Dietitian detected, loading dashboard");
           setUserRole(role);
           setLoading(false); // Stop loading for dietitian
-          // Load unread messages for dietitian
+          // Load dashboard data
+          loadDashboardData();
           loadUnreadMessages();
         } else {
           // Unknown role
@@ -140,6 +220,15 @@ export default function Home() {
         setConversations(data.conversations || []);
         setTotalUnread(data.totalUnread || 0);
         console.log("✅ Unread messages loaded:", data.totalUnread);
+        
+        // Build unread by diet map
+        const dietMap: UnreadMessagesByDiet = {};
+        if (data.conversations && Array.isArray(data.conversations)) {
+          data.conversations.forEach((conv: UnreadConversation) => {
+            dietMap[conv.dietId] = conv.unreadCount || 0;
+          });
+        }
+        setUnreadByDiet(dietMap);
       }
     } catch (error) {
       console.error("❌ Error loading unread messages:", error);
@@ -191,16 +280,172 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-7xl">
-      <div className="text-center mb-16">
-        <div className="flex justify-center mb-6">
-          <Image
-            src="/ezgi_evgin.png"
-            alt="Diyet Danışmanlık Logo"
-            width={180}
-            height={180}
-            priority
-          />
+      {/* Mobile Dashboard Features - Üst Bölüm */}
+      <div className="mb-16">
+        {/* Stats Grid */}
+        {statsLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-md p-4 md:p-6 animate-pulse"
+              >
+                <div className="h-8 w-8 md:h-10 md:w-10 bg-gray-200 rounded-full mb-3 md:mb-4 mx-auto"></div>
+                <div className="h-6 md:h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-3 md:h-4 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            {/* Toplam Danışan */}
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4 border-blue-500">
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                  <Users className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                  {dashboardStats?.totalClients || 0}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600 font-medium">
+                  Toplam Danışan
+                </div>
+              </div>
+            </div>
+
+            {/* Toplam Diyet */}
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4 border-green-500">
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-green-50 rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                  {dashboardStats?.totalDiets || 0}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600 font-medium">
+                  Toplam Diyet
+                </div>
+              </div>
+            </div>
+
+            {/* Bu Ay */}
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4 border-orange-500">
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-50 rounded-full flex items-center justify-center">
+                  <Calendar className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                  {dashboardStats?.thisMonthDiets || 0}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600 font-medium">Bu Ay</div>
+              </div>
+            </div>
+
+            {/* Bekleyen */}
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4 border-purple-500">
+              <div className="flex items-center justify-center mb-3 md:mb-4">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-50 rounded-full flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+                  {dashboardStats?.pendingApprovals || 0}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600 font-medium">
+                  Bekleyen
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Okunmamış Mesajlar Card - Mobile Style */}
+        <div
+          className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => {
+            if (conversations.length > 0) {
+              router.push(
+                `/clients/${conversations[0].clientId}/messages?dietId=${conversations[0].dietId}`
+              );
+            } else if (totalUnread > 0) {
+              // If there are unread messages but no conversations in list, go to first client
+              router.push("/clients");
+            }
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-1">
+              <MessageCircle className="w-6 h-6 text-blue-600" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Okunmamış Mesajlar
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {totalUnread > 0
+                    ? `${totalUnread} yeni mesajınız var`
+                    : "Okunmamış mesajınız yok"}
+                </p>
+              </div>
+            </div>
+            {totalUnread > 0 && (
+              <div className="bg-red-500 text-white rounded-full px-3 py-1 text-sm font-bold min-w-[32px] text-center">
+                {totalUnread}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Son Diyetler */}
+        {recentDiets.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">
+              Son Diyetler
+            </h2>
+            <div className="space-y-3">
+              {recentDiets.map((diet) => {
+                const dietUnreadCount = unreadByDiet[diet.id] || 0;
+                return (
+                  <div
+                    key={diet.id}
+                    className="bg-white rounded-xl shadow-md p-3 md:p-4 flex items-center justify-between cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => router.push(`/diets/${diet.id}`)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 text-sm md:text-base truncate">
+                          {diet.client.name} {diet.client.surname}
+                        </h3>
+                        {dietUnreadCount > 0 && (
+                          <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0">
+                            {dietUnreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs md:text-sm text-gray-600 truncate">
+                        Beslenme Programı #{diet.id} • {diet.tarih}
+                      </p>
+                    </div>
+                    <FileText className="w-4 h-4 md:w-5 md:h-5 text-gray-400 flex-shrink-0 ml-2" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t-2 border-gray-200 my-16"></div>
+
+      {/* Mevcut Web İçeriği - Alt Bölüm */}
+      <div className="text-center mb-16">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text mb-4">
           Diyet Danışmanlık Hizmetleri
         </h1>
