@@ -297,8 +297,13 @@ export default function DietDetailPage() {
                           >
                             <span className="mr-2">•</span>
                             <span>
-                              {item.besin?.name || item.besin} - {item.miktar}{" "}
-                              {item.birim?.name || item.birim}
+                              {typeof item.besin === "object" && item.besin
+                                ? item.besin.name
+                                : item.besin || ""}{" "}
+                              - {item.miktar || ""}{" "}
+                              {typeof item.birim === "object" && item.birim
+                                ? item.birim.name
+                                : item.birim || ""}
                             </span>
                           </li>
                         ))}
