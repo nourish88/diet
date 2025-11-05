@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import {
-  DietLoggingService,
+  IDietLoggingService,
   DietLoggingServiceFactory,
   DietLogEntryBuilder,
   SessionIdGenerator,
@@ -23,7 +23,7 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
   const [sessionId] = useState(() => SessionIdGenerator.generate());
   const [dietitianId, setDietitianId] = useState<number | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const loggingServiceRef = useRef<DietLoggingService | null>(null);
+  const loggingServiceRef = useRef<IDietLoggingService | null>(null);
   const supabase = createClient();
 
   // Initialize logging service and get dietitian ID
