@@ -161,7 +161,7 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
       value,
     });
   const logDietSaved = (savedDietId?: number) =>
-    logAction("diet_saved", { dietId: savedDietId || dietId });
+    logAction("diet_saved", { dietId: savedDietId ?? (dietId ?? undefined) });
   const logDietSaveFailed = (error: string) =>
     logAction("diet_save_failed", { error });
   const logTemplateLoaded = (templateId: number, templateName: string) =>
