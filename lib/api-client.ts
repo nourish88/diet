@@ -27,8 +27,41 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(errorData.message || `API Error: ${response.status}`);
+      // Try to extract detailed error information
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      let errorDetails: any = null;
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          errorDetails = await response.json();
+          errorMessage = errorDetails.message || errorDetails.error || errorMessage;
+          
+          // Include additional context if available
+          if (errorDetails.details) {
+            errorMessage += ` - ${errorDetails.details}`;
+          }
+        } else {
+          // Non-JSON response, try to get text
+          const text = await response.text();
+          if (text) {
+            errorMessage = `${errorMessage} - ${text.substring(0, 200)}`;
+          }
+        }
+      } catch (parseError) {
+        // If we can't parse the error response, include status and endpoint
+        console.error(`Failed to parse error response from ${endpoint}:`, parseError);
+        errorMessage = `API Error ${response.status}: Failed to parse error response`;
+      }
+      
+      // Create error with detailed information
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).statusText = response.statusText;
+      (error as any).endpoint = endpoint;
+      (error as any).details = errorDetails;
+      
+      throw error;
     }
 
     // Handle empty responses

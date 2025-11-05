@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       fieldValue,
       previousValue,
       metadata,
+      source,
     } = body;
 
     // Validate required fields
@@ -53,6 +54,17 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       );
+    }
+
+    // Determine source: use provided source, or detect from sessionId pattern, or default to "client"
+    let effectiveSource = source;
+    if (!effectiveSource) {
+      // Detect source from sessionId pattern: "api_" prefix means server-side
+      if (sessionId.startsWith("api_")) {
+        effectiveSource = "server";
+      } else {
+        effectiveSource = "client";
+      }
     }
 
     // Create log entry
@@ -67,6 +79,7 @@ export async function POST(request: NextRequest) {
         fieldValue: fieldValue ?? null,
         previousValue: previousValue ?? null,
         metadata: metadata ? metadata : null,
+        source: effectiveSource,
       },
     });
 

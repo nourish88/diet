@@ -231,8 +231,8 @@ const DietFormBasicFields = ({
         </p>
       </div>
 
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="p-3 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Left Column */}
           <div className="space-y-4">
             <FormFieldWrapper form={form} name="dietDate" label="Diyet Tarihi">

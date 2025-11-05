@@ -378,6 +378,7 @@ model DietFormLog {
   
   // Context
   metadata    Json?    // Additional context (e.g., ogun index, item index, error messages)
+  source      String   @default("client") // "client" for client-side logs, "server" for server-side logs
   
   // Timestamps
   createdAt   DateTime @default(now())

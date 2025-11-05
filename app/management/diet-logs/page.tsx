@@ -36,6 +36,7 @@ interface DietFormLog {
   fieldValue: string | null;
   previousValue: string | null;
   metadata: any;
+  source: string;
   createdAt: string;
   dietitian: {
     id: number;
@@ -306,6 +307,7 @@ export default function DietLogsManagementPage() {
                       <TableHead>Tarih</TableHead>
                       <TableHead>Oturum</TableHead>
                       <TableHead>İşlem</TableHead>
+                      <TableHead>Kaynak</TableHead>
                       <TableHead>Danışan ID</TableHead>
                       <TableHead>Diyet ID</TableHead>
                       <TableHead>Alan</TableHead>
@@ -326,6 +328,18 @@ export default function DietLogsManagementPage() {
                             className={getActionBadgeColor(log.action)}
                           >
                             {formatAction(log.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              log.source === "server"
+                                ? "bg-purple-100 text-purple-800 border-purple-300"
+                                : "bg-blue-100 text-blue-800 border-blue-300"
+                            }
+                          >
+                            {log.source === "server" ? "Server" : "Client"}
                           </Badge>
                         </TableCell>
                         <TableCell>{log.clientId || "-"}</TableCell>

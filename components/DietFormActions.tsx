@@ -175,7 +175,7 @@ const DietFormActions = ({
   };
 
   return (
-    <div className="flex flex-wrap gap-3 mt-6 justify-start">
+    <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 mt-4 sm:mt-6 justify-start">
       <Button
         type="button"
         variant="outline"

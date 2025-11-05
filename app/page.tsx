@@ -706,37 +706,6 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="space-y-4">
-            <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-indigo-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">
-                Önemli Tarihler
-              </h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Özel günleri ve kutlamaları yönetin
-              </p>
-            </div>
-            <ul className="text-sm text-gray-700 space-y-2">
-              <li>Özel günleri ekleyin</li>
-              <li>Kutlama mesajlarını düzenleyin</li>
-              <li>Tarih aralıklarını belirleyin</li>
-            </ul>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={() => router.push("/important-dates")}
-                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Önemli Tarihleri Yönet
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="text-center text-gray-500 text-sm">
         <p>

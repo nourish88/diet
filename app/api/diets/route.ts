@@ -116,6 +116,7 @@ export const POST = requireDietitian(
               clientId: data.clientId,
               dietId: diet.id,
               action: "diet_saved",
+              source: "server", // Server-side log
               metadata: {
                 ogunCount: diet.oguns.length,
                 totalItems: diet.oguns.reduce(
@@ -137,9 +138,27 @@ export const POST = requireDietitian(
 
       return addCorsHeaders(NextResponse.json(diet));
     } catch (error) {
-      console.error("Error creating diet:", error);
+      // Enhanced error logging with detailed information
+      const errorDetails: any = {
+        message: error instanceof Error ? error.message : String(error),
+        type: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined,
+      };
+
+      // Extract Prisma-specific error details
+      if (error && typeof error === 'object' && 'code' in error) {
+        errorDetails.prismaCode = (error as any).code;
+        errorDetails.meta = (error as any).meta;
+      }
+
+      console.error("Error creating diet:", {
+        error: errorDetails,
+        clientId: data?.clientId,
+        dietitianId: auth.user!.id,
+        timestamp: new Date().toISOString(),
+      });
       
-      // Log diet save failure
+      // Log diet save failure with detailed error info
       try {
         const logResponse = await fetch(
           `${request.nextUrl.origin}/api/diet-logs`,
@@ -154,26 +173,43 @@ export const POST = requireDietitian(
               dietitianId: auth.user!.id,
               clientId: data?.clientId || null,
               action: "diet_save_failed",
+              source: "server", // Server-side log
               metadata: {
-                error: (error as Error).message,
+                error: errorDetails.message,
+                errorType: errorDetails.type,
+                prismaCode: errorDetails.prismaCode,
+                prismaMeta: errorDetails.meta,
+                stack: errorDetails.stack?.substring(0, 500), // Limit stack trace length
               },
             }),
           }
         );
         // Don't fail if logging fails
         if (!logResponse.ok) {
-          console.warn("Failed to log diet save failure:", logResponse.statusText);
+          console.warn("Failed to log diet creation:", logResponse.statusText);
         }
       } catch (logError) {
-        // Silently fail
-        console.warn("Error logging diet save failure:", logError);
+        // Silently fail - logging should not break diet creation
+        console.warn("Error logging diet creation:", logError);
       }
 
+      // Return structured error response
+      const errorMessage = errorDetails.message || "Unknown error occurred";
+      const isPrismaError = !!errorDetails.prismaCode;
+      
       return addCorsHeaders(
         NextResponse.json(
           {
             success: false,
-            error: `Database error: ${(error as Error).message}`,
+            error: errorMessage,
+            details: isPrismaError 
+              ? `Database error (${errorDetails.prismaCode})` 
+              : "Failed to create diet",
+            errorType: errorDetails.type,
+            ...(process.env.NODE_ENV === 'development' && {
+              stack: errorDetails.stack,
+              prismaMeta: errorDetails.meta,
+            }),
           },
           { status: 500 }
         )

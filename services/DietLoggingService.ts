@@ -20,6 +20,7 @@ export interface IDietLogEntry {
   fieldValue?: string | null;
   previousValue?: string | null;
   metadata?: Record<string, any> | null;
+  source?: string; // "client" for client-side logs, "server" for server-side logs
 }
 
 export interface IDietLoggingService {
@@ -274,9 +275,18 @@ export class DietLogEntryBuilder {
     return this;
   }
 
+  withSource(source: string): this {
+    this.entry.source = source;
+    return this;
+  }
+
   build(): IDietLogEntry {
     if (!this.entry.sessionId || !this.entry.dietitianId || !this.entry.action) {
       throw new Error("Missing required fields: sessionId, dietitianId, action");
+    }
+    // Ensure source has a default value
+    if (!this.entry.source) {
+      this.entry.source = "client";
     }
     return this.entry as IDietLogEntry;
   }

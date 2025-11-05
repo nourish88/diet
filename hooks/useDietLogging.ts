@@ -73,6 +73,7 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
       fieldName?: string;
       fieldValue?: any;
       previousValue?: any;
+      dietId?: number; // Allow metadata to override dietId
       [key: string]: any;
     }
   ) => {
@@ -81,12 +82,16 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
     }
 
     try {
+      // Use dietId from metadata if provided, otherwise use hook's dietId
+      const effectiveDietId = metadata?.dietId ?? dietId;
+      
       const builder = new DietLogEntryBuilder()
         .withSessionId(sessionId)
         .withDietitianId(dietitianId)
         .withAction(action)
         .withClientId(clientId)
-        .withDietId(dietId);
+        .withDietId(effectiveDietId)
+        .withSource("client"); // All logs from this hook are client-side
 
       if (metadata?.fieldName) {
         builder.withField(
@@ -97,7 +102,8 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
       }
 
       if (metadata) {
-        const { fieldName, fieldValue, previousValue, ...rest } = metadata;
+        // Exclude special fields from metadata (they're already used in builder)
+        const { fieldName, fieldValue, previousValue, dietId: _dietId, ...rest } = metadata;
         if (Object.keys(rest).length > 0) {
           builder.withMetadata(rest);
         }

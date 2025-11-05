@@ -340,9 +340,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.log("No previous diet found for client");
+          console.log("No previous diet found for client - starting fresh");
+          // Initialize with empty diet when no previous diet exists
           setDiet((prev) => ({
             ...prev,
+            id: undefined, // Ensure no ID for new diet
             Oguns: OGUN,
             Su: "",
             Fizik: "",
@@ -357,6 +359,8 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
       if (data && data.id) {
         // Create the UI diet with correct field mapping from API response
+        // NOTE: We keep the ID for logging/reference, but it will be cleared before saving
+        // IMPORTANT: Set date to today - old diet date should not be used for new diet
         const uiDiet = {
           ...convertDbDietToUiDiet(data, targetClientId),
           // Use the correct field names from API response
@@ -365,30 +369,23 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           Sonuc: data.sonuc || "",
           Hedef: data.hedef || "",
           dietitianNote: data.dietitianNote || "",
-          Tarih: data.tarih || data.createdAt || new Date().toISOString(),
+          Tarih: new Date().toISOString(), // Always use today's date for new diet
         };
 
+        console.log(`📋 Loaded latest diet (ID: ${data.id}) for display/reference only`);
         setDiet(uiDiet);
 
-        // Log diet loaded
+        // Log diet loaded (for reference/tracking)
         if (dietLogging.isReady) {
           dietLogging.logDietLoaded(data.id);
         }
       }
     } catch (error) {
       console.error("Error loading latest diet:", error);
+      // Initialize with empty diet on error (no ID, fresh start)
       setDiet((prev) => ({
         ...prev,
-        Oguns: OGUN,
-        Su: "",
-        Fizik: "",
-        Sonuc: "",
-        Hedef: "",
-        dietitianNote: "",
-      })); // Add this
-      // Initialize with empty diet on error
-      setDiet((prev) => ({
-        ...prev,
+        id: undefined, // Ensure no ID for new diet
         Oguns: OGUN,
         Su: "",
         Fizik: "",
@@ -671,9 +668,14 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
 
     try {
+      // Always create a new diet - clear ID to prevent update attempts
+      // The loaded diet is for display/reference only, not for editing
+      const { id: _oldId, ...dietWithoutId } = diet;
+      
       // Include all diet properties including celebration flags
       const dietToSave = {
-        ...diet,
+        ...dietWithoutId,
+        id: undefined, // Explicitly ensure no ID is sent
         Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
         clientId: selectedClientId,
         isBirthdayCelebration: diet.isBirthdayCelebration || false,
@@ -681,13 +683,29 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         importantDateId: diet.importantDateId || null,
         importantDateName: diet.importantDateName || null,
       };
-      console.log(dietToSave, "dietToSave");
+      console.log("💾 Saving new diet (ID cleared):", { ...dietToSave, id: undefined });
       const result = await saveDiet(dietToSave);
 
       if (result) {
-        // Log diet saved
-        if (dietLogging.isReady) {
-          dietLogging.logDietSaved(result.id || diet.id);
+        // Extract the new diet ID from the result
+        // API returns the created diet object with id
+        const newDietId = result.id || result.diet?.id;
+        
+        if (!newDietId) {
+          console.warn("⚠️ No diet ID returned from save operation:", result);
+        }
+
+        // Log diet saved from client-side (server-side also logs, but with source="server")
+        if (dietLogging.isReady && newDietId) {
+          dietLogging.logDietSaved(newDietId);
+        }
+
+        // Update local state with new diet ID if available
+        if (newDietId) {
+          setDiet((prev) => ({
+            ...prev,
+            id: newDietId,
+          }));
         }
 
         toast({
@@ -699,15 +717,41 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     } catch (error: any) {
       console.error("Veritabanına kaydetme hatası:", error);
       
-      // Log diet save failed
+      // Extract detailed error information
+      const errorMessage = error?.message || "Bilinmeyen hata";
+      const errorStatus = error?.status;
+      const errorDetails = error?.details;
+      const errorType = error?.errorType || error?.type || "Unknown";
+      
+      // Build descriptive error message for user
+      let userErrorMessage = "Veritabanına kaydetme sırasında bir hata oluştu.";
+      
+      if (errorStatus) {
+        if (errorStatus === 403) {
+          userErrorMessage = "Bu işlem için yetkiniz bulunmamaktadır.";
+        } else if (errorStatus === 400) {
+          userErrorMessage = "Gönderilen veriler geçersiz. Lütfen formu kontrol edin.";
+        } else if (errorStatus === 500) {
+          userErrorMessage = "Sunucu hatası oluştu. Lütfen tekrar deneyin.";
+        } else if (errorStatus >= 400) {
+          userErrorMessage = `Sunucu hatası (${errorStatus}): ${errorMessage}`;
+        }
+      } else if (errorMessage && errorMessage !== "Unknown error") {
+        // If we have a specific error message, use it
+        userErrorMessage = errorMessage;
+      }
+      
+      // Log diet save failed with detailed error info
       if (dietLogging.isReady) {
-        dietLogging.logDietSaveFailed(error?.message || "Unknown error");
+        const logError = errorMessage + (errorStatus ? ` (Status: ${errorStatus})` : '');
+        dietLogging.logDietSaveFailed(logError);
       }
 
       toast({
         title: "Hata",
-        description: "Veritabanına kaydetme sırasında bir hata oluştu.",
+        description: userErrorMessage,
         variant: "destructive",
+        duration: 5000, // Show longer for important errors
       });
     }
   };
@@ -722,10 +766,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const isFormDisabled = !selectedClientId;
 
   return (
-    <div className="container mx-auto px-4 max-w-7xl">
+    <div className="container mx-auto px-2 sm:px-4 max-w-7xl">
       <div style={{ fontSize: `${fontSize}px` }}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
             <DietHeader />
 
             {/* Client selector with improved styling */}
@@ -945,7 +989,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 </Card>
               </div>
 
-              <div className="flex space-x-4 mt-8">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-8">
                 <DietFormActions
                   onAddOgun={handleAddOgun}
                   importantDateId={diet.importantDateId}

@@ -18,6 +18,7 @@ import { Resizable } from "react-resizable";
 import { Clock, Coffee, FileText, Menu, Plus, Trash } from "lucide-react";
 import { OgunQuickActions } from "@/components/OgunQuickActions";
 import { MealPreset } from "@/services/PresetService";
+import { SmartBesinInput } from "@/components/SmartBesinInput";
 
 interface DietTableProps {
   setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
@@ -186,10 +187,216 @@ const DietTable = ({
     return item.besin || "";
   };
 
+  // Check if mobile view (less than 768px)
+  const isMobile = windowWidth > 0 && windowWidth < 768;
+
   return (
     <div className={disabled ? "opacity-50 pointer-events-none" : ""}>
-      <div className="overflow-x-auto border-2 border-purple-700 rounded-lg">
-        {isBrowser ? (
+      {isMobile && isBrowser ? (
+        // Mobile view: Card-based layout
+        <div className="space-y-4">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId={contextId} direction="vertical">
+              {(provided: DroppableProvided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                  {diet.Oguns.map((ogun, index) => (
+                    <Draggable
+                      key={index.toString()}
+                      draggableId={index.toString()}
+                      index={index}
+                    >
+                      {(provided: DraggableProvided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="bg-white border-2 border-purple-700 rounded-lg shadow-md p-4 space-y-3"
+                        >
+                          {/* Ogun Header */}
+                          <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <Coffee className="w-5 h-5 text-purple-600" />
+                              <Input
+                                value={ogun.name}
+                                onChange={(e) =>
+                                  handleOgunChange(index, "name", e.target.value)
+                                }
+                                className="font-semibold text-lg border-none shadow-none p-0 h-auto"
+                                placeholder="Öğün adı"
+                                disabled={disabled}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              <Input
+                                value={ogun.time}
+                                onChange={(e) =>
+                                  handleOgunChange(index, "time", e.target.value)
+                                }
+                                className="w-20 text-sm border-gray-300"
+                                placeholder="Saat"
+                                disabled={disabled}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveOgun(index)}
+                                disabled={disabled}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Menu Items */}
+                          <div className="space-y-2">
+                            {ogun.items.map((item, itemIndex) => (
+                              <div
+                                key={itemIndex}
+                                className="flex flex-col gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                              >
+                                <div className="flex flex-col gap-2">
+                                  <Input
+                                    value={item.miktar || ""}
+                                    onChange={(e) =>
+                                      handleMenuItemChange(
+                                        index,
+                                        itemIndex,
+                                        "miktar",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Miktar"
+                                    className="w-full text-sm"
+                                    disabled={disabled}
+                                  />
+                                  <Input
+                                    value={
+                                      typeof item.birim === "object" && item.birim
+                                        ? item.birim.name || ""
+                                        : typeof item.birim === "string"
+                                        ? item.birim
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      handleMenuItemChange(
+                                        index,
+                                        itemIndex,
+                                        "birim",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Birim (örn: Yemek Kaşığı)"
+                                    className="w-full text-sm"
+                                    disabled={disabled}
+                                  />
+                                </div>
+                                <SmartBesinInput
+                                  value={
+                                    typeof item.besin === "object" && item.besin
+                                      ? item.besin.name || ""
+                                      : typeof item.besin === "string"
+                                      ? item.besin
+                                      : ""
+                                  }
+                                  onChange={(value, suggestion) => {
+                                    handleMenuItemChange(
+                                      index,
+                                      itemIndex,
+                                      "besin",
+                                      value
+                                    );
+                                    
+                                    // Auto-fill miktar and birim if suggestion selected
+                                    if (suggestion) {
+                                      if (suggestion.miktar) {
+                                        handleMenuItemChange(
+                                          index,
+                                          itemIndex,
+                                          "miktar",
+                                          suggestion.miktar
+                                        );
+                                      }
+                                      if (suggestion.birim) {
+                                        handleMenuItemChange(
+                                          index,
+                                          itemIndex,
+                                          "birim",
+                                          suggestion.birim
+                                        );
+                                      }
+                                    }
+                                  }}
+                                  placeholder="Besin ara..."
+                                  className="text-sm border-gray-300"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteMenuItem(index, itemIndex)}
+                                  disabled={disabled}
+                                  className="self-start text-red-600 hover:text-red-700 text-xs"
+                                >
+                                  <Trash className="w-3 h-3 mr-1" />
+                                  Sil
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddMenuItem(index)}
+                              disabled={disabled}
+                              className="w-full border-dashed"
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Besin Ekle
+                            </Button>
+                          </div>
+
+                          {/* Detail/Notes */}
+                          <div>
+                            <Textarea
+                              value={ogun.detail || ""}
+                              onChange={(e) =>
+                                handleOgunChange(index, "detail", e.target.value)
+                              }
+                              placeholder="Açıklama/Not..."
+                              className="text-sm border-gray-300"
+                              rows={2}
+                              disabled={disabled}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  
+                  {/* Add Ogun Button for Mobile */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onAddOgun}
+                    disabled={disabled}
+                    className="w-full border-2 border-dashed border-purple-700 text-purple-700 hover:bg-purple-50 mt-4"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Öğün Ekle
+                  </Button>
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </div>
+      ) : (
+        // Desktop view: Table layout
+        <div className="overflow-x-auto border-2 border-purple-700 rounded-lg">
+          {isBrowser ? (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId={contextId} direction="vertical">
               {(provided: DroppableProvided) => (
@@ -445,6 +652,7 @@ const DietTable = ({
           <p>Loading...</p>
         )}
       </div>
+      )}
     </div>
   );
 };
