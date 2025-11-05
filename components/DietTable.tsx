@@ -36,6 +36,7 @@ interface DietTableProps {
   disabled?: boolean;
   bannedFoods?: Array<{ besin: { id: number; name: string } }>;
   onAddOgun: () => void;
+  onItemRemoved?: (ogunIndex: number, itemIndex: number) => void;
 }
 
 const DietTable = ({
@@ -50,6 +51,7 @@ const DietTable = ({
   disabled = false,
   bannedFoods = [],
   onAddOgun,
+  onItemRemoved,
 }: DietTableProps) => {
   const [windowWidth, setWindowWidth] = useState(0);
   const [columnWidths, setColumnWidths] = useState({
@@ -93,6 +95,11 @@ const DietTable = ({
         Oguns: updatedOguns,
       };
     });
+
+    // Log item removed
+    if (onItemRemoved) {
+      onItemRemoved(ogunIndex, itemIndex);
+    }
   };
 
   const reorder = (list: Ogun[], startIndex: number, endIndex: number) => {

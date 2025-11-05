@@ -88,9 +88,75 @@ export const POST = requireDietitian(
         },
       });
 
+      // Log diet creation on server side
+      try {
+        const logResponse = await fetch(
+          `${request.nextUrl.origin}/api/diet-logs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: request.headers.get("Authorization") || "",
+            },
+            body: JSON.stringify({
+              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              dietitianId: auth.user!.id,
+              clientId: data.clientId,
+              dietId: diet.id,
+              action: "diet_saved",
+              metadata: {
+                ogunCount: diet.oguns.length,
+                totalItems: diet.oguns.reduce(
+                  (sum, ogun) => sum + (ogun.items?.length || 0),
+                  0
+                ),
+              },
+            }),
+          }
+        );
+        // Don't fail if logging fails
+        if (!logResponse.ok) {
+          console.warn("Failed to log diet creation:", logResponse.statusText);
+        }
+      } catch (logError) {
+        // Silently fail - logging should not break diet creation
+        console.warn("Error logging diet creation:", logError);
+      }
+
       return addCorsHeaders(NextResponse.json(diet));
     } catch (error) {
       console.error("Error creating diet:", error);
+      
+      // Log diet save failure
+      try {
+        const logResponse = await fetch(
+          `${request.nextUrl.origin}/api/diet-logs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: request.headers.get("Authorization") || "",
+            },
+            body: JSON.stringify({
+              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              dietitianId: auth.user!.id,
+              clientId: data.clientId,
+              action: "diet_save_failed",
+              metadata: {
+                error: (error as Error).message,
+              },
+            }),
+          }
+        );
+        // Don't fail if logging fails
+        if (!logResponse.ok) {
+          console.warn("Failed to log diet save failure:", logResponse.statusText);
+        }
+      } catch (logError) {
+        // Silently fail
+        console.warn("Error logging diet save failure:", logError);
+      }
+
       return addCorsHeaders(
         NextResponse.json(
           {

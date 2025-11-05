@@ -26,6 +26,7 @@ import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { useDietLogging } from "@/hooks/useDietLogging";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -53,6 +54,20 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const { toast } = useToast();
   const { saveDiet } = useDietActions();
 
+  // Initialize diet logging - use refs to track changes
+  const [currentDietId, setCurrentDietId] = useState<number | undefined>(diet.id);
+  const dietLogging = useDietLogging({
+    clientId: selectedClientId,
+    dietId: currentDietId,
+  });
+
+  // Update currentDietId when diet.id changes
+  useEffect(() => {
+    if (diet.id && diet.id !== currentDietId) {
+      setCurrentDietId(diet.id);
+    }
+  }, [diet.id]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -69,6 +84,16 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+
+  // Log form opened on mount
+  useEffect(() => {
+    if (dietLogging.isReady) {
+      console.log("🔵 Logging form opened, isReady:", dietLogging.isReady);
+      dietLogging.logFormOpened();
+    } else {
+      console.log("🔵 Logging not ready yet, isReady:", dietLogging.isReady);
+    }
+  }, [dietLogging.isReady]);
 
   // Separate effect for initial client fetch if initialClientId is provided
   useEffect(() => {
@@ -101,8 +126,18 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         }
 
         if (data && data.id) {
+          const oldClientId = selectedClientId;
           setSelectedClientId(data.id);
           setSelectedClientName(`${data.name} ${data.surname}`);
+
+          // Log client selection
+          if (dietLogging.isReady) {
+            if (oldClientId && oldClientId !== data.id) {
+              dietLogging.logClientChanged(oldClientId, data.id);
+            } else {
+              dietLogging.logClientSelected(data.id);
+            }
+          }
 
           // Set client data here instead of in a separate effect
           setClientData({
@@ -186,6 +221,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
         setDiet(templateDiet);
 
+        // Log template loaded
+        if (dietLogging.isReady) {
+          dietLogging.logTemplateLoaded(template.id, template.name);
+        }
+
         toast({
           title: "Şablon Yüklendi",
           description: `"${template.name}" şablonu kullanılıyor`,
@@ -203,7 +243,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     };
 
     loadInitialTemplate();
-  }, [initialTemplateId]);
+  }, [initialTemplateId, dietLogging.isReady]);
 
   // Add this to your state
   const [clientPhoneNumber, setClientPhoneNumber] = useState<
@@ -267,6 +307,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             AdSoyad: `${client.name} ${client.surname}`,
           }));
 
+          // Log client selection
+          if (dietLogging.isReady) {
+            dietLogging.logClientSelected(client.id);
+          }
+
           // Load latest diet for this client
           loadLatestDiet();
         } catch (error) {
@@ -324,6 +369,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         };
 
         setDiet(uiDiet);
+
+        // Log diet loaded
+        if (dietLogging.isReady) {
+          dietLogging.logDietLoaded(data.id);
+        }
       }
     } catch (error) {
       console.error("Error loading latest diet:", error);
@@ -443,17 +493,29 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       detail: "", // Now matches the interface
       order: diet.Oguns.length + 1,
     };
+    const ogunIndex = diet.Oguns.length;
     setDiet((prev) => ({
       ...prev,
       Oguns: [...prev.Oguns, newOgun],
     }));
+
+    // Log ogun added
+    if (dietLogging.isReady) {
+      dietLogging.logOgunAdded(ogunIndex);
+    }
   };
 
   const handleRemoveOgun = (index: number) => {
+    const ogunToRemove = diet.Oguns[index];
     setDiet((prev) => ({
       ...prev,
       Oguns: prev.Oguns.filter((_, idx) => idx !== index),
     }));
+
+    // Log ogun removed
+    if (dietLogging.isReady) {
+      dietLogging.logOgunRemoved(index, ogunToRemove?.name);
+    }
   };
 
   const handleOgunChange = (
@@ -461,16 +523,23 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     field: keyof Ogun,
     value: string
   ) => {
+    const previousValue = diet.Oguns[index]?.[field];
     setDiet((prev) => ({
       ...prev,
       Oguns: prev.Oguns.map((ogun, idx) =>
         idx === index ? { ...ogun, [field]: value } : ogun
       ),
     }));
+
+    // Log ogun updated
+    if (dietLogging.isReady) {
+      dietLogging.logOgunUpdated(index, field as string, value);
+    }
   };
 
   // Check how menu items are being added
   const handleAddMenuItem = (ogunIndex: number) => {
+    const itemIndex = diet.Oguns[ogunIndex]?.items.length || 0;
     setDiet((prev) => ({
       ...prev,
       Oguns: prev.Oguns.map((ogun, idx) =>
@@ -485,6 +554,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           : ogun
       ),
     }));
+
+    // Log item added
+    if (dietLogging.isReady) {
+      dietLogging.logItemAdded(ogunIndex, itemIndex);
+    }
   };
 
   const handleMenuItemChange = (
@@ -516,6 +590,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       }
     }
 
+    const previousValue = diet.Oguns[ogunIndex]?.items[itemIndex]?.[field as keyof typeof diet.Oguns[0]['items'][0]];
     setDiet((prev) => {
       const newDiet = {
         ...prev,
@@ -533,6 +608,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
       return newDiet;
     });
+
+    // Log item updated
+    if (dietLogging.isReady) {
+      dietLogging.logItemUpdated(ogunIndex, itemIndex, field, value);
+    }
   };
   const generatePDF = async () => {
     const element = document.getElementById("content");
@@ -573,6 +653,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
 
     pdf.save("diet-plan.pdf");
+
+    // Log PDF generated
+    if (dietLogging.isReady) {
+      dietLogging.logPdfGenerated();
+    }
   };
 
   const handleSaveToDB = async () => {
@@ -600,14 +685,25 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       const result = await saveDiet(dietToSave);
 
       if (result) {
+        // Log diet saved
+        if (dietLogging.isReady) {
+          dietLogging.logDietSaved(result.id || diet.id);
+        }
+
         toast({
           title: "Başarılı",
           description: "Beslenme programı veritabanına kaydedildi.",
           variant: "default",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Veritabanına kaydetme hatası:", error);
+      
+      // Log diet save failed
+      if (dietLogging.isReady) {
+        dietLogging.logDietSaveFailed(error?.message || "Unknown error");
+      }
+
       toast({
         title: "Hata",
         description: "Veritabanına kaydetme sırasında bir hata oluştu.",
@@ -693,6 +789,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
                   setDiet(templateDiet);
 
+                  // Log template loaded
+                  if (dietLogging.isReady) {
+                    dietLogging.logTemplateLoaded(template.id, template.name);
+                  }
+
                   toast({
                     title: "Şablon Yüklendi",
                     description: `"${template.name}" şablonu kullanılıyor`,
@@ -747,6 +848,29 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                           ? newDietOrUpdater(prevDiet) // Use prevDiet instead of diet!
                           : newDietOrUpdater;
 
+                      // Log field changes
+                      if (dietLogging.isReady) {
+                        // Check for field changes
+                        if (newDiet.Su !== prevDiet.Su) {
+                          dietLogging.logFieldChanged("Su", newDiet.Su, prevDiet.Su);
+                        }
+                        if (newDiet.Fizik !== prevDiet.Fizik) {
+                          dietLogging.logFieldChanged("Fizik", newDiet.Fizik, prevDiet.Fizik);
+                        }
+                        if (newDiet.Hedef !== prevDiet.Hedef) {
+                          dietLogging.logFieldChanged("Hedef", newDiet.Hedef, prevDiet.Hedef);
+                        }
+                        if (newDiet.Sonuc !== prevDiet.Sonuc) {
+                          dietLogging.logFieldChanged("Sonuc", newDiet.Sonuc, prevDiet.Sonuc);
+                        }
+                        if (newDiet.Tarih !== prevDiet.Tarih) {
+                          dietLogging.logFieldChanged("Tarih", newDiet.Tarih, prevDiet.Tarih);
+                        }
+                        if (newDiet.dietitianNote !== prevDiet.dietitianNote) {
+                          dietLogging.logFieldChanged("dietitianNote", newDiet.dietitianNote, prevDiet.dietitianNote);
+                        }
+                      }
+
                       return {
                         ...newDiet,
                         Tarih: isDate(newDiet.Tarih)
@@ -756,7 +880,18 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                     });
                   }}
                   selectedClientId={selectedClientId}
-                  onSelectClient={(clientId) => setSelectedClientId(clientId)}
+                  onSelectClient={(clientId) => {
+                    const oldClientId = selectedClientId;
+                    setSelectedClientId(clientId);
+                    // Log client change
+                    if (dietLogging.isReady && oldClientId !== clientId) {
+                      if (oldClientId) {
+                        dietLogging.logClientChanged(oldClientId, clientId);
+                      } else {
+                        dietLogging.logClientSelected(clientId);
+                      }
+                    }
+                  }}
                   disabled={isFormDisabled}
                 />
               </div>
@@ -774,6 +909,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   disabled={isFormDisabled}
                   bannedFoods={clientData.bannedFoods}
                   onAddOgun={handleAddOgun}
+                  onItemRemoved={(ogunIndex, itemIndex) => {
+                    if (dietLogging.isReady) {
+                      dietLogging.logItemRemoved(ogunIndex, itemIndex);
+                    }
+                  }}
                 />
               </div>
 
@@ -789,12 +929,17 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                       placeholder="Danışana özel notunuzu buraya yazabilirsiniz..."
                       className="min-h-[100px]"
                       value={diet.dietitianNote || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const previousValue = diet.dietitianNote;
                         setDiet({
                           ...diet,
                           dietitianNote: e.target.value,
-                        })
-                      }
+                        });
+                        // Log field change
+                        if (dietLogging.isReady) {
+                          dietLogging.logFieldChanged("dietitianNote", e.target.value, previousValue);
+                        }
+                      }}
                     />
                   </CardContent>
                 </Card>

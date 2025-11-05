@@ -14,6 +14,8 @@ import {
   BarChart3,
   LogOut,
   User,
+  ChevronDown,
+  Cog,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -56,16 +58,13 @@ const Navbar = () => {
     closeMenu();
   };
 
-  // Filter nav items based on user role
-  const getNavItems = () => {
-    const allItems = [
+  // Main navigation items (always visible for dietitians)
+  const getMainNavItems = () => {
+    const mainItems = [
       { href: "/", label: "Ana Sayfa", icon: Home },
       { href: "/clients", label: "Danışanlar", icon: Users },
       { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
-      { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
-      { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
-      { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
       {
         href: "/pending-clients",
         label: "Onay Bekleyenler",
@@ -73,20 +72,38 @@ const Navbar = () => {
       },
     ];
 
-    // If user is not authenticated, show no items (middleware will redirect to login)
+    // If user is not authenticated, show no items
     if (!user || !databaseUser) {
       return [];
     }
 
     // If user is not a dietitian, show limited items
     if (databaseUser.role !== "dietitian") {
-      return allItems.filter((item) => ["/", "/diets"].includes(item.href));
+      return mainItems.filter((item) => ["/", "/diets"].includes(item.href));
     }
 
-    return allItems;
+    return mainItems;
   };
 
-  const navItems = getNavItems();
+  // Management menu items (in dropdown for dietitians)
+  const getManagementItems = () => {
+    return [
+      { href: "/sablonlar", label: "Şablonlar", icon: FileText },
+      { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
+      { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
+      {
+        href: "/management/diet-logs",
+        label: "Diyet Logları",
+        icon: FileText,
+      },
+    ];
+  };
+
+  const navItems = getMainNavItems();
+  const managementItems = getManagementItems();
+  const isManagementActive = managementItems.some((item) =>
+    pathname?.startsWith(item.href)
+  );
 
   // Don't render navigation items while loading
   if (loading) {
@@ -189,7 +206,7 @@ const Navbar = () => {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center py-2 px-3 rounded-lg ${
+                    className={`flex items-center py-2 px-3 rounded-lg transition-colors ${
                       isActive(item.href)
                         ? "text-white bg-indigo-600 lg:text-indigo-600 lg:bg-transparent"
                         : "text-gray-700 hover:bg-gray-100 lg:hover:bg-transparent lg:hover:text-indigo-600"
@@ -205,6 +222,52 @@ const Navbar = () => {
                 </li>
               );
             })}
+
+            {/* Uygulama Yönetimi Dropdown - Only for dietitians */}
+            {databaseUser?.role === "dietitian" && (
+              <li className="relative">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`flex items-center py-2 px-3 rounded-lg transition-colors w-full lg:w-auto ${
+                        isManagementActive
+                          ? "text-white bg-indigo-600 lg:text-indigo-600 lg:bg-transparent"
+                          : "text-gray-700 hover:bg-gray-100 lg:hover:bg-transparent lg:hover:text-indigo-600"
+                      }`}
+                    >
+                      <Cog className="w-4 h-4 mr-2" />
+                      <span>Uygulama Yönetimi</span>
+                      <ChevronDown className="w-4 h-4 ml-2 hidden lg:block" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-56 bg-white shadow-lg border border-gray-200 rounded-lg mt-2"
+                  >
+                    {managementItems.map((item) => {
+                      const Icon = item.icon;
+                      const isItemActive = pathname?.startsWith(item.href);
+                      return (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link
+                            href={item.href}
+                            className={`flex items-center py-2 px-3 rounded-md transition-colors ${
+                              isItemActive
+                                ? "bg-indigo-50 text-indigo-700 font-medium"
+                                : "text-gray-700"
+                            }`}
+                            onClick={() => closeMenu()}
+                          >
+                            <Icon className="w-4 h-4 mr-3" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
+            )}
 
             {/* Mobile logout */}
             {!loading && databaseUser && (

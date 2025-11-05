@@ -277,6 +277,7 @@ model User {
   importantDates ImportantDate[] @relation("ImportantDateDietitian")
   presets       MealPreset[] @relation("PresetDietitian")
   apiKeys       ApiKey[]
+  dietFormLogs  DietFormLog[] @relation("DietFormLogDietitian")
   
   @@index([supabaseId])
   @@index([email])
@@ -356,4 +357,47 @@ model ApiKey {
   @@index([key])
   @@index([dietitianId])
   @@index([isActive, expiresAt])
+}
+
+// Diet Form Logging System
+model DietFormLog {
+  id          Int      @id @default(autoincrement())
+  dietitianId Int
+  dietitian   User     @relation("DietFormLogDietitian", fields: [dietitianId], references: [id], onDelete: Cascade)
+  
+  // Session tracking
+  sessionId   String   // Unique identifier for a form session
+  clientId    Int?     // Client being worked on (null if not selected yet)
+  dietId      Int?      // Diet being edited (null for new diets)
+  
+  // Action details
+  action      String   // "form_opened", "client_selected", "field_changed", "ogun_added", "ogun_removed", "item_added", "item_removed", "diet_saved", "diet_save_failed", etc.
+  fieldName   String?  // Field that changed (e.g., "su", "tarih", "dietitianNote")
+  fieldValue  String?  // New value (JSON stringified if complex)
+  previousValue String? // Previous value (for change tracking)
+  
+  // Context
+  metadata    Json?    // Additional context (e.g., ogun index, item index, error messages)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  
+  @@index([dietitianId, createdAt])
+  @@index([sessionId])
+  @@index([clientId])
+  @@index([dietId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// System Configuration for Diet Logging
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([key])
 }
