@@ -12,9 +12,21 @@ export const POST = requireDietitian(
     const corsResponse = handleCors(request);
     if (corsResponse) return corsResponse;
 
+    // Parse request body once (can't read twice)
+    let data: any;
     try {
-      const data = await request.json();
+      data = await request.json();
       console.log("Received data:", data);
+    } catch (parseError) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Invalid request body" },
+          { status: 400 }
+        )
+      );
+    }
+
+    try {
 
       // SECURITY: Check if dietitian owns this client
       const hasAccess = await requireOwnClient(data.clientId, auth);
@@ -140,7 +152,7 @@ export const POST = requireDietitian(
             body: JSON.stringify({
               sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               dietitianId: auth.user!.id,
-              clientId: data.clientId,
+              clientId: data?.clientId || null,
               action: "diet_save_failed",
               metadata: {
                 error: (error as Error).message,
