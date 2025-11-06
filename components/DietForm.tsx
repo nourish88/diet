@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Form } from "./ui/form";
 import DietHeader from "./DietHeader";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { formSchema } from "../schemas/formSchema";
@@ -35,6 +36,7 @@ interface DietFormProps {
 
 const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const supabase = createClient();
+  const router = useRouter();
   const [diet, setDiet] = useState<Diet>({
     ...initialDiet,
   });
@@ -706,13 +708,25 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             ...prev,
             id: newDietId,
           }));
-        }
 
-        toast({
-          title: "Başarılı",
-          description: "Beslenme programı veritabanına kaydedildi.",
-          variant: "default",
-        });
+          // Redirect to diet detail page after successful save
+          toast({
+            title: "Başarılı",
+            description: "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
+            variant: "default",
+          });
+
+          // Small delay to show toast, then redirect
+          setTimeout(() => {
+            router.push(`/diets/${newDietId}`);
+          }, 1000);
+        } else {
+          toast({
+            title: "Başarılı",
+            description: "Beslenme programı veritabanına kaydedildi.",
+            variant: "default",
+          });
+        }
       }
     } catch (error: any) {
       console.error("Veritabanına kaydetme hatası:", error);

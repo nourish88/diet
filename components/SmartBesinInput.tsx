@@ -6,7 +6,24 @@ import { Input } from "@/components/ui/input";
 import SuggestionService, {
   BesinSuggestion,
 } from "@/services/SuggestionService";
-import { Loader2, Star } from "lucide-react";
+import { Loader2, Star, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SmartBesinInputProps {
   value: string;
@@ -32,8 +49,13 @@ export const SmartBesinInput = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showAddBesinDialog, setShowAddBesinDialog] = useState(false);
+  const [besinGroups, setBesinGroups] = useState<Array<{ id: number; name: string; description: string }>>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [isAddingBesin, setIsAddingBesin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
   // Ensure value is always a string (controlled input)
   const inputValue = value || "";
@@ -42,6 +64,89 @@ export const SmartBesinInput = ({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Load besin groups when dialog opens
+  useEffect(() => {
+    if (showAddBesinDialog) {
+      fetchBesinGroups();
+    }
+  }, [showAddBesinDialog]);
+
+  const fetchBesinGroups = async () => {
+    try {
+      const response = await fetch("/api/besin-gruplari");
+      if (response.ok) {
+        const data = await response.json();
+        setBesinGroups(data);
+      }
+    } catch (error) {
+      console.error("Error fetching besin groups:", error);
+    }
+  };
+
+  const handleAddBesin = async () => {
+    if (!inputValue.trim()) {
+      toast({
+        title: "Hata",
+        description: "Besin adı gereklidir",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAddingBesin(true);
+    try {
+      const response = await fetch("/api/besinler", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: inputValue.trim(),
+          priority: 0,
+          groupId: selectedGroupId ? parseInt(selectedGroupId) : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Besin eklenirken bir hata oluştu");
+      }
+
+      const newBesin = await response.json();
+
+      toast({
+        title: "Başarılı",
+        description: "Besin başarıyla eklendi",
+      });
+
+      // Update the input with the new besin name
+      onChange(newBesin.name);
+      if (onSelect) {
+        onSelect({
+          id: newBesin.id,
+          name: newBesin.name,
+          miktar: "",
+          birim: "",
+          usageCount: 0,
+          isFrequent: false,
+          score: 1,
+        });
+      }
+
+      setShowAddBesinDialog(false);
+      setSelectedGroupId("");
+      setShowSuggestions(false);
+    } catch (error: any) {
+      console.error("Error adding besin:", error);
+      toast({
+        title: "Hata",
+        description: error.message || "Besin eklenirken bir hata oluştu",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingBesin(false);
+    }
+  };
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -67,7 +172,7 @@ export const SmartBesinInput = ({
     }
   }, [mounted]);
 
-  // Fetch suggestions when value changes
+  // Fetch suggestions when value changes - reduced debounce for faster updates
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (!value || value.length < 2) {
@@ -79,19 +184,20 @@ export const SmartBesinInput = ({
       setIsLoading(true);
       const results = await SuggestionService.getBesinSuggestions(value);
       setSuggestions(results);
-      setShowSuggestions(results.length > 0);
       setIsLoading(false);
       setSelectedIndex(-1);
       
+      // Always show dropdown when user is typing (for suggestions or "Besin Ekle" button)
+      setShowSuggestions(true);
+      
       // Update dropdown position when suggestions appear (with small delay for DOM update)
-      if (results.length > 0) {
-        setTimeout(() => {
-          updateDropdownPosition();
-        }, 50);
-      }
+      setTimeout(() => {
+        updateDropdownPosition();
+      }, 50);
     };
 
-    const debounceTimer = setTimeout(fetchSuggestions, 300);
+    // Reduced debounce to 150ms for faster response
+    const debounceTimer = setTimeout(fetchSuggestions, 150);
     return () => clearTimeout(debounceTimer);
   }, [value, updateDropdownPosition]);
 
@@ -137,19 +243,23 @@ export const SmartBesinInput = ({
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || suggestions.length === 0) return;
+    if (!showSuggestions) return;
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < suggestions.length - 1 ? prev + 1 : prev
-        );
+        if (suggestions.length > 0) {
+          setSelectedIndex((prev) =>
+            prev < suggestions.length - 1 ? prev + 1 : prev
+          );
+        }
         break;
 
       case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        if (suggestions.length > 0) {
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        }
         break;
 
       case "Enter":
@@ -157,12 +267,18 @@ export const SmartBesinInput = ({
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
           e.preventDefault();
           selectSuggestion(suggestions[selectedIndex]);
+        } else if (suggestions.length === 0 && value && value.length >= 2) {
+          // If no suggestions but user has typed enough, open "Besin Ekle" dialog
+          e.preventDefault();
+          setShowAddBesinDialog(true);
+          setShowSuggestions(false);
         }
         break;
 
       case "Escape":
         setShowSuggestions(false);
         setSelectedIndex(-1);
+        inputRef.current?.blur();
         break;
     }
   };
@@ -177,6 +293,9 @@ export const SmartBesinInput = ({
   };
 
   const renderSuggestionsContent = () => {
+    const hasSuggestions = suggestions.length > 0;
+    const shouldShowAddButton = value && value.length >= 2 && !isLoading;
+
     return (
       <>
         {isLoading ? (
@@ -184,7 +303,7 @@ export const SmartBesinInput = ({
             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
             <span className="ml-2 text-sm text-gray-500">Aranıyor...</span>
           </div>
-        ) : suggestions.length > 0 ? (
+        ) : hasSuggestions ? (
           <>
             {/* Header */}
             <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
@@ -235,6 +354,26 @@ export const SmartBesinInput = ({
               </p>
             </div>
           </>
+        ) : shouldShowAddButton ? (
+          <>
+            {/* No suggestions - Show add button only */}
+            <div className="px-3 py-3">
+              <p className="text-xs text-gray-600 mb-2">
+                "{inputValue}" için öneri bulunamadı
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddBesinDialog(true);
+                  setShowSuggestions(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-md transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Yeni Besin Ekle
+              </button>
+            </div>
+          </>
         ) : null}
       </>
     );
@@ -253,7 +392,8 @@ export const SmartBesinInput = ({
           setTimeout(() => {
             updateDropdownPosition();
           }, 0);
-          if (suggestions.length > 0) {
+          // Show dropdown if there are suggestions OR if user has typed enough (for "Besin Ekle" button)
+          if (suggestions.length > 0 || (value && value.length >= 2)) {
             setShowSuggestions(true);
           }
         }}
@@ -294,6 +434,78 @@ export const SmartBesinInput = ({
           )}
         </>
       )}
+
+      {/* Add Besin Dialog */}
+      <Dialog open={showAddBesinDialog} onOpenChange={setShowAddBesinDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni Besin Ekle</DialogTitle>
+            <DialogDescription>
+              "{inputValue}" adında yeni bir besin ekleyin. İsteğe bağlı olarak bir besin grubu seçebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Besin Adı
+              </label>
+              <Input
+                value={inputValue}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Besin Grubu (İsteğe Bağlı)
+              </label>
+              <Select
+                value={selectedGroupId || "none"}
+                onValueChange={(val) => setSelectedGroupId(val === "none" ? "" : val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Besin grubu seçin (opsiyonel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Grup seçilmedi</SelectItem>
+                  {besinGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddBesinDialog(false);
+                setSelectedGroupId("");
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleAddBesin}
+              disabled={isAddingBesin || !inputValue.trim()}
+            >
+              {isAddingBesin ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Ekleniyor...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ekle
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
