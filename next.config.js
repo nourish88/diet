@@ -51,6 +51,7 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   turbopack: {},
+  transpilePackages: ["@foliojs-fork/fontkit", "@foliojs-fork/pdfkit"],
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [
