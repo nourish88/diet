@@ -209,10 +209,28 @@ export async function GET(
     }
 
     // Get all messages for this diet
+    const afterIdParam = searchParams.get("afterId");
+    const afterId = afterIdParam ? parseInt(afterIdParam) : null;
+
+    if (afterIdParam && (isNaN(afterId!) || afterId! < 0)) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid afterId" }, { status: 400 })
+      );
+    }
+
+    const messageWhere = {
+      dietId,
+      ...(afterId
+        ? {
+            id: {
+              gt: afterId,
+            },
+          }
+        : {}),
+    };
+
     const messages = await prisma.dietComment.findMany({
-      where: {
-        dietId,
-      },
+      where: messageWhere,
       include: {
         user: {
           select: {
@@ -247,9 +265,12 @@ export async function GET(
     });
 
     // Count unread messages for this user
-    const unreadCount = messages.filter(
-      (msg) => !msg.isRead && msg.userId !== auth.user!.id
-    ).length;
+    const unreadCount =
+      afterId != null
+        ? undefined
+        : messages.filter(
+            (msg) => !msg.isRead && msg.userId !== auth.user!.id
+          ).length;
 
     console.log(
       `✅ Fetched ${messages.length} messages for diet ${dietId} (${unreadCount} unread)`
@@ -259,7 +280,7 @@ export async function GET(
       NextResponse.json({
         success: true,
         messages,
-        unreadCount,
+        ...(unreadCount !== undefined ? { unreadCount } : {}),
       })
     );
   } catch (error: any) {

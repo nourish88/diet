@@ -63,6 +63,7 @@ export default function ClientMessagesPage() {
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const authHeadersRef = useRef<Record<string, string>>({});
+  const latestMessageIdRef = useRef<number | null>(null);
 
   // Helper function to get auth headers
   const getAuthHeaders = async () => {
@@ -82,7 +83,7 @@ export default function ClientMessagesPage() {
 
   useEffect(() => {
     if (clientId && dietId) {
-      loadMessages();
+      loadMessages({ replace: true });
       loadClientInfo();
     }
   }, [clientId, dietId]);
@@ -97,7 +98,9 @@ export default function ClientMessagesPage() {
     }
 
     const interval = setInterval(() => {
-      loadMessages();
+      loadMessages({
+        afterId: latestMessageIdRef.current,
+      });
     }, 15000);
 
     return () => clearInterval(interval);
@@ -143,27 +146,68 @@ export default function ClientMessagesPage() {
     return () => observer.disconnect();
   }, [messages, clientId, dietId]);
 
-  const loadMessages = async () => {
+  const updateLatestMessageId = (candidates: Message[]) => {
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return;
+    }
+    const newest = candidates[candidates.length - 1];
+    if (!newest) return;
+    if (
+      latestMessageIdRef.current === null ||
+      newest.id > latestMessageIdRef.current
+    ) {
+      latestMessageIdRef.current = newest.id;
+    }
+  };
+
+  const loadMessages = async (
+    options: { afterId?: number | null; replace?: boolean } = {}
+  ) => {
     try {
-      // Early return if IDs are missing
       if (!clientId || !dietId) {
         console.error("❌ Client ID or Diet ID is missing");
         return;
       }
 
-      setLoading(true);
+      const shouldShowLoader =
+        options.replace || messagesRef.current.length === 0;
+      if (shouldShowLoader) {
+        setLoading(true);
+      }
+
       const headers = await getAuthHeaders();
+      const query = options.afterId ? `?afterId=${options.afterId}` : "";
       const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages`,
+        `/api/clients/${clientId}/diets/${dietId}/messages${query}`,
         { headers }
       );
       const data = await response.json();
 
-      if (data.success) {
-        setMessages(data.messages || []);
-      } else {
+      if (!data.success) {
         console.error("Failed to load messages:", data.error);
+        return;
       }
+
+      const incoming: Message[] = data.messages || [];
+
+      if (options.replace || messagesRef.current.length === 0) {
+        setMessages(incoming);
+        messagesRef.current = incoming;
+      } else if (incoming.length > 0) {
+        const existingIds = new Set(messagesRef.current.map((msg) => msg.id));
+        const toAppend = incoming.filter((msg) => !existingIds.has(msg.id));
+        if (toAppend.length > 0) {
+          const merged = [...messagesRef.current, ...toAppend];
+          setMessages(merged);
+          messagesRef.current = merged;
+        }
+      }
+
+      updateLatestMessageId(
+        options.replace || messagesRef.current.length === 0
+          ? messagesRef.current
+          : incoming
+      );
     } catch (error) {
       console.error("Error loading messages:", error);
     } finally {
@@ -295,6 +339,8 @@ export default function ClientMessagesPage() {
           const message = await fetchMessageById(newMessageId);
           if (message) {
             setMessages((prev) => [...prev, message]);
+            messagesRef.current = [...messagesRef.current, message];
+            updateLatestMessageId([message]);
           }
         }
       )
@@ -345,7 +391,9 @@ export default function ClientMessagesPage() {
             : "Gerçek zamanlı bağlantı kurulamadı. Mesajlar otomatik yenilenmeyecek.";
         setRealtimeError(message);
         // Fallback: zorunlu olarak bir defa daha mesajları çekelim
-        loadMessages();
+        loadMessages({
+          afterId: latestMessageIdRef.current,
+        });
         // Kanalı temizle
         supabase.removeChannel(channel);
       }
@@ -428,7 +476,10 @@ export default function ClientMessagesPage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessages((prev) => [...prev, data.message]);
+        const newMessage: Message = data.message;
+        setMessages((prev) => [...prev, newMessage]);
+        messagesRef.current = [...messagesRef.current, newMessage];
+        updateLatestMessageId([newMessage]);
         setMessageText("");
       } else {
         console.error("Failed to send message:", data.error);
@@ -517,7 +568,11 @@ export default function ClientMessagesPage() {
           <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-sm px-4 py-3">
             <p>{realtimeError}</p>
             <button
-              onClick={() => loadMessages()}
+              onClick={() =>
+                loadMessages({
+                  afterId: latestMessageIdRef.current,
+                })
+              }
               className="mt-2 text-amber-900 underline"
             >
               Mesaj listesini şimdi yenile

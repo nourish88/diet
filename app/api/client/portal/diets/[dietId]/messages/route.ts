@@ -63,8 +63,28 @@ export async function GET(
       );
     }
 
+    const afterIdParam = request.nextUrl.searchParams.get("afterId");
+    const afterId = afterIdParam ? parseInt(afterIdParam) : null;
+
+    if (afterIdParam && (isNaN(afterId!) || afterId! < 0)) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid afterId" }, { status: 400 })
+      );
+    }
+
+    const messageFilter = {
+      dietId: diet.id,
+      ...(afterId
+        ? {
+            id: {
+              gt: afterId,
+            },
+          }
+        : {}),
+    };
+
     const messages = await prisma.dietComment.findMany({
-      where: { dietId: diet.id },
+      where: messageFilter,
       include: {
         user: {
           select: {

@@ -61,6 +61,11 @@ export default function ClientMessagesPage() {
   const [userId, setUserId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+const messagesRef = useRef<Message[]>([]);
+const latestMessageIdRef = useRef<number | null>(null);
+const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+const clientIdRef = useRef<number | null>(null);
+const [realtimeError, setRealtimeError] = useState<string | null>(null);
 
   const {
     data,
@@ -110,15 +115,162 @@ export default function ClientMessagesPage() {
 
   useEffect(() => {
     if (data) {
-      setMessages(data.messages || []);
+      const initialMessages = data.messages || [];
+      setMessages(initialMessages);
+      messagesRef.current = initialMessages;
+      if (initialMessages.length > 0) {
+        latestMessageIdRef.current =
+          initialMessages[initialMessages.length - 1].id;
+      }
       setOguns(data.oguns || []);
       setClientId(data.clientId);
+      clientIdRef.current = data.clientId;
       setUserId(data.userId);
+      setRealtimeError(null);
     }
   }, [data]);
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  const updateLatestMessageId = (candidates: Message[]) => {
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return;
+    }
+    const newest = candidates[candidates.length - 1];
+    if (!newest) return;
+    if (
+      latestMessageIdRef.current === null ||
+      newest.id > latestMessageIdRef.current
+    ) {
+      latestMessageIdRef.current = newest.id;
+    }
+  };
+
+  const appendMessages = (
+    incoming: Message[],
+    options: { replace?: boolean } = {}
+  ) => {
+    if (!Array.isArray(incoming)) {
+      return;
+    }
+
+    if (options.replace) {
+      setMessages(incoming);
+      messagesRef.current = incoming;
+      updateLatestMessageId(incoming);
+      return;
+    }
+
+    if (incoming.length === 0) {
+      return;
+    }
+
+    const existingIds = new Set(messagesRef.current.map((msg) => msg.id));
+    const toAppend = incoming.filter((msg) => !existingIds.has(msg.id));
+
+    if (toAppend.length === 0) {
+      return;
+    }
+
+    const merged = [...messagesRef.current, ...toAppend];
+    setMessages(merged);
+    messagesRef.current = merged;
+    updateLatestMessageId(toAppend);
+  };
+
+  const fetchIncrementalMessages = async (
+    afterId?: number | null
+  ): Promise<Message[]> => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push("/login");
+      throw new Error("Session not found");
+    }
+
+    const query = afterId ? `?afterId=${afterId}` : "";
+    const response = await fetch(
+      `/api/client/portal/diets/${dietId}/messages${query}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch messages");
+    }
+
+    const payload = await response.json();
+    if (!payload?.success) {
+      return [];
+    }
+
+    if (!afterId) {
+      setOguns(payload.oguns || []);
+      setClientId(payload.clientId);
+      clientIdRef.current = payload.clientId;
+      setUserId(payload.userId);
+    }
+
+    return payload.messages || [];
+  };
+
+  const fetchMessageById = async (
+    messageId: number
+  ): Promise<Message | null> => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return null;
+    }
+
+    const targetClientId = clientIdRef.current;
+    if (!targetClientId) {
+      return null;
+    }
+
+    const response = await fetch(
+      `/api/clients/${targetClientId}/diets/${dietId}/messages?messageId=${messageId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    if (payload?.success && payload.message) {
+      return payload.message as Message;
+    }
+
+    return null;
+  };
+
+  const refreshIncrementalMessages = async () => {
+    try {
+      const newMessages = await fetchIncrementalMessages(
+        latestMessageIdRef.current
+      );
+      appendMessages(newMessages);
+    } catch (error) {
+      console.error("Manual incremental refresh failed:", error);
+    }
+  };
+
+  useEffect(() => {
+    messagesRef.current = messages;
   }, [messages]);
 
   // Auto-mark messages as read
@@ -168,6 +320,122 @@ export default function ClientMessagesPage() {
     }
   };
 
+  useEffect(() => {
+    if (!dietId) return;
+
+    let isMounted = true;
+
+    const channel = supabase
+      .channel(`diet-comments-${dietId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        async (payload) => {
+          const newMessageId = (payload.new as any)?.id as number | undefined;
+          if (!newMessageId) return;
+          if (messagesRef.current.some((msg) => msg.id === newMessageId)) {
+            return;
+          }
+          const message = await fetchMessageById(newMessageId);
+          if (message) {
+            appendMessages([message]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated?.id) return;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === updated.id
+                ? {
+                    ...msg,
+                    isRead:
+                      typeof updated.isRead === "boolean"
+                        ? updated.isRead
+                        : msg.isRead,
+                    readAt: updated.readAt
+                      ? new Date(updated.readAt).toISOString()
+                      : msg.readAt,
+                  }
+                : msg
+            )
+          );
+        }
+      );
+
+    const subscribeToChannel = async () => {
+      try {
+        await channel.subscribe();
+        if (isMounted) {
+          setRealtimeError(null);
+        }
+      } catch (err) {
+        console.error("Client portal realtime subscription failed:", err);
+        if (!isMounted) return;
+        const message =
+          err instanceof Error && /insecure/i.test(err.message)
+            ? "Tarayıcınız gerçek zamanlı bağlantıyı engelledi. Mesajlar periyodik olarak yenilenecek."
+            : "Gerçek zamanlı bağlantı kurulamadı. Mesajlar periyodik olarak yenilenecek.";
+        setRealtimeError(message);
+      }
+    };
+
+    subscribeToChannel();
+
+    return () => {
+      isMounted = false;
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [dietId, supabase]);
+
+  useEffect(() => {
+    if (!realtimeError) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const afterId = latestMessageIdRef.current;
+        const newMessages = await fetchIncrementalMessages(afterId);
+        appendMessages(newMessages);
+      } catch (error) {
+        console.error("Polling messages failed:", error);
+      }
+    };
+
+    poll();
+    pollingIntervalRef.current = setInterval(poll, 15000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [realtimeError]);
+
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
@@ -198,7 +466,10 @@ export default function ClientMessagesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages([...messages, data.message]);
+        const newMessage: Message = data.message;
+        setMessages((prev) => [...prev, newMessage]);
+        messagesRef.current = [...messagesRef.current, newMessage];
+        updateLatestMessageId([newMessage]);
         setMessageText("");
         setSelectedOgun(null);
         queryClient.invalidateQueries({
@@ -271,6 +542,18 @@ export default function ClientMessagesPage() {
           {isFetching ? "Yenileniyor..." : "Konuşmayı Yenile"}
         </button>
       </div>
+
+      {realtimeError && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-lg">
+          <p>{realtimeError}</p>
+          <button
+            onClick={refreshIncrementalMessages}
+            className="mt-2 underline text-amber-900"
+          >
+            Mesajları şimdi yenile
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
