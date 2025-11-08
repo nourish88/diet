@@ -17,8 +17,28 @@ async function notifyWebSubscribers(
     return;
   }
 
+  console.log(
+    "[WebPush] Notifying subscribers",
+    JSON.stringify({
+      count: subscriptions.length,
+      firstEndpoint: subscriptions[0]?.endpoint,
+      payloadPreview: {
+        title: (payload as any)?.title,
+        url: (payload as any)?.url,
+        data: (payload as any)?.data,
+      },
+    })
+  );
+
   for (const subscription of subscriptions) {
     try {
+      console.log(
+        "[WebPush] Sending notification",
+        JSON.stringify({
+          endpoint: subscription.endpoint,
+        })
+      );
+
       await sendWebPushNotification(
         {
           endpoint: subscription.endpoint,
@@ -29,8 +49,26 @@ async function notifyWebSubscribers(
         },
         payload
       );
+
+      console.log(
+        "[WebPush] Notification sent successfully",
+        JSON.stringify({
+          endpoint: subscription.endpoint,
+        })
+      );
     } catch (error: any) {
       console.error("❌ Web push notification error:", error);
+      console.error(
+        "[WebPush] Detailed error info",
+        JSON.stringify({
+          endpoint: subscription.endpoint,
+          errorMessage: error?.message,
+          status: error?.status,
+          statusCode: error?.statusCode,
+          body: error?.body,
+          headers: error?.headers,
+        })
+      );
       if (error?.statusCode === 404 || error?.statusCode === 410) {
         await prisma.pushSubscription
           .delete({ where: { endpoint: subscription.endpoint } })

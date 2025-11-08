@@ -14,6 +14,16 @@ if (publicKey && privateKey) {
     }
     return `mailto:${trimmed}`;
   })();
+
+  console.log(
+    `[WebPush] Initializing VAPID credentials`,
+    JSON.stringify({
+      subject,
+      hasPublicKey: Boolean(publicKey),
+      hasPrivateKey: Boolean(privateKey),
+    })
+  );
+
   webpush.setVapidDetails(subject, publicKey, privateKey);
 } else {
   console.warn(
@@ -30,6 +40,12 @@ export function sendWebPushNotification(
   payload: Record<string, unknown>
 ) {
   if (!isWebPushConfigured()) {
+    console.warn(
+      "[WebPush] Configuration missing, skipping notification send.",
+      JSON.stringify({
+        endpoint: subscription.endpoint,
+      })
+    );
     return Promise.resolve();
   }
 
