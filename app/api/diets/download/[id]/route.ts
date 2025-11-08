@@ -6,10 +6,11 @@ import fs from "fs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const dietId = parseInt(params.id);
+    const { id } = await params;
+    const dietId = parseInt(id);
 
     if (isNaN(dietId)) {
       return NextResponse.json({ error: "Invalid diet ID" }, { status: 400 });

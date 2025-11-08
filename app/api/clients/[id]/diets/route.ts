@@ -5,7 +5,7 @@ import { addCorsHeaders } from "@/lib/cors";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // AUTH: Require authentication
@@ -16,7 +16,8 @@ export async function GET(
       );
     }
 
-    const clientId = parseInt(params.id);
+    const { id } = await params;
+    const clientId = parseInt(id);
 
     if (isNaN(clientId)) {
       return addCorsHeaders(

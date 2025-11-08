@@ -4,10 +4,11 @@ import { headers } from "next/headers";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const dietId = parseInt(params.id);
+    const { id } = await params;
+    const dietId = parseInt(id);
     const { phoneNumber } = await request.json();
 
     if (!dietId || !phoneNumber) {
@@ -35,7 +36,7 @@ export async function POST(
     }
 
     // Get the host from headers
-    const headersList = headers();
+    const headersList = await headers();
     const host = headersList.get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
 

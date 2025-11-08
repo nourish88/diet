@@ -1,14 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
-  swcMinify: true,
-  // Exclude pdfkit and pdfmake from webpack bundling
-  serverComponentsExternalPackages: [
-    "pdfkit",
-    "pdfmake",
-    "@foliojs-fork/fontkit",
-    "@foliojs-fork/pdfkit",
-  ],
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [
@@ -40,7 +33,6 @@ const nextConfig = {
 
     return config;
   },
-  // Exclude mobile directory from Next.js build
   // Specify valid file extensions for Next.js pages
   pageExtensions: ["tsx", "ts", "jsx", "js"],
 };

@@ -8,10 +8,11 @@ interface BannedBesinInput {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const clientId = parseInt(params.id, 10);
+    const { id } = await params;
+    const clientId = parseInt(id, 10);
 
     if (isNaN(clientId)) {
       return new NextResponse(JSON.stringify({ error: "Invalid client ID" }), {

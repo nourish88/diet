@@ -17,10 +17,11 @@ export async function OPTIONS() {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log("📧 Unread messages request for client:", params.id);
+    const { id } = await params;
+    console.log("📧 Unread messages request for client:", id);
 
     // AUTH: Require authentication (same as other endpoints)
     const auth = await authenticateRequest(request);
@@ -37,10 +38,10 @@ export async function GET(
       );
     }
 
-    const clientId = parseInt(params.id);
+    const clientId = parseInt(id);
     
     if (isNaN(clientId)) {
-      console.log("❌ Invalid client ID:", params.id);
+      console.log("❌ Invalid client ID:", id);
       return addCorsHeaders(
         NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
       );

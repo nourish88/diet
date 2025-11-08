@@ -7,7 +7,7 @@ import { sendExpoPushNotification } from "@/lib/expo-push";
 // GET - Get all messages/comments for a diet (conversation history)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; dietId: string } }
+  { params }: { params: Promise<{ id: string; dietId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(request);
@@ -17,8 +17,9 @@ export async function GET(
       );
     }
 
-    const clientId = parseInt(params.id);
-    const dietId = parseInt(params.dietId);
+    const { id, dietId: dietParam } = await params;
+    const clientId = parseInt(id);
+    const dietId = parseInt(dietParam);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -45,8 +46,10 @@ export async function GET(
     }
 
     // Authorization
-    const isOwnClient = auth.user.role === "client" && client.userId === auth.user.id;
-    const isOwnDietitian = auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+    const isOwnClient =
+      auth.user.role === "client" && client.userId === auth.user.id;
+    const isOwnDietitian =
+      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -97,7 +100,9 @@ export async function GET(
       (msg) => !msg.isRead && msg.userId !== auth.user!.id
     ).length;
 
-    console.log(`✅ Fetched ${messages.length} messages for diet ${dietId} (${unreadCount} unread)`);
+    console.log(
+      `✅ Fetched ${messages.length} messages for diet ${dietId} (${unreadCount} unread)`
+    );
 
     return addCorsHeaders(
       NextResponse.json({
@@ -120,7 +125,7 @@ export async function GET(
 // POST - Send a new message (client can send text+photo, dietitian only text)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; dietId: string } }
+  { params }: { params: Promise<{ id: string; dietId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(request);
@@ -130,8 +135,9 @@ export async function POST(
       );
     }
 
-    const clientId = parseInt(params.id);
-    const dietId = parseInt(params.dietId);
+    const { id, dietId: dietParam } = await params;
+    const clientId = parseInt(id);
+    const dietId = parseInt(dietParam);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -144,7 +150,10 @@ export async function POST(
 
     if (!content || content.trim() === "") {
       return addCorsHeaders(
-        NextResponse.json({ error: "Message content required" }, { status: 400 })
+        NextResponse.json(
+          { error: "Message content required" },
+          { status: 400 }
+        )
       );
     }
 
@@ -167,8 +176,10 @@ export async function POST(
     }
 
     // Authorization
-    const isOwnClient = auth.user.role === "client" && client.userId === auth.user.id;
-    const isOwnDietitian = auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+    const isOwnClient =
+      auth.user.role === "client" && client.userId === auth.user.id;
+    const isOwnDietitian =
+      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -186,7 +197,9 @@ export async function POST(
       );
     }
 
-    console.log(`💬 Creating message from ${auth.user.role} (${auth.user.email})`);
+    console.log(
+      `💬 Creating message from ${auth.user.role} (${auth.user.email})`
+    );
 
     // Create message with photos in a transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -231,7 +244,9 @@ export async function POST(
           data: photoData,
         });
 
-        console.log(`📸 Created ${createResult.count} photos for message ${message.id}`);
+        console.log(
+          `📸 Created ${createResult.count} photos for message ${message.id}`
+        );
       }
 
       // Fetch complete message with photos
@@ -271,15 +286,22 @@ export async function POST(
     try {
       if (auth.user!.role === "client") {
         // Client sent message → notify dietitian
-        console.log(`📤 Client (${client.name} ${client.surname}) sent message, notifying dietitian...`);
-        
+        console.log(
+          `📤 Client (${client.name} ${client.surname}) sent message, notifying dietitian...`
+        );
+
         const dietitian = await prisma.user.findUnique({
           where: { id: client.dietitianId! },
           select: { pushToken: true, email: true },
         });
 
         if (dietitian?.pushToken) {
-          console.log(`✅ Found dietitian push token: ${dietitian.pushToken.substring(0, 20)}...`);
+          console.log(
+            `✅ Found dietitian push token: ${dietitian.pushToken.substring(
+              0,
+              20
+            )}...`
+          );
           await sendExpoPushNotification(
             dietitian.pushToken,
             `Yeni Mesaj: ${client.name} ${client.surname}`,
@@ -292,14 +314,20 @@ export async function POST(
               clientName: `${client.name} ${client.surname}`,
             }
           );
-          console.log(`🔔 Push notification sent to dietitian (${dietitian.email})`);
+          console.log(
+            `🔔 Push notification sent to dietitian (${dietitian.email})`
+          );
         } else {
-          console.log(`⚠️ Dietitian has no push token (${dietitian?.email || 'unknown'})`);
+          console.log(
+            `⚠️ Dietitian has no push token (${dietitian?.email || "unknown"})`
+          );
         }
       } else {
         // Dietitian sent message → notify client
-        console.log(`📤 Dietitian sent message to client (${client.name} ${client.surname}), notifying...`);
-        
+        console.log(
+          `📤 Dietitian sent message to client (${client.name} ${client.surname}), notifying...`
+        );
+
         if (client.userId) {
           const clientUser = await prisma.user.findUnique({
             where: { id: client.userId },
@@ -307,7 +335,12 @@ export async function POST(
           });
 
           if (clientUser?.pushToken) {
-            console.log(`✅ Found client push token: ${clientUser.pushToken.substring(0, 20)}...`);
+            console.log(
+              `✅ Found client push token: ${clientUser.pushToken.substring(
+                0,
+                20
+              )}...`
+            );
             await sendExpoPushNotification(
               clientUser.pushToken,
               "Diyetisyeninizden Yeni Mesaj",
@@ -319,12 +352,18 @@ export async function POST(
                 clientId,
               }
             );
-            console.log(`🔔 Push notification sent to client (${clientUser.email})`);
+            console.log(
+              `🔔 Push notification sent to client (${clientUser.email})`
+            );
           } else {
-            console.log(`⚠️ Client has no push token (${clientUser?.email || 'unknown'})`);
+            console.log(
+              `⚠️ Client has no push token (${clientUser?.email || "unknown"})`
+            );
           }
         } else {
-          console.log(`⚠️ Client (${client.name} ${client.surname}) has no userId assigned`);
+          console.log(
+            `⚠️ Client (${client.name} ${client.surname}) has no userId assigned`
+          );
         }
       }
     } catch (pushError) {
@@ -352,7 +391,7 @@ export async function POST(
 // PATCH - Mark messages as read
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; dietId: string } }
+  { params }: { params: Promise<{ id: string; dietId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(request);
@@ -362,8 +401,9 @@ export async function PATCH(
       );
     }
 
-    const clientId = parseInt(params.id);
-    const dietId = parseInt(params.dietId);
+    const { id, dietId: dietParam } = await params;
+    const clientId = parseInt(id);
+    const dietId = parseInt(dietParam);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -400,8 +440,10 @@ export async function PATCH(
     }
 
     // Authorization
-    const isOwnClient = auth.user.role === "client" && client.userId === auth.user.id;
-    const isOwnDietitian = auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+    const isOwnClient =
+      auth.user.role === "client" && client.userId === auth.user.id;
+    const isOwnDietitian =
+      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -409,7 +451,9 @@ export async function PATCH(
       );
     }
 
-    console.log(`📖 Marking ${messageIds.length} messages as read by ${auth.user.role}`);
+    console.log(
+      `📖 Marking ${messageIds.length} messages as read by ${auth.user.role}`
+    );
 
     // Mark messages as read (only if they're from the other party)
     const result = await prisma.dietComment.updateMany({
@@ -443,4 +487,3 @@ export async function PATCH(
     );
   }
 }
-
