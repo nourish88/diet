@@ -71,7 +71,7 @@ const MultiBesinSelector = ({
         setError(null);
 
         console.log("Fetching besinler...");
-        const response = await fetch("/api/besinler");
+        const response = await fetch("/api/besinler?pageSize=200");
         console.log("Response received:", response.status);
 
         if (!response.ok) {
@@ -96,13 +96,13 @@ const MultiBesinSelector = ({
         if (!isMounted) return;
 
         // Handle the response data
-        if (Array.isArray(data)) {
-          console.log(`Setting ${data.length} besins`);
-          setBesins(data);
-        } else {
-          console.warn("Received non-array data:", data);
-          setBesins([]);
-        }
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+          ? data.items
+          : [];
+        console.log(`Setting ${items.length} besins`);
+        setBesins(items);
       } catch (error) {
         // Avoid using console.error with the error object directly
         console.error(

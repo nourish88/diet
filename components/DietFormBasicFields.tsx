@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase-browser";
+import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
 
 interface ImportantDate {
   id: number;
@@ -513,18 +514,29 @@ const DietFormBasicFields = ({
               name="haftalikSonuc"
               label="Haftalık Sonuç"
               renderField={(field) => (
-                <Input
-                  value={diet.Sonuc || ""} // Add fallback empty string
-                  className={inputBaseClass}
-                  placeholder="Haftalık sonuç notları"
-                  onChange={(e) => {
-                    console.log("Updating Sonuc:", e.target.value); // Debug log
-                    setDiet((prevDiet) => ({
-                      ...prevDiet,
-                      Sonuc: e.target.value,
-                    }));
-                  }}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={diet.Sonuc || ""} // Add fallback empty string
+                    className={inputBaseClass + " flex-1"}
+                    placeholder="Haftalık sonuç notları"
+                    onChange={(e) => {
+                      console.log("Updating Sonuc:", e.target.value); // Debug log
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        Sonuc: e.target.value,
+                      }));
+                    }}
+                  />
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.Sonuc || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        Sonuc: newValue,
+                      }));
+                    }}
+                  />
+                </div>
               )}
             />
 

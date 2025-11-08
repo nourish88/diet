@@ -30,6 +30,8 @@ export interface TemplateMenuItem {
   miktar: string;
   birim: string;
   order: number;
+  besinPriority?: number | null;
+  priority?: number | null;
 }
 
 const TemplateService = {

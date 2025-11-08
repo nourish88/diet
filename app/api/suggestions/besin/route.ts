@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 // Force dynamic rendering for this route
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         groupName: besin.besinGroup?.name || "",
         lastUsed: besin.usageStats?.lastUsed || null,
         score: calculateScore(besin, usageCount),
+        priority: besin.priority ?? null,
       };
     });
 

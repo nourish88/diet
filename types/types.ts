@@ -67,6 +67,7 @@ export interface MenuItem {
   miktar: string;
   birim: Birim | string;
   besin: Besin | string;
+  besinPriority?: number | null;
   ogunId?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -75,6 +76,7 @@ export interface MenuItem {
 export interface Besin {
   id?: number;
   name: string;
+  priority?: number | null;
   menuItems?: MenuItem[];
   createdAt?: Date;
   updatedAt?: Date;

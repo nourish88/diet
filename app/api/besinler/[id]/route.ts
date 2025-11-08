@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/besinler/[id] - Get a specific besin
 export async function GET(
@@ -143,10 +144,28 @@ export async function DELETE(
       );
     }
 
-    // Delete besin
-    await prisma.besin.delete({
-      where: { id: besinId },
-    });
+    try {
+      await prisma.besin.delete({
+        where: { id: besinId },
+      });
+    } catch (error) {
+      console.error("Prisma delete error:", error);
+
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Bu besin ilişkili kayıtlar nedeniyle silinemiyor. Lütfen önce ilgili kayıtları güncelleyin veya silin.",
+          },
+          { status: 400 }
+        );
+      }
+
+      throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

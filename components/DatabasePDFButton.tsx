@@ -10,8 +10,9 @@ import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+import twemoji from "twemoji";
 interface TableCell {
-  text: string;
+  text?: string | any[];
   style: string;
   alignment: string;
   colSpan?: number;
@@ -51,6 +52,36 @@ interface PDFData {
   dietitianNote?: string;
 }
 
+const buildInlineColumns = (
+  parts: Array<{
+    text?: string;
+    image?: string;
+    width?: number;
+    height?: number;
+  }>,
+  options?: { textStyle?: string; imageMarginTop?: number }
+) => {
+  const columnGap = 3;
+  return {
+    columns: parts.map((part) => {
+      if (part.image) {
+        return {
+          image: part.image,
+          width: part.width || 12,
+          height: part.height || 12,
+          margin: [0, options?.imageMarginTop ?? -1, 0, 0],
+        };
+      }
+      return {
+        text: part.text ?? "",
+        width: "auto",
+        style: options?.textStyle,
+      };
+    }),
+    columnGap,
+  } as any;
+};
+
 interface DatabasePDFButtonProps extends ButtonProps {
   diet: any;
 }
@@ -62,6 +93,7 @@ const DatabasePDFButton = ({
 }: DatabasePDFButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
+  const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
 
   useEffect(() => {
     const loadBackgroundImage = async () => {
@@ -73,6 +105,18 @@ const DatabasePDFButton = ({
         const reader = new FileReader();
         reader.onloadend = () => setBackgroundDataUrl(reader.result as string);
         reader.readAsDataURL(blob);
+
+        // Load nazar boncuğu image
+        const nazarResponse = await fetch("/nazar-boncugu.png");
+        if (nazarResponse.ok) {
+          const nazarBlob = await nazarResponse.blob();
+          const nazarReader = new FileReader();
+          nazarReader.onloadend = () => {
+            setNazarBoncuguDataUrl(nazarReader.result as string);
+            console.log("Nazar boncuğu loaded successfully");
+          };
+          nazarReader.readAsDataURL(nazarBlob);
+        }
       } catch (error) {
         console.error("Error loading background image:", error);
       }
@@ -114,7 +158,22 @@ const DatabasePDFButton = ({
 
       console.log("PDF data prepared:", pdfData);
 
-      const docDefinition = createDocDefinition(pdfData, backgroundDataUrl);
+      // Wait for nazar boncuğu image to load if weekly result exists
+      if (
+        pdfData.weeklyResult &&
+        pdfData.weeklyResult.trim() &&
+        pdfData.weeklyResult !== "Sonuç belirtilmemiş" &&
+        !nazarBoncuguDataUrl
+      ) {
+        // Wait a bit for image to load
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      const docDefinition = await createDocDefinition(
+        pdfData,
+        backgroundDataUrl,
+        nazarBoncuguDataUrl
+      );
       const fileName = `Beslenme_Programi_${pdfData.fullName.replace(
         /\s+/g,
         "_"
@@ -229,7 +288,300 @@ const DatabasePDFButton = ({
     return pdfData;
   };
 
-  const buildMealTableRows = (dietData: PDFData) => {
+  // Convert emojis in text to base64 images using twemoji
+  const convertEmojisToImages = async (text: string): Promise<any[]> => {
+    console.log(
+      "[EMOJI DEBUG DB] convertEmojisToImages called with text:",
+      text
+    );
+    if (!text) {
+      console.log("[EMOJI DEBUG DB] Text is empty, returning empty array");
+      return [{ text: "" }];
+    }
+
+    const parts: any[] = [];
+    // Match Unicode emojis including variations
+    const unicodeEmojiRegex =
+      /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?)/gu;
+
+    // Match text-based emojis like :) :( :D etc.
+    const textEmojiMap: { [key: string]: string } = {
+      ":)": "1f642", // 🙂
+      ":-)": "1f642",
+      "(:": "1f642",
+      ":(": "1f641", // 🙁
+      ":-(": "1f641",
+      ":D": "1f600", // 😀
+      ":-D": "1f600",
+      ":P": "1f61b", // 😛
+      ":-P": "1f61b",
+      ";)": "1f609", // 😉
+      ";-)": "1f609",
+      ":O": "1f62e", // 😮
+      ":-O": "1f62e",
+      ":*": "1f618", // 😘
+      ":-*": "1f618",
+      "<3": "2764", // ❤️
+      "</3": "1f494", // 💔
+      ":3": "1f60a", // 😊
+    };
+
+    let lastIndex = 0;
+    let match;
+    const matches: Array<{
+      index: number;
+      emoji: string;
+      isUnicode: boolean;
+      originalText?: string;
+    }> = [];
+
+    // Collect Unicode emoji matches
+    const unicodeRegex = new RegExp(
+      unicodeEmojiRegex.source,
+      unicodeEmojiRegex.flags
+    );
+    while ((match = unicodeRegex.exec(text)) !== null) {
+      matches.push({ index: match.index, emoji: match[0], isUnicode: true });
+      console.log(
+        "[EMOJI DEBUG DB] Found Unicode emoji:",
+        match[0],
+        "at index:",
+        match.index
+      );
+    }
+
+    // Collect text-based emoji matches
+    for (const [textEmoji, unicodeCode] of Object.entries(textEmojiMap)) {
+      let searchIndex = 0;
+      while ((searchIndex = text.indexOf(textEmoji, searchIndex)) !== -1) {
+        // Check if this position is not already covered by a Unicode emoji match
+        const isOverlapping = matches.some((m) => {
+          if (m.isUnicode) {
+            return (
+              m.index <= searchIndex && m.index + m.emoji.length > searchIndex
+            );
+          } else {
+            // For text emojis, we need to find the original text
+            const textEmojiKey = Object.keys(textEmojiMap).find(
+              (key) => textEmojiMap[key] === m.emoji
+            );
+            if (textEmojiKey) {
+              return (
+                m.index <= searchIndex &&
+                m.index + textEmojiKey.length > searchIndex
+              );
+            }
+          }
+          return false;
+        });
+        if (!isOverlapping) {
+          matches.push({
+            index: searchIndex,
+            emoji: unicodeCode,
+            isUnicode: false,
+            originalText: textEmoji,
+          });
+          console.log(
+            "[EMOJI DEBUG DB] Found text emoji:",
+            textEmoji,
+            "at index:",
+            searchIndex,
+            "mapped to:",
+            unicodeCode
+          );
+        }
+        searchIndex += textEmoji.length;
+      }
+    }
+
+    console.log(
+      "[EMOJI DEBUG DB] Total matches found:",
+      matches.length,
+      matches
+    );
+
+    // Sort matches by index
+    matches.sort((a, b) => a.index - b.index);
+
+    // Process each match
+    for (const matchData of matches) {
+      // Add text before emoji
+      if (matchData.index > lastIndex) {
+        const textBefore = text.substring(lastIndex, matchData.index);
+        console.log("[EMOJI DEBUG DB] Adding text before emoji:", textBefore);
+        parts.push({
+          text: textBefore,
+        });
+      }
+
+      // Convert emoji to image
+      try {
+        let emojiCode: string;
+        if (matchData.isUnicode) {
+          // Unicode emoji
+          if (twemoji && twemoji.convert && twemoji.convert.toCodePoint) {
+            emojiCode = twemoji.convert.toCodePoint(matchData.emoji);
+            console.log(
+              "[EMOJI DEBUG DB] Unicode emoji converted:",
+              matchData.emoji,
+              "->",
+              emojiCode
+            );
+          } else {
+            // Fallback: manual conversion
+            emojiCode = Array.from(matchData.emoji)
+              .map((char) => char.codePointAt(0)?.toString(16))
+              .filter(Boolean)
+              .join("-");
+            console.log(
+              "[EMOJI DEBUG DB] Manual Unicode conversion:",
+              matchData.emoji,
+              "->",
+              emojiCode
+            );
+          }
+        } else {
+          // Text-based emoji - already have the code
+          emojiCode = matchData.emoji;
+          console.log("[EMOJI DEBUG DB] Text emoji code:", emojiCode);
+        }
+
+        const svgUrl = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${emojiCode}.svg`;
+        console.log("[EMOJI DEBUG DB] Fetching SVG from:", svgUrl);
+
+        // Fetch SVG and convert to base64 data URL
+        const response = await fetch(svgUrl);
+        console.log(
+          "[EMOJI DEBUG DB] Fetch response status:",
+          response.status,
+          response.ok
+        );
+        if (response.ok) {
+          const svgText = await response.text();
+          // Convert SVG to base64 data URL
+          const svgBase64 = btoa(unescape(encodeURIComponent(svgText)));
+          const svgDataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+
+          console.log(
+            "[EMOJI DEBUG DB] SVG data URL length:",
+            svgDataUrl?.length,
+            "First 50 chars:",
+            svgDataUrl?.substring(0, 50)
+          );
+
+          // Try PNG conversion as fallback, but first try SVG directly
+          try {
+            // Convert SVG to PNG using canvas for better compatibility
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              canvas.width = 24;
+              canvas.height = 24;
+
+              const img = new Image();
+              const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+              const url = URL.createObjectURL(svgBlob);
+
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => {
+                  ctx.drawImage(img, 0, 0, 24, 24);
+                  const pngDataUrl = canvas.toDataURL("image/png");
+                  console.log(
+                    "[EMOJI DEBUG DB] PNG conversion successful, data URL length:",
+                    pngDataUrl?.length
+                  );
+                  // Try using data URL directly (ChatGPT suggests this format)
+                  parts.push({
+                    image: pngDataUrl, // Use data URL as ChatGPT suggested
+                    width: 12,
+                    height: 12,
+                  });
+                  console.log(
+                    "[EMOJI DEBUG DB] Added PNG image part to array (data URL format)"
+                  );
+                  URL.revokeObjectURL(url);
+                  resolve();
+                };
+                img.onerror = () => {
+                  console.warn(
+                    "[EMOJI DEBUG DB] PNG conversion failed, using SVG data URL"
+                  );
+                  // Use SVG data URL directly
+                  parts.push({
+                    image: svgDataUrl, // Use data URL as ChatGPT suggested
+                    width: 12,
+                    height: 12,
+                  });
+                  URL.revokeObjectURL(url);
+                  resolve();
+                };
+                img.src = url;
+              });
+            } else {
+              // Fallback to SVG if canvas not available
+              parts.push({
+                image: svgDataUrl, // Use data URL as ChatGPT suggested
+                width: 12,
+                height: 12,
+              });
+              console.log(
+                "[EMOJI DEBUG DB] Added SVG image part to array (canvas not available, data URL)"
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "[EMOJI DEBUG DB] Error converting to PNG, using SVG:",
+              error
+            );
+            parts.push({
+              image: svgDataUrl, // Use data URL as ChatGPT suggested
+              width: 12,
+              height: 12,
+            });
+          }
+        } else {
+          // Fallback: keep original text
+          const originalText = matchData.isUnicode
+            ? matchData.emoji
+            : matchData.originalText || "";
+          console.warn(
+            `[EMOJI DEBUG DB] Failed to fetch emoji SVG for ${emojiCode}: ${response.status}, using text: ${originalText}`
+          );
+          parts.push({ text: originalText });
+        }
+      } catch (error) {
+        // Fallback: keep original text
+        const originalText = matchData.isUnicode
+          ? matchData.emoji
+          : matchData.originalText || "";
+        console.error(
+          `[EMOJI DEBUG DB] Error converting emoji ${matchData.emoji}:`,
+          error
+        );
+        parts.push({ text: originalText });
+      }
+
+      lastIndex =
+        matchData.index +
+        (matchData.isUnicode
+          ? matchData.emoji.length
+          : matchData.originalText?.length || 0);
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex);
+      console.log("[EMOJI DEBUG DB] Adding remaining text:", remainingText);
+      parts.push({
+        text: remainingText,
+      });
+    }
+
+    console.log("[EMOJI DEBUG DB] Final parts array:", parts);
+    return parts.length > 0 ? parts : [{ text }];
+  };
+
+  const buildMealTableRows = async (dietData: PDFData) => {
     const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
@@ -239,7 +591,7 @@ const DatabasePDFButton = ({
       ],
     ];
 
-    dietData.ogunler.forEach((ogun) => {
+    for (const ogun of dietData.ogunler) {
       const menuText = ogun.menuItems.join("\n• ");
       rows.push([
         {
@@ -258,12 +610,12 @@ const DatabasePDFButton = ({
           alignment: "left",
         },
         {
-          text: ogun.notes || "-",
+          ...buildInlineColumns(await convertEmojisToImages(ogun.notes || "-")),
           style: "tableCell",
           alignment: "left",
-        },
+        } as any,
       ]);
-    });
+    }
 
     // Append water consumption row only if it has a value
     if (dietData.waterConsumption?.trim()) {
@@ -324,7 +676,81 @@ const DatabasePDFButton = ({
     return rows;
   };
 
-  const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
+  // Create circular badge with nazar boncuğu as base64 image
+  const createWeeklyResultBadgeImage = async (
+    text: string,
+    nazarImage: string
+  ): Promise<string> => {
+    const canvas = document.createElement("canvas");
+    const size = 50; // Smaller size
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    // Draw empty circular ring (hollow circle)
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 3, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#d32d7e";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Draw nazar boncuğu image (attached to the ring edge, top right)
+    if (nazarImage) {
+      return new Promise<string>((resolve) => {
+        const nazarImg = new Image();
+        nazarImg.crossOrigin = "anonymous";
+        nazarImg.src = nazarImage;
+
+        nazarImg.onload = () => {
+          const nazarSize = 22;
+          const nazarX = size - nazarSize - 1;
+          const nazarY = -2; // Slightly above to be more visible
+
+          ctx.drawImage(nazarImg, nazarX, nazarY, nazarSize, nazarSize);
+
+          // Draw text inside the hollow circle
+          ctx.fillStyle = "#d32d7e";
+          ctx.font = "bold 9px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const displayText =
+            text.length > 8 ? text.substring(0, 8) + "..." : text;
+          ctx.fillText(displayText, size / 2, size / 2 + 2);
+
+          resolve(canvas.toDataURL("image/png"));
+        };
+
+        nazarImg.onerror = () => {
+          // Fallback if image fails to load
+          ctx.fillStyle = "#d32d7e";
+          ctx.font = "bold 9px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const displayText =
+            text.length > 8 ? text.substring(0, 8) + "..." : text;
+          ctx.fillText(displayText, size / 2, size / 2);
+          resolve(canvas.toDataURL("image/png"));
+        };
+      });
+    }
+
+    // Draw text inside the hollow circle (fallback)
+    ctx.fillStyle = "#d32d7e";
+    ctx.font = "bold 9px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const displayText = text.length > 8 ? text.substring(0, 8) + "..." : text;
+    ctx.fillText(displayText, size / 2, size / 2);
+
+    return canvas.toDataURL("image/png");
+  };
+
+  const createDocDefinition = async (
+    pdfData: PDFData,
+    backgroundDataUrl: string,
+    nazarBoncuguDataUrl: string
+  ) => {
     // Color scheme - Updated to use #d32d7e
     const primaryColor = "#d32d7e"; // Changed from "#8B5CF6" to "#d32d7e"
     const secondaryColor = "#64748b"; // Subtle slate gray
@@ -352,34 +778,33 @@ const DatabasePDFButton = ({
       },
       // Reformatted client info - name and date on one line, bold and centered
       {
-        table: {
-          widths: ["*"],
-          body: [
-            [
-              {
-                text: `${pdfData.fullName} / ${formattedDietDate}`,
-                style: "clientInfoBold",
-                alignment: "center",
-              },
-            ],
-          ],
-        },
-        layout: {
-          hLineWidth: () => 0,
-          vLineWidth: () => 0,
-          paddingLeft: () => 4,
-          paddingRight: () => 4,
-          paddingTop: () => 4,
-          paddingBottom: () => 4,
-        },
-        margin: [0, 0, 0, 10],
+        text: `${pdfData.fullName} / ${formattedDietDate}`,
+        style: "clientInfoBold",
+        alignment: "center",
+        margin: [0, 0, 0, 12],
       },
+      // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
+      // Only add if weekly result exists and is not empty
+      ...(pdfData.weeklyResult &&
+      pdfData.weeklyResult.trim() &&
+      pdfData.weeklyResult !== "Sonuç belirtilmemiş"
+        ? [
+            {
+              image: await createWeeklyResultBadgeImage(
+                pdfData.weeklyResult,
+                nazarBoncuguDataUrl
+              ),
+              width: 50,
+              absolutePosition: { x: 520, y: 50 },
+            },
+          ]
+        : []),
       // Main meals table
       {
         table: {
           headerRows: 1,
           widths: ["12%", "8%", "38%", "42%"],
-          body: buildMealTableRows(pdfData),
+          body: await buildMealTableRows(pdfData),
         },
         layout: {
           hLineWidth: (i, node) =>
@@ -432,20 +857,40 @@ const DatabasePDFButton = ({
       });
     }
 
-    // Add dietitian note if exists
-    if (pdfData.dietitianNote) {
-      content.push(
-        {
-          text: "DİYETİSYEN NOTU",
-          style: "sectionHeader",
-          margin: [0, 20, 0, 15],
-        },
-        {
-          text: pdfData.dietitianNote,
-          style: "dietitianNote",
-          margin: [0, 0, 0, 10],
-        }
+    // Add dietitian note if exists - simplified and compact
+    if (pdfData.dietitianNote && pdfData.dietitianNote.trim()) {
+      console.log(
+        "[EMOJI DEBUG DB] Processing dietitian note:",
+        pdfData.dietitianNote
       );
+      const dietitianNoteLabelParts = await convertEmojisToImages(
+        "💬 Diyetisyen Notu: "
+      );
+      console.log(
+        "[EMOJI DEBUG DB] Dietitian note label parts:",
+        dietitianNoteLabelParts
+      );
+      const dietitianNoteParts = await convertEmojisToImages(
+        pdfData.dietitianNote
+      );
+      console.log("[EMOJI DEBUG DB] Dietitian note parts:", dietitianNoteParts);
+      const combinedParts = [...dietitianNoteLabelParts, ...dietitianNoteParts];
+      console.log(
+        "[EMOJI DEBUG DB] Combined parts for dietitian note:",
+        combinedParts
+      );
+      const dietitianNoteColumns = buildInlineColumns(dietitianNoteLabelParts, {
+        textStyle: "dietitianNoteLabel",
+      }).columns.concat(
+        buildInlineColumns(dietitianNoteParts, {
+          textStyle: "dietitianNoteText",
+        }).columns
+      );
+      content.push({
+        columns: dietitianNoteColumns,
+        columnGap: 3,
+        margin: [0, 8, 0, 8],
+      } as any);
     }
 
     // Add signature
@@ -553,6 +998,21 @@ const DatabasePDFButton = ({
           fontSize: 11,
           color: secondaryColor,
           lineHeight: 1.4,
+        },
+        dietitianNoteLabel: {
+          fontSize: 10,
+          bold: true,
+          color: primaryColor,
+        },
+        dietitianNoteText: {
+          fontSize: 10,
+          color: "#374151",
+          lineHeight: 1.2,
+        },
+        weeklyResultBadge: {
+          fontSize: 10,
+          bold: true,
+          color: "#ffffff",
         },
       },
       defaultStyle: {

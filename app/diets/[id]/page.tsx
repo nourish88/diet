@@ -3,7 +3,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Loader2, Trash2, Clock, User } from "lucide-react";
+import { ChevronLeft, Loader2, Trash2, Clock, User, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
@@ -174,7 +174,7 @@ export default function DietDetailPage() {
                   : "İsimsiz Danışan",
                 dietDate:
                   diet.tarih || diet.createdAt || new Date().toISOString(),
-                weeklyResult: diet.sonuc || "",
+                weeklyResult: diet.sonuc || "Sonuç belirtilmemiş",
                 target: diet.hedef || "",
                 ogunler: (diet.oguns || []).map((ogun: any) => ({
                   name: ogun.name || "",
@@ -190,6 +190,9 @@ export default function DietDetailPage() {
                 })),
                 waterConsumption: diet.su || "",
                 physicalActivity: diet.fizik || "",
+                dietitianNote: diet.dietitianNote || "",
+                isBirthdayCelebration: (diet as any).isBirthdayCelebration || false,
+                isImportantDateCelebrated: (diet as any).isImportantDateCelebrated || false,
               }}
               variant="ghost"
               className="text-white hover:bg-indigo-700"
@@ -264,6 +267,18 @@ export default function DietDetailPage() {
                     <p className="text-gray-600">{diet.fizik}</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {diet.dietitianNote && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2 flex items-center">
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Diyetisyen Notu
+              </h3>
+              <div className="border-l-4 border-indigo-500 pl-4 py-2 bg-indigo-50 rounded-r">
+                <p className="text-gray-700 whitespace-pre-wrap">{diet.dietitianNote}</p>
               </div>
             </div>
           )}

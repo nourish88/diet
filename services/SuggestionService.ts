@@ -8,6 +8,7 @@ export interface BesinSuggestion {
   groupName?: string;
   lastUsed?: Date | null;
   score: number;
+  priority?: number | null;
 }
 
 const SuggestionService = {

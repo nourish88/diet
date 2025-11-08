@@ -40,6 +40,13 @@ export function useDietActions() {
                     besinValue = "";
                   }
 
+              const priorityValue =
+                typeof item.besin === "object" && item.besin
+                  ? (item.besin as any).priority ?? null
+                  : typeof item.besinPriority === "number"
+                  ? item.besinPriority
+                  : null;
+
                   // Handle birim - could be string or object
                   let birimValue;
                   if (typeof item.birim === "string") {
@@ -54,6 +61,7 @@ export function useDietActions() {
                     miktar: item.miktar || "",
                     birim: birimValue,
                     besin: besinValue,
+                    besinPriority: priorityValue,
                   };
                 }),
             };

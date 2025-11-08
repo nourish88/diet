@@ -61,6 +61,11 @@ const MenuItem = ({
   const [besin, setBesin] = useState(
     typeof item.besin === "object" ? item.besin?.name : item.besin || ""
   );
+  const [besinPriority, setBesinPriority] = useState<number | null>(
+    typeof item.besin === "object" && item.besin && "priority" in item.besin
+      ? (item.besin as any).priority ?? null
+      : item.besinPriority ?? null
+  );
 
   useEffect(() => {
     const fetchBirims = async () => {
@@ -90,6 +95,11 @@ const MenuItem = ({
     setMiktar(miktarValue);
     setBirim(birimValue);
     setBesin(besinValue);
+    setBesinPriority(
+      typeof item.besin === "object" && item.besin && "priority" in item.besin
+        ? (item.besin as any).priority ?? null
+        : item.besinPriority ?? null
+    );
   }, [item, index]);
 
   const updateParentState = (field: string, value: string) => {
@@ -116,6 +126,16 @@ const MenuItem = ({
                 if (suggestion.birim) {
                   setBirim(suggestion.birim);
                   updateParentState("birim", suggestion.birim);
+                }
+                if (typeof suggestion.priority === "number") {
+                  setBesinPriority(suggestion.priority);
+                  updateParentState(
+                    "besinPriority",
+                    suggestion.priority.toString()
+                  );
+                } else {
+                  setBesinPriority(null);
+                  updateParentState("besinPriority", "");
                 }
               }
             }}

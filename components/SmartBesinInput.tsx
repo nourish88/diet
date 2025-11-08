@@ -46,17 +46,23 @@ export const SmartBesinInput = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showAddBesinDialog, setShowAddBesinDialog] = useState(false);
-  const [besinGroups, setBesinGroups] = useState<Array<{ id: number; name: string; description: string }>>([]);
+  const [besinGroups, setBesinGroups] = useState<
+    Array<{ id: number; name: string; description: string }>
+  >([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [isAddingBesin, setIsAddingBesin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
+
   // Ensure value is always a string (controlled input)
   const inputValue = value || "";
 
@@ -130,6 +136,8 @@ export const SmartBesinInput = ({
           usageCount: 0,
           isFrequent: false,
           score: 1,
+          priority:
+            typeof newBesin.priority === "number" ? newBesin.priority : 0,
         });
       }
 
@@ -155,8 +163,8 @@ export const SmartBesinInput = ({
       setIsMobile(window.innerWidth < 768);
     };
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, [mounted]);
 
   // Calculate dropdown position for mobile
@@ -186,10 +194,10 @@ export const SmartBesinInput = ({
       setSuggestions(results);
       setIsLoading(false);
       setSelectedIndex(-1);
-      
+
       // Always show dropdown when user is typing (for suggestions or "Besin Ekle" button)
       setShowSuggestions(true);
-      
+
       // Update dropdown position when suggestions appear (with small delay for DOM update)
       setTimeout(() => {
         updateDropdownPosition();
@@ -213,16 +221,16 @@ export const SmartBesinInput = ({
     };
 
     // Use capture phase for scroll to catch all scroll events
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-    
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
     // Also listen to scroll on document for better coverage
-    document.addEventListener('scroll', updatePosition, true);
-    
+    document.addEventListener("scroll", updatePosition, true);
+
     return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-      document.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+      document.removeEventListener("scroll", updatePosition, true);
     };
   }, [showSuggestions, updateDropdownPosition, mounted]);
 
@@ -406,7 +414,7 @@ export const SmartBesinInput = ({
       {/* Suggestions Dropdown */}
       {showSuggestions && mounted && (
         <>
-          {isMobile && typeof document !== 'undefined' ? (
+          {isMobile && typeof document !== "undefined" ? (
             // Mobile: Use portal to render outside parent container
             createPortal(
               <div
@@ -415,8 +423,11 @@ export const SmartBesinInput = ({
                 style={{
                   top: `${dropdownPosition.top}px`,
                   left: `${Math.max(8, dropdownPosition.left)}px`,
-                  width: `${Math.min(dropdownPosition.width, window.innerWidth - 16)}px`,
-                  maxWidth: 'calc(100vw - 16px)',
+                  width: `${Math.min(
+                    dropdownPosition.width,
+                    window.innerWidth - 16
+                  )}px`,
+                  maxWidth: "calc(100vw - 16px)",
                 }}
               >
                 {renderSuggestionsContent()}
@@ -441,7 +452,8 @@ export const SmartBesinInput = ({
           <DialogHeader>
             <DialogTitle>Yeni Besin Ekle</DialogTitle>
             <DialogDescription>
-              "{inputValue}" adında yeni bir besin ekleyin. İsteğe bağlı olarak bir besin grubu seçebilirsiniz.
+              "{inputValue}" adında yeni bir besin ekleyin. İsteğe bağlı olarak
+              bir besin grubu seçebilirsiniz.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -449,11 +461,7 @@ export const SmartBesinInput = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Besin Adı
               </label>
-              <Input
-                value={inputValue}
-                readOnly
-                className="bg-gray-50"
-              />
+              <Input value={inputValue} readOnly className="bg-gray-50" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -461,7 +469,9 @@ export const SmartBesinInput = ({
               </label>
               <Select
                 value={selectedGroupId || "none"}
-                onValueChange={(val) => setSelectedGroupId(val === "none" ? "" : val)}
+                onValueChange={(val) =>
+                  setSelectedGroupId(val === "none" ? "" : val)
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Besin grubu seçin (opsiyonel)" />

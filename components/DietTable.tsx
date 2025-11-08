@@ -15,10 +15,20 @@ import MenuItemComponent from "@/components/MenuItem";
 import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
-import { Clock, Coffee, FileText, Menu, Plus, Trash } from "lucide-react";
+import {
+  ArrowDownUp,
+  Clock,
+  Coffee,
+  FileText,
+  Menu,
+  Plus,
+  Trash,
+} from "lucide-react";
 import { OgunQuickActions } from "@/components/OgunQuickActions";
 import { MealPreset } from "@/services/PresetService";
 import { SmartBesinInput } from "@/components/SmartBesinInput";
+import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DietTableProps {
   setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
@@ -62,6 +72,7 @@ const DietTable = ({
     aciklama: 30,
   });
   const [isBrowser, setIsBrowser] = useState(false);
+  const { toast } = useToast();
 
   const isFoodBanned = (besinId: number) => {
     return (
@@ -187,6 +198,84 @@ const DietTable = ({
     return item.besin || "";
   };
 
+  const getItemPriority = (item: MenuItemType) => {
+    if (
+      typeof item.besinPriority === "number" &&
+      !Number.isNaN(item.besinPriority)
+    ) {
+      return item.besinPriority;
+    }
+    if (
+      typeof item.besin === "object" &&
+      item.besin &&
+      typeof (item.besin as any).priority === "number"
+    ) {
+      return (item.besin as any).priority ?? Number.POSITIVE_INFINITY;
+    }
+    return Number.POSITIVE_INFINITY;
+  };
+
+  const getItemName = (item: MenuItemType) => {
+    if (typeof item.besin === "string") {
+      return item.besin || "";
+    }
+    if (
+      typeof item.besin === "object" &&
+      item.besin &&
+      typeof item.besin.name === "string"
+    ) {
+      return item.besin.name;
+    }
+    return "";
+  };
+
+  const handleSortMenuItems = (ogunIndex: number) => {
+    const ogunName = diet.Oguns[ogunIndex]?.name || "Öğün";
+
+    setDiet((prevDiet: Diet): Diet => {
+      const updatedOguns = prevDiet.Oguns.map((ogun, idx) => {
+        if (idx !== ogunIndex) {
+          return ogun;
+        }
+
+        const sortedItems = ogun.items
+          .map((item, originalIndex) => ({ item, originalIndex }))
+          .sort((a, b) => {
+            const priorityDiff =
+              getItemPriority(a.item) - getItemPriority(b.item);
+            if (priorityDiff !== 0) {
+              return priorityDiff;
+            }
+            const nameDiff = getItemName(a.item).localeCompare(
+              getItemName(b.item),
+              "tr",
+              { sensitivity: "base" }
+            );
+            if (nameDiff !== 0) {
+              return nameDiff;
+            }
+            return a.originalIndex - b.originalIndex;
+          })
+          .map(({ item }) => item);
+
+        return {
+          ...ogun,
+          items: sortedItems,
+        };
+      });
+
+      return {
+        ...prevDiet,
+        Oguns: updatedOguns,
+      };
+    });
+
+    toast({
+      title: "Önceliğe göre sıralandı",
+      description: `${ogunName} içerisindeki besinler öncelik değerine göre düzenlendi.`,
+    });
+  };
+
   // Check if mobile view (less than 768px)
   const isMobile = windowWidth > 0 && windowWidth < 768;
 
@@ -198,7 +287,11 @@ const DietTable = ({
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId={contextId} direction="vertical">
               {(provided: DroppableProvided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
+                >
                   {diet.Oguns.map((ogun, index) => (
                     <Draggable
                       key={index.toString()}
@@ -219,7 +312,11 @@ const DietTable = ({
                               <Input
                                 value={ogun.name}
                                 onChange={(e) =>
-                                  handleOgunChange(index, "name", e.target.value)
+                                  handleOgunChange(
+                                    index,
+                                    "name",
+                                    e.target.value
+                                  )
                                 }
                                 className="font-semibold text-lg border-none shadow-none p-0 h-auto"
                                 placeholder="Öğün adı"
@@ -231,12 +328,27 @@ const DietTable = ({
                               <Input
                                 value={ogun.time}
                                 onChange={(e) =>
-                                  handleOgunChange(index, "time", e.target.value)
+                                  handleOgunChange(
+                                    index,
+                                    "time",
+                                    e.target.value
+                                  )
                                 }
                                 className="w-20 text-sm border-gray-300"
                                 placeholder="Saat"
                                 disabled={disabled}
                               />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSortMenuItems(index)}
+                                disabled={disabled || ogun.items.length < 2}
+                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                              >
+                                <ArrowDownUp className="w-4 h-4 mr-1" />
+                                Öncelik
+                              </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -274,7 +386,8 @@ const DietTable = ({
                                   />
                                   <Input
                                     value={
-                                      typeof item.birim === "object" && item.birim
+                                      typeof item.birim === "object" &&
+                                      item.birim
                                         ? item.birim.name || ""
                                         : typeof item.birim === "string"
                                         ? item.birim
@@ -308,7 +421,7 @@ const DietTable = ({
                                       "besin",
                                       value
                                     );
-                                    
+
                                     // Auto-fill miktar and birim if suggestion selected
                                     if (suggestion) {
                                       if (suggestion.miktar) {
@@ -336,7 +449,9 @@ const DietTable = ({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteMenuItem(index, itemIndex)}
+                                  onClick={() =>
+                                    handleDeleteMenuItem(index, itemIndex)
+                                  }
                                   disabled={disabled}
                                   className="self-start text-red-600 hover:text-red-700 text-xs"
                                 >
@@ -359,24 +474,36 @@ const DietTable = ({
                           </div>
 
                           {/* Detail/Notes */}
-                          <div>
+                          <div className="flex gap-2">
                             <Textarea
                               value={ogun.detail || ""}
                               onChange={(e) =>
-                                handleOgunChange(index, "detail", e.target.value)
+                                handleOgunChange(
+                                  index,
+                                  "detail",
+                                  e.target.value
+                                )
                               }
                               placeholder="Açıklama/Not..."
-                              className="text-sm border-gray-300"
+                              className="text-sm border-gray-300 flex-1"
                               rows={2}
                               disabled={disabled}
                             />
+                            <div className="flex-shrink-0">
+                              <EmojiPickerButton
+                                onEmojiSelect={(emoji) => {
+                                  const newValue = (ogun.detail || "") + emoji;
+                                  handleOgunChange(index, "detail", newValue);
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
                     </Draggable>
                   ))}
                   {provided.placeholder}
-                  
+
                   {/* Add Ogun Button for Mobile */}
                   <Button
                     type="button"
@@ -397,234 +524,268 @@ const DietTable = ({
         // Desktop view: Table layout
         <div className="overflow-x-auto border-2 border-purple-700 rounded-lg">
           {isBrowser ? (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId={contextId} direction="vertical">
-              {(provided: DroppableProvided) => (
-                <table
-                  className="min-w-full table-fixed rounded-lg overflow-hidden shadow-md"
-                  style={{
-                    boxShadow:
-                      "0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.08)",
-                  }}
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  <thead>
-                    <tr className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white h-16 shadow-md border-b-2 border-gray-300">
-                      <Resizable
-                        width={getColumnWidth("ogun")}
-                        height={40}
-                        onResize={onResize("ogun")}
-                        draggableOpts={{ enableUserSelectHack: false }}
-                      >
-                        <th
-                          style={{ width: `${columnWidths.ogun}%` }}
-                          className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId={contextId} direction="vertical">
+                {(provided: DroppableProvided) => (
+                  <table
+                    className="min-w-full table-fixed rounded-lg overflow-hidden shadow-md"
+                    style={{
+                      boxShadow:
+                        "0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.08)",
+                    }}
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    <thead>
+                      <tr className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white h-16 shadow-md border-b-2 border-gray-300">
+                        <Resizable
+                          width={getColumnWidth("ogun")}
+                          height={40}
+                          onResize={onResize("ogun")}
+                          draggableOpts={{ enableUserSelectHack: false }}
                         >
-                          <span className="flex items-center justify-center">
-                            <Coffee className="w-5 h-5 mr-2 opacity-80" />
-                            <span className="font-semibold">Öğün</span>
-                          </span>
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        </th>
-                      </Resizable>
-                      <Resizable
-                        width={getColumnWidth("saat")}
-                        height={40}
-                        onResize={onResize("saat")}
-                        draggableOpts={{ enableUserSelectHack: false }}
-                      >
-                        <th
-                          style={{ width: `${columnWidths.saat}%` }}
-                          className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
-                        >
-                          <span className="flex items-center justify-center">
-                            <Clock className="w-5 h-5 mr-2 opacity-80" />
-                            <span className="font-semibold">Zaman</span>
-                          </span>
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        </th>
-                      </Resizable>
-                      <Resizable
-                        width={getColumnWidth("menu")}
-                        height={40}
-                        onResize={onResize("menu")}
-                        draggableOpts={{ enableUserSelectHack: false }}
-                      >
-                        <th
-                          style={{ width: `${columnWidths.menu}%` }}
-                          className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
-                        >
-                          <span className="flex items-center justify-center">
-                            <Menu className="w-5 h-5 mr-2 opacity-80" />
-                            <span className="font-semibold">Menü</span>
-                          </span>
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        </th>
-                      </Resizable>
-                      <Resizable
-                        width={getColumnWidth("aciklama")}
-                        height={40}
-                        onResize={onResize("aciklama")}
-                        draggableOpts={{ enableUserSelectHack: false }}
-                      >
-                        <th
-                          style={{ width: `${columnWidths.aciklama}%` }}
-                          className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
-                        >
-                          <span className="flex items-center justify-center">
-                            <FileText className="w-5 h-5 mr-2 opacity-80" />
-                            <span className="font-semibold">Açıklama</span>
-                          </span>
-                          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                        </th>
-                      </Resizable>
-                      <th className="px-4 font-semibold text-base tracking-wide no-print relative group">
-                        <span className="flex items-center justify-center">
-                          <span className="font-semibold">İşlemler</span>
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200 border-t border-gray-300">
-                    {diet.Oguns.map((ogun, index) => (
-                      <Draggable
-                        key={index.toString()}
-                        draggableId={index.toString()}
-                        index={index}
-                      >
-                        {(provided: DraggableProvided) => (
-                          <tr
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className="divide-x divide-gray-300 hover:bg-gray-50/80 cursor-move transition-colors duration-150"
+                          <th
+                            style={{ width: `${columnWidths.ogun}%` }}
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
                           >
-                            <td
-                              style={{ width: `${columnWidths.ogun}%` }}
-                              className="px-3 py-3 align-top"
+                            <span className="flex items-center justify-center">
+                              <Coffee className="w-5 h-5 mr-2 opacity-80" />
+                              <span className="font-semibold">Öğün</span>
+                            </span>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                          </th>
+                        </Resizable>
+                        <Resizable
+                          width={getColumnWidth("saat")}
+                          height={40}
+                          onResize={onResize("saat")}
+                          draggableOpts={{ enableUserSelectHack: false }}
+                        >
+                          <th
+                            style={{ width: `${columnWidths.saat}%` }}
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                          >
+                            <span className="flex items-center justify-center">
+                              <Clock className="w-5 h-5 mr-2 opacity-80" />
+                              <span className="font-semibold">Zaman</span>
+                            </span>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                          </th>
+                        </Resizable>
+                        <Resizable
+                          width={getColumnWidth("menu")}
+                          height={40}
+                          onResize={onResize("menu")}
+                          draggableOpts={{ enableUserSelectHack: false }}
+                        >
+                          <th
+                            style={{ width: `${columnWidths.menu}%` }}
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                          >
+                            <span className="flex items-center justify-center">
+                              <Menu className="w-5 h-5 mr-2 opacity-80" />
+                              <span className="font-semibold">Menü</span>
+                            </span>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                          </th>
+                        </Resizable>
+                        <Resizable
+                          width={getColumnWidth("aciklama")}
+                          height={40}
+                          onResize={onResize("aciklama")}
+                          draggableOpts={{ enableUserSelectHack: false }}
+                        >
+                          <th
+                            style={{ width: `${columnWidths.aciklama}%` }}
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                          >
+                            <span className="flex items-center justify-center">
+                              <FileText className="w-5 h-5 mr-2 opacity-80" />
+                              <span className="font-semibold">Açıklama</span>
+                            </span>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                          </th>
+                        </Resizable>
+                        <th className="px-4 font-semibold text-base tracking-wide no-print relative group">
+                          <span className="flex items-center justify-center">
+                            <span className="font-semibold">İşlemler</span>
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200 border-t border-gray-300">
+                      {diet.Oguns.map((ogun, index) => (
+                        <Draggable
+                          key={index.toString()}
+                          draggableId={index.toString()}
+                          index={index}
+                        >
+                          {(provided: DraggableProvided) => (
+                            <tr
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="divide-x divide-gray-300 hover:bg-gray-50/80 cursor-move transition-colors duration-150"
                             >
-                              <div className="space-y-2">
+                              <td
+                                style={{ width: `${columnWidths.ogun}%` }}
+                                className="px-3 py-3 align-top"
+                              >
+                                <div className="space-y-2">
+                                  <Input
+                                    style={{ fontSize }}
+                                    type="text"
+                                    value={ogun.name}
+                                    onChange={(e) =>
+                                      handleOgunChange(
+                                        index,
+                                        "name",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                  />
+                                  <div className="no-print">
+                                    <OgunQuickActions
+                                      ogunName={ogun.name}
+                                      ogunItems={ogun.items}
+                                      onApplyPreset={(preset) =>
+                                        handleApplyPreset(index, preset)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td
+                                style={{ width: `${columnWidths.saat}%` }}
+                                className="px-3 py-3 align-top"
+                              >
                                 <Input
                                   style={{ fontSize }}
                                   type="text"
-                                  value={ogun.name}
+                                  value={ogun.time}
                                   onChange={(e) =>
                                     handleOgunChange(
                                       index,
-                                      "name",
+                                      "time",
                                       e.target.value
                                     )
                                   }
-                                  className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                  className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <div className="no-print">
-                                  <OgunQuickActions
-                                    ogunName={ogun.name}
-                                    ogunItems={ogun.items}
-                                    onApplyPreset={(preset) =>
-                                      handleApplyPreset(index, preset)
-                                    }
-                                  />
-                                </div>
-                              </div>
-                            </td>
-                            <td
-                              style={{ width: `${columnWidths.saat}%` }}
-                              className="px-3 py-3 align-top"
-                            >
-                              <Input
-                                style={{ fontSize }}
-                                type="text"
-                                value={ogun.time}
-                                onChange={(e) =>
-                                  handleOgunChange(
-                                    index,
-                                    "time",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              />
-                            </td>
-                            <td
-                              style={{ width: `${columnWidths.menu}%` }}
-                              className="p-3 align-top"
-                            >
-                              <div className="space-y-4 overflow-visible min-h-[120px]">
-                                {ogun.items.map((item, itemIndex) => (
-                                  <div key={itemIndex} className="break-words">
-                                    <MenuItemComponent
-                                      item={item}
-                                      index={itemIndex}
-                                      ogunIndex={index}
-                                      onDelete={(itemIndex) =>
-                                        handleDeleteMenuItem(index, itemIndex)
-                                      }
-                                      onItemChange={handleMenuItemChange}
-                                    />
-                                  </div>
-                                ))}
-                                <Button
-                                  type="button"
-                                  onClick={() => handleAddMenuItem(index)}
-                                  className="bg-blue-500 hover:bg-blue-600 text-white font-medium mt-2 no-print transition-colors duration-200"
-                                  size="sm"
-                                >
-                                  Yeni Öğe Ekle
-                                </Button>
-                              </div>
-                            </td>
-                            <td
-                              style={{ width: `${columnWidths.aciklama}%` }}
-                              className="px-3 py-3 align-top"
-                            >
-                              <div className="flex flex-col space-y-1 w-full">
-                                <label
-                                  htmlFor={`note-${index}`}
-                                  className="text-sm text-gray-700 font-medium"
-                                >
-                                  Açıklama
-                                </label>
-                                <Textarea
-                                  id={`note-${index}`}
-                                  value={ogun.detail || ""}
-                                  onChange={(e) =>
-                                    handleOgunChange(
-                                      index,
-                                      "detail",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Öğüne Özel Açıklamalar Girebilirsiniz."
-                                  className="resize-none h-20 text-sm"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 no-print text-center align-top">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveOgun(index)}
-                                className="no-print p-2.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 inline-flex items-center"
-                                aria-label="Sil"
+                              </td>
+                              <td
+                                style={{ width: `${columnWidths.menu}%` }}
+                                className="p-3 align-top"
                               >
-                                <Trash className="w-5 h-5" />
-                              </button>
-                            </td>
-                          </tr>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </tbody>
-                  <tfoot className="border-t-2 border-purple-700 bg-gradient-to-r from-purple-50 to-indigo-50">
-                    <tr>
-                      <td colSpan={5} className="p-6">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={onAddOgun}
-                          className="
+                                <div className="space-y-4 overflow-visible min-h-[120px]">
+                                  {ogun.items.map((item, itemIndex) => (
+                                    <div
+                                      key={itemIndex}
+                                      className="break-words"
+                                    >
+                                      <MenuItemComponent
+                                        item={item}
+                                        index={itemIndex}
+                                        ogunIndex={index}
+                                        onDelete={(itemIndex) =>
+                                          handleDeleteMenuItem(index, itemIndex)
+                                        }
+                                        onItemChange={handleMenuItemChange}
+                                      />
+                                    </div>
+                                  ))}
+                                  <Button
+                                    type="button"
+                                    onClick={() => handleAddMenuItem(index)}
+                                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium mt-2 no-print transition-colors duration-200"
+                                    size="sm"
+                                  >
+                                    Yeni Öğe Ekle
+                                  </Button>
+                                </div>
+                              </td>
+                              <td
+                                style={{ width: `${columnWidths.aciklama}%` }}
+                                className="px-3 py-3 align-top"
+                              >
+                                <div className="flex flex-col space-y-1 w-full">
+                                  <label
+                                    htmlFor={`note-${index}`}
+                                    className="text-sm text-gray-700 font-medium"
+                                  >
+                                    Açıklama
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <Textarea
+                                      id={`note-${index}`}
+                                      value={ogun.detail || ""}
+                                      onChange={(e) =>
+                                        handleOgunChange(
+                                          index,
+                                          "detail",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Öğüne Özel Açıklamalar Girebilirsiniz."
+                                      className="resize-none h-20 text-sm flex-1"
+                                    />
+                                    <div className="flex-shrink-0">
+                                      <EmojiPickerButton
+                                        onEmojiSelect={(emoji) => {
+                                          const newValue =
+                                            (ogun.detail || "") + emoji;
+                                          handleOgunChange(
+                                            index,
+                                            "detail",
+                                            newValue
+                                          );
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 no-print text-center align-top">
+                                <div className="flex flex-col gap-2 items-center">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSortMenuItems(index)}
+                                    disabled={disabled || ogun.items.length < 2}
+                                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                  >
+                                    <ArrowDownUp className="w-4 h-4 mr-1" />
+                                    Öncelik Sırala
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleRemoveOgun(index)}
+                                    disabled={disabled}
+                                    className="inline-flex items-center gap-1"
+                                  >
+                                    <Trash className="w-4 h-4" />
+                                    Sil
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </tbody>
+                    <tfoot className="border-t-2 border-purple-700 bg-gradient-to-r from-purple-50 to-indigo-50">
+                      <tr>
+                        <td colSpan={5} className="p-6">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onAddOgun}
+                            className="
                             bg-white 
                             text-purple-700 
                             border-2 
@@ -637,21 +798,21 @@ const DietTable = ({
                             hover:shadow-md
                             font-medium
                           "
-                        >
-                          <Plus className="h-5 w-5 mr-2" />
-                          Öğün Ekle
-                        </Button>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              )}
-            </Droppable>
-          </DragDropContext>
-        ) : (
-          <p>Loading...</p>
-        )}
-      </div>
+                          >
+                            <Plus className="h-5 w-5 mr-2" />
+                            Öğün Ekle
+                          </Button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+              </Droppable>
+            </DragDropContext>
+          ) : (
+            <p>Loading...</p>
+          )}
+        </div>
       )}
     </div>
   );

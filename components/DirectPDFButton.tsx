@@ -16,7 +16,11 @@ import { toast } from "@/components/ui/use-toast";
 
 const formatDateTR = (dateString: string | null | undefined | Date) => {
   if (!dateString) return "Tarih Belirtilmemiş";
-  console.log("DirectPDF formatDateTR received:", dateString, typeof dateString);
+  console.log(
+    "DirectPDF formatDateTR received:",
+    dateString,
+    typeof dateString
+  );
   try {
     const date =
       typeof dateString === "string"
@@ -24,7 +28,12 @@ const formatDateTR = (dateString: string | null | undefined | Date) => {
         : dateString instanceof Date
         ? dateString
         : new Date();
-    console.log("DirectPDF parsed date:", date, "isValid:", !isNaN(date.getTime()));
+    console.log(
+      "DirectPDF parsed date:",
+      date,
+      "isValid:",
+      !isNaN(date.getTime())
+    );
     if (isNaN(date.getTime())) {
       throw new Error("Invalid date");
     }
@@ -56,6 +65,36 @@ interface PDFData {
   };
   dietitianNote?: string;
 }
+
+const buildInlineColumns = (
+  parts: Array<{
+    text?: string;
+    image?: string;
+    width?: number;
+    height?: number;
+  }>,
+  options?: { textStyle?: string; imageMarginTop?: number }
+) => {
+  const columnGap = 3;
+  return {
+    columns: parts.map((part) => {
+      if (part.image) {
+        return {
+          image: part.image,
+          width: part.width || 12,
+          height: part.height || 12,
+          margin: [0, options?.imageMarginTop ?? -1, 0, 0],
+        };
+      }
+      return {
+        text: part.text ?? "",
+        width: "auto",
+        style: options?.textStyle,
+      };
+    }),
+    columnGap,
+  } as any;
+};
 
 interface DirectPDFButtonProps {
   diet?: Diet;
@@ -95,6 +134,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
+  const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
   const [importantDateMessage, setImportantDateMessage] = useState<string>("");
 
   useEffect(() => {
@@ -110,6 +150,18 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           console.log("Logo loaded successfully");
         };
         logoReader.readAsDataURL(logoBlob);
+
+        // Load nazar boncuğu image
+        const nazarResponse = await fetch("/nazar-boncugu.png");
+        if (nazarResponse.ok) {
+          const nazarBlob = await nazarResponse.blob();
+          const nazarReader = new FileReader();
+          nazarReader.onloadend = () => {
+            setNazarBoncuguDataUrl(nazarReader.result as string);
+            console.log("Nazar boncuğu loaded successfully");
+          };
+          nazarReader.readAsDataURL(nazarBlob);
+        }
       } catch (error) {
         console.error("Error loading images:", error);
       }
@@ -181,9 +233,29 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
       const pdfDataToUse = preparePdfData(diet, pdfData);
       if (!pdfDataToUse) throw new Error("Beslenme programı verisi bulunamadı");
-      const docDefinition = createDocDefinition(
+
+      // Wait for nazar boncuğu image to load if weekly result exists
+      if (
+        pdfDataToUse.weeklyResult &&
+        pdfDataToUse.weeklyResult.trim() &&
+        !nazarBoncuguDataUrl
+      ) {
+        // Wait a bit for image to load
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      // Initialize VFS if not exists
+      if (!window.pdfMake.vfs) {
+        window.pdfMake.vfs = {};
+      }
+
+      // Note: Emojis will be converted to VFS during createDocDefinition
+      // VFS is initialized above, and convertEmojisToImages will add emojis to VFS
+
+      const docDefinition = await createDocDefinition(
         pdfDataToUse,
-        backgroundDataUrl
+        backgroundDataUrl,
+        nazarBoncuguDataUrl
       );
       const fileName = `Beslenme_Programi_${pdfDataToUse.fullName.replace(
         /\s+/g,
@@ -320,13 +392,13 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   };
 
   interface TableCell {
-    text: string;
+    text?: string | any[];
     style: string;
     alignment: string;
     colSpan?: number;
   }
 
-  const buildMealTableRows = (dietData: PDFData) => {
+  const buildMealTableRows = async (dietData: PDFData) => {
     const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
@@ -335,7 +407,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         { text: "NOTLAR", style: "tableHeader", alignment: "center" },
       ],
     ];
-    dietData.ogunler.forEach((ogun) => {
+    for (const ogun of dietData.ogunler) {
       const menuText = ogun.menuItems.join("\n• ");
       rows.push([
         {
@@ -354,12 +426,12 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           alignment: "left",
         },
         {
-          text: ogun.notes || "-",
+          ...buildInlineColumns(await convertEmojisToImages(ogun.notes || "-")),
           style: "tableCell",
           alignment: "left",
-        },
+        } as any,
       ]);
-    });
+    }
     // Append water consumption row only if it has a value
     if (dietData.waterConsumption?.trim()) {
       rows.push([
@@ -417,7 +489,378 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     return rows;
   };
 
-  const createDocDefinition = (pdfData: PDFData, backgroundDataUrl: string) => {
+  // Create circular badge with nazar boncuğu as base64 image
+  const createWeeklyResultBadgeImage = async (
+    text: string,
+    nazarImage: string
+  ): Promise<string> => {
+    const canvas = document.createElement("canvas");
+    const size = 50; // Smaller size
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    // Draw empty circular ring (hollow circle)
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 3, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#d32d7e";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Draw nazar boncuğu image (attached to the ring edge, top right)
+    if (nazarImage) {
+      return new Promise<string>((resolve) => {
+        const nazarImg = new Image();
+        nazarImg.crossOrigin = "anonymous";
+        nazarImg.src = nazarImage;
+
+        nazarImg.onload = () => {
+          const nazarSize = 22;
+          const nazarX = size - nazarSize - 1;
+          const nazarY = -2; // Slightly above to be more visible
+
+          ctx.drawImage(nazarImg, nazarX, nazarY, nazarSize, nazarSize);
+
+          // Draw text inside the hollow circle
+          ctx.fillStyle = "#d32d7e";
+          ctx.font = "bold 9px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const displayText =
+            text.length > 8 ? text.substring(0, 8) + "..." : text;
+          ctx.fillText(displayText, size / 2, size / 2 + 2);
+
+          resolve(canvas.toDataURL("image/png"));
+        };
+
+        nazarImg.onerror = () => {
+          // Fallback if image fails to load
+          ctx.fillStyle = "#d32d7e";
+          ctx.font = "bold 9px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const displayText =
+            text.length > 8 ? text.substring(0, 8) + "..." : text;
+          ctx.fillText(displayText, size / 2, size / 2);
+          resolve(canvas.toDataURL("image/png"));
+        };
+      });
+    }
+
+    // Draw text inside the hollow circle (fallback)
+    ctx.fillStyle = "#d32d7e";
+    ctx.font = "bold 9px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const displayText = text.length > 8 ? text.substring(0, 8) + "..." : text;
+    ctx.fillText(displayText, size / 2, size / 2);
+
+    return canvas.toDataURL("image/png");
+  };
+
+  // Convert emojis in text to base64 images using twemoji
+  const convertEmojisToImages = async (text: string): Promise<any[]> => {
+    console.log("[EMOJI DEBUG] convertEmojisToImages called with text:", text);
+    if (!text) {
+      console.log("[EMOJI DEBUG] Text is empty, returning empty array");
+      return [{ text: "" }];
+    }
+
+    const parts: any[] = [];
+    // Match Unicode emojis including variations
+    const unicodeEmojiRegex =
+      /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?)/gu;
+
+    // Match text-based emojis like :) :( :D etc.
+    const textEmojiMap: { [key: string]: string } = {
+      ":)": "1f642", // 🙂
+      ":-)": "1f642",
+      "(:": "1f642",
+      ":(": "1f641", // 🙁
+      ":-(": "1f641",
+      ":D": "1f600", // 😀
+      ":-D": "1f600",
+      ":P": "1f61b", // 😛
+      ":-P": "1f61b",
+      ";)": "1f609", // 😉
+      ";-)": "1f609",
+      ":O": "1f62e", // 😮
+      ":-O": "1f62e",
+      ":*": "1f618", // 😘
+      ":-*": "1f618",
+      "<3": "2764", // ❤️
+      "</3": "1f494", // 💔
+      ":3": "1f60a", // 😊
+    };
+
+    let lastIndex = 0;
+    let match;
+    const matches: Array<{
+      index: number;
+      emoji: string;
+      isUnicode: boolean;
+      originalText?: string;
+    }> = [];
+
+    // Collect Unicode emoji matches
+    const unicodeRegex = new RegExp(
+      unicodeEmojiRegex.source,
+      unicodeEmojiRegex.flags
+    );
+    while ((match = unicodeRegex.exec(text)) !== null) {
+      matches.push({ index: match.index, emoji: match[0], isUnicode: true });
+      console.log(
+        "[EMOJI DEBUG] Found Unicode emoji:",
+        match[0],
+        "at index:",
+        match.index
+      );
+    }
+
+    // Collect text-based emoji matches
+    for (const [textEmoji, unicodeCode] of Object.entries(textEmojiMap)) {
+      let searchIndex = 0;
+      while ((searchIndex = text.indexOf(textEmoji, searchIndex)) !== -1) {
+        // Check if this position is not already covered by a Unicode emoji match
+        const isOverlapping = matches.some((m) => {
+          if (m.isUnicode) {
+            return (
+              m.index <= searchIndex && m.index + m.emoji.length > searchIndex
+            );
+          } else {
+            // For text emojis, we need to find the original text
+            const textEmojiKey = Object.keys(textEmojiMap).find(
+              (key) => textEmojiMap[key] === m.emoji
+            );
+            if (textEmojiKey) {
+              return (
+                m.index <= searchIndex &&
+                m.index + textEmojiKey.length > searchIndex
+              );
+            }
+          }
+          return false;
+        });
+        if (!isOverlapping) {
+          matches.push({
+            index: searchIndex,
+            emoji: unicodeCode,
+            isUnicode: false,
+            originalText: textEmoji,
+          });
+          console.log(
+            "[EMOJI DEBUG] Found text emoji:",
+            textEmoji,
+            "at index:",
+            searchIndex,
+            "mapped to:",
+            unicodeCode
+          );
+        }
+        searchIndex += textEmoji.length;
+      }
+    }
+
+    console.log("[EMOJI DEBUG] Total matches found:", matches.length, matches);
+
+    // Sort matches by index
+    matches.sort((a, b) => a.index - b.index);
+
+    // Process each match
+    for (const matchData of matches) {
+      // Add text before emoji
+      if (matchData.index > lastIndex) {
+        const textBefore = text.substring(lastIndex, matchData.index);
+        console.log("[EMOJI DEBUG] Adding text before emoji:", textBefore);
+        parts.push({
+          text: textBefore,
+        });
+      }
+
+      // Convert emoji to image
+      try {
+        let emojiCode: string;
+        if (matchData.isUnicode) {
+          // Unicode emoji
+          if (twemoji && twemoji.convert && twemoji.convert.toCodePoint) {
+            emojiCode = twemoji.convert.toCodePoint(matchData.emoji);
+            console.log(
+              "[EMOJI DEBUG] Unicode emoji converted:",
+              matchData.emoji,
+              "->",
+              emojiCode
+            );
+          } else {
+            // Fallback: manual conversion
+            emojiCode = Array.from(matchData.emoji)
+              .map((char) => char.codePointAt(0)?.toString(16))
+              .filter(Boolean)
+              .join("-");
+            console.log(
+              "[EMOJI DEBUG] Manual Unicode conversion:",
+              matchData.emoji,
+              "->",
+              emojiCode
+            );
+          }
+        } else {
+          // Text-based emoji - already have the code
+          emojiCode = matchData.emoji;
+          console.log("[EMOJI DEBUG] Text emoji code:", emojiCode);
+        }
+
+        const svgUrl = `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/${emojiCode}.svg`;
+        console.log("[EMOJI DEBUG] Fetching SVG from:", svgUrl);
+
+        // Fetch SVG and convert to base64 data URL
+        const response = await fetch(svgUrl);
+        console.log(
+          "[EMOJI DEBUG] Fetch response status:",
+          response.status,
+          response.ok
+        );
+        if (response.ok) {
+          const svgText = await response.text();
+          // Convert SVG to base64 data URL
+          const svgBase64 = btoa(unescape(encodeURIComponent(svgText)));
+          const svgDataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+          const svgBase64String = svgDataUrl.split(",")[1]; // Extract base64 for VFS
+
+          console.log(
+            "[EMOJI DEBUG] SVG data URL length:",
+            svgDataUrl?.length,
+            "First 50 chars:",
+            svgDataUrl?.substring(0, 50)
+          );
+
+          // Try PNG conversion for better compatibility
+          try {
+            // Convert SVG to PNG using canvas
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              canvas.width = 24;
+              canvas.height = 24;
+
+              const img = new Image();
+              const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+              const url = URL.createObjectURL(svgBlob);
+
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => {
+                  ctx.drawImage(img, 0, 0, 24, 24);
+                  const pngDataUrl = canvas.toDataURL("image/png");
+                  // Extract base64 string for VFS
+                  const pngBase64String = pngDataUrl.split(",")[1];
+                  const emojiFileName = `emoji_${emojiCode}_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substring(7)}.png`;
+
+                  console.log(
+                    "[EMOJI DEBUG] PNG conversion successful, using base64 data URL"
+                  );
+
+                  // Use base64 data URL directly (pdfmake supports this)
+                  parts.push({
+                    image: pngDataUrl, // Use data URL directly
+                    width: 12,
+                    height: 12,
+                  });
+                  console.log(
+                    "[EMOJI DEBUG] Added PNG image part to array (base64 data URL)"
+                  );
+                  URL.revokeObjectURL(url);
+                  resolve();
+                };
+                img.onerror = () => {
+                  console.warn(
+                    "[EMOJI DEBUG] PNG conversion failed, using SVG in VFS"
+                  );
+                  // Use SVG data URL directly as fallback
+                  parts.push({
+                    image: svgDataUrl, // Use data URL directly
+                    width: 12,
+                    height: 12,
+                  });
+                  console.log(
+                    "[EMOJI DEBUG] Added SVG image part to array (base64 data URL fallback)"
+                  );
+                  URL.revokeObjectURL(url);
+                  resolve();
+                };
+                img.src = url;
+              });
+            } else {
+              // Fallback to SVG if canvas not available - use data URL directly
+              parts.push({
+                image: svgDataUrl, // Use data URL directly
+                width: 12,
+                height: 12,
+              });
+              console.log(
+                "[EMOJI DEBUG] Added SVG image part to array (canvas not available, base64 data URL)"
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "[EMOJI DEBUG] Error converting to PNG, using SVG:",
+              error
+            );
+            // Fallback: use SVG data URL directly
+            parts.push({
+              image: svgDataUrl, // Use data URL directly
+              width: 12,
+              height: 12,
+            });
+          }
+        } else {
+          // Fallback: keep original text
+          const originalText = matchData.isUnicode
+            ? matchData.emoji
+            : matchData.originalText || "";
+          console.warn(
+            `[EMOJI DEBUG] Failed to fetch emoji SVG for ${emojiCode}: ${response.status}, using text: ${originalText}`
+          );
+          parts.push({ text: originalText });
+        }
+      } catch (error) {
+        // Fallback: keep original text
+        const originalText = matchData.isUnicode
+          ? matchData.emoji
+          : matchData.originalText || "";
+        console.error(
+          `[EMOJI DEBUG] Error converting emoji ${matchData.emoji}:`,
+          error
+        );
+        parts.push({ text: originalText });
+      }
+
+      lastIndex =
+        matchData.index +
+        (matchData.isUnicode
+          ? matchData.emoji.length
+          : matchData.originalText?.length || 0);
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex);
+      console.log("[EMOJI DEBUG] Adding remaining text:", remainingText);
+      parts.push({
+        text: remainingText,
+      });
+    }
+
+    console.log("[EMOJI DEBUG] Final parts array:", parts);
+    return parts.length > 0 ? parts : [{ text }];
+  };
+
+  const createDocDefinition = async (
+    pdfData: PDFData,
+    backgroundDataUrl: string,
+    nazarBoncuguDataUrl: string
+  ) => {
     console.log("Creating doc definition with data:", {
       isBirthdayCelebration: pdfData.isBirthdayCelebration,
       isImportantDateCelebrated: pdfData.isImportantDateCelebrated,
@@ -491,8 +934,24 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         text: `${pdfData.fullName} / ${formattedDietDate}`,
         style: "clientInfoCentered",
         alignment: "center",
-        margin: [0, 0, 0, 15],
+        margin: [0, 0, 0, 12],
       },
+      // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
+      // Only add if weekly result exists and is not empty
+      ...(pdfData.weeklyResult &&
+      pdfData.weeklyResult.trim() &&
+      pdfData.weeklyResult !== "Sonuç belirtilmemiş"
+        ? [
+            {
+              image: await createWeeklyResultBadgeImage(
+                pdfData.weeklyResult,
+                nazarBoncuguDataUrl
+              ),
+              width: 50,
+              absolutePosition: { x: 520, y: 50 },
+            },
+          ]
+        : []),
       // Nutrition Program section
       {
         image: backgroundDataUrl,
@@ -506,7 +965,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         table: {
           headerRows: 1,
           widths: ["12%", "8%", "38%", "42%"],
-          body: buildMealTableRows(pdfData),
+          body: await buildMealTableRows(pdfData),
         },
         layout: {
           hLineWidth: (i, node) =>
@@ -563,20 +1022,35 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       },
     ];
 
-    // Add Dietitian Note if exists - more compact
-    if (pdfData.dietitianNote) {
-      content.push(
-        {
-          text: "DİYETİSYEN NOTU",
-          style: "sectionHeader",
-          margin: [0, 20, 0, 15], // Reduced margins
-        },
-        {
-          text: pdfData.dietitianNote,
-          style: "dietitianNote",
-          margin: [0, 0, 0, 10], // Reduced margin
-        }
+    // Add Dietitian Note if exists - simplified and compact
+    if (pdfData.dietitianNote && pdfData.dietitianNote.trim()) {
+      console.log(
+        "[EMOJI DEBUG] Processing dietitian note:",
+        pdfData.dietitianNote
       );
+      const dietitianNoteLabelParts = await convertEmojisToImages(
+        "💬 Diyetisyen Notu: "
+      );
+      console.log(
+        "[EMOJI DEBUG] Dietitian note label parts:",
+        dietitianNoteLabelParts
+      );
+      const dietitianNoteParts = await convertEmojisToImages(
+        pdfData.dietitianNote
+      );
+      console.log("[EMOJI DEBUG] Dietitian note parts:", dietitianNoteParts);
+      const dietitianNoteColumns = buildInlineColumns(dietitianNoteLabelParts, {
+        textStyle: "dietitianNoteLabel",
+      }).columns.concat(
+        buildInlineColumns(dietitianNoteParts, {
+          textStyle: "dietitianNoteText",
+        }).columns
+      );
+      content.push({
+        columns: dietitianNoteColumns,
+        columnGap: 3,
+        margin: [0, 8, 0, 8],
+      } as any);
     }
 
     // Add Celebrations if exist - more compact
@@ -707,6 +1181,21 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           fontSize: 10, // Reduced from 11
           color: secondaryColor,
           lineHeight: 1.3, // Reduced line height
+        },
+        dietitianNoteLabel: {
+          fontSize: 10,
+          bold: true,
+          color: primaryColor,
+        },
+        dietitianNoteText: {
+          fontSize: 10,
+          color: "#374151",
+          lineHeight: 1.2,
+        },
+        weeklyResultBadge: {
+          fontSize: 10,
+          bold: true,
+          color: "#ffffff",
         },
         titleStyle: {
           fontSize: 20,

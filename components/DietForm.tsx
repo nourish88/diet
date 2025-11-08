@@ -28,6 +28,7 @@ import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { useDietLogging } from "@/hooks/useDietLogging";
+import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -57,7 +58,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const { saveDiet } = useDietActions();
 
   // Initialize diet logging - use refs to track changes
-  const [currentDietId, setCurrentDietId] = useState<number | undefined>(diet.id);
+  const [currentDietId, setCurrentDietId] = useState<number | undefined>(
+    diet.id
+  );
   const dietLogging = useDietLogging({
     clientId: selectedClientId,
     dietId: currentDietId,
@@ -146,9 +149,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             illness: data.illness,
             bannedFoods: data.bannedFoods || [],
           });
-          const phone = data.phoneNumber
-            ? "+90" + data.phoneNumber
-            : undefined;
+          const phone = data.phoneNumber ? "+90" + data.phoneNumber : undefined;
           setClientPhoneNumber(phone);
 
           // Load latest diet for this client
@@ -217,6 +218,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
               miktar: item.miktar,
               birim: item.birim,
               besin: item.besinName,
+              besinPriority:
+                typeof item.besinPriority === "number"
+                  ? item.besinPriority
+                  : typeof item.priority === "number"
+                  ? item.priority
+                  : null,
             })),
           })),
         };
@@ -374,7 +381,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           Tarih: new Date().toISOString(), // Always use today's date for new diet
         };
 
-        console.log(`📋 Loaded latest diet (ID: ${data.id}) for display/reference only`);
+        console.log(
+          `📋 Loaded latest diet (ID: ${data.id}) for display/reference only`
+        );
         setDiet(uiDiet);
 
         // Log diet loaded (for reference/tracking)
@@ -451,11 +460,20 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   typeof dbItem.besin === "object" && dbItem.besin
                     ? dbItem.besin.name || ""
                     : dbItem.besin || "";
+                const priorityValue =
+                  typeof dbItem.besin === "object" && dbItem.besin
+                    ? dbItem.besin.priority ?? null
+                    : typeof dbItem.besinPriority === "number"
+                    ? dbItem.besinPriority
+                    : typeof dbItem.priority === "number"
+                    ? dbItem.priority
+                    : null;
 
                 return {
                   miktar: miktarValue,
                   birim: birimValue,
                   besin: besinValue,
+                  besinPriority: priorityValue,
                 };
               }) || [],
           })) || OGUN,
@@ -547,7 +565,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
               ...ogun,
               items: [
                 ...ogun.items,
-                { birim: {} as Birim, miktar: "", besin: {} as Besin },
+                {
+                  birim: {} as Birim,
+                  miktar: "",
+                  besin: {} as Besin,
+                  besinPriority: null,
+                },
               ],
             }
           : ogun
@@ -589,8 +612,18 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       }
     }
 
-    const previousValue = diet.Oguns[ogunIndex]?.items[itemIndex]?.[field as keyof typeof diet.Oguns[0]['items'][0]];
+    const previousValue =
+      diet.Oguns[ogunIndex]?.items[itemIndex]?.[
+        field as keyof (typeof diet.Oguns)[0]["items"][0]
+      ];
     setDiet((prev) => {
+      const normalizedValue =
+        field === "besinPriority"
+          ? value === "" || value === null
+            ? null
+            : Number(value)
+          : value;
+
       const newDiet = {
         ...prev,
         Oguns: prev.Oguns.map((ogun, idx) =>
@@ -598,7 +631,14 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             ? {
                 ...ogun,
                 items: ogun.items.map((item, itemIdx) =>
-                  itemIdx === itemIndex ? { ...item, [field]: value } : item
+                  itemIdx === itemIndex
+                    ? field === "besinPriority"
+                      ? {
+                          ...item,
+                          besinPriority: normalizedValue as number | null,
+                        }
+                      : { ...item, [field]: normalizedValue }
+                    : item
                 ),
               }
             : ogun
@@ -610,7 +650,13 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
     // Log item updated
     if (dietLogging.isReady) {
-      dietLogging.logItemUpdated(ogunIndex, itemIndex, field, value);
+      const logValue =
+        field === "besinPriority"
+          ? value === "" || value === null
+            ? ""
+            : String(Number(value))
+          : value;
+      dietLogging.logItemUpdated(ogunIndex, itemIndex, field, logValue);
     }
   };
   const generatePDF = async () => {
@@ -673,7 +719,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       // Always create a new diet - clear ID to prevent update attempts
       // The loaded diet is for display/reference only, not for editing
       const { id: _oldId, ...dietWithoutId } = diet;
-      
+
       // Include all diet properties including celebration flags
       const dietToSave = {
         ...dietWithoutId,
@@ -685,14 +731,17 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         importantDateId: diet.importantDateId || null,
         importantDateName: diet.importantDateName || null,
       };
-      console.log("💾 Saving new diet (ID cleared):", { ...dietToSave, id: undefined });
+      console.log("💾 Saving new diet (ID cleared):", {
+        ...dietToSave,
+        id: undefined,
+      });
       const result = await saveDiet(dietToSave);
 
       if (result) {
         // Extract the new diet ID from the result
         // API returns the created diet object with id
         const newDietId = result.id || result.diet?.id;
-        
+
         if (!newDietId) {
           console.warn("⚠️ No diet ID returned from save operation:", result);
         }
@@ -712,7 +761,8 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           // Redirect to diet detail page after successful save
           toast({
             title: "Başarılı",
-            description: "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
+            description:
+              "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
             variant: "default",
           });
 
@@ -730,21 +780,22 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       }
     } catch (error: any) {
       console.error("Veritabanına kaydetme hatası:", error);
-      
+
       // Extract detailed error information
       const errorMessage = error?.message || "Bilinmeyen hata";
       const errorStatus = error?.status;
       const errorDetails = error?.details;
       const errorType = error?.errorType || error?.type || "Unknown";
-      
+
       // Build descriptive error message for user
       let userErrorMessage = "Veritabanına kaydetme sırasında bir hata oluştu.";
-      
+
       if (errorStatus) {
         if (errorStatus === 403) {
           userErrorMessage = "Bu işlem için yetkiniz bulunmamaktadır.";
         } else if (errorStatus === 400) {
-          userErrorMessage = "Gönderilen veriler geçersiz. Lütfen formu kontrol edin.";
+          userErrorMessage =
+            "Gönderilen veriler geçersiz. Lütfen formu kontrol edin.";
         } else if (errorStatus === 500) {
           userErrorMessage = "Sunucu hatası oluştu. Lütfen tekrar deneyin.";
         } else if (errorStatus >= 400) {
@@ -754,10 +805,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         // If we have a specific error message, use it
         userErrorMessage = errorMessage;
       }
-      
+
       // Log diet save failed with detailed error info
       if (dietLogging.isReady) {
-        const logError = errorMessage + (errorStatus ? ` (Status: ${errorStatus})` : '');
+        const logError =
+          errorMessage + (errorStatus ? ` (Status: ${errorStatus})` : "");
         dietLogging.logDietSaveFailed(logError);
       }
 
@@ -783,7 +835,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     <div className="container mx-auto px-2 sm:px-4 max-w-7xl">
       <div style={{ fontSize: `${fontSize}px` }}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 sm:space-y-8"
+          >
             <DietHeader />
 
             {/* Client selector with improved styling */}
@@ -841,6 +896,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                         miktar: item.miktar,
                         birim: item.birim,
                         besin: item.besinName,
+                        besinPriority:
+                          typeof item.besinPriority === "number"
+                            ? item.besinPriority
+                            : typeof item.priority === "number"
+                            ? item.priority
+                            : null,
                       })),
                     })),
                   };
@@ -910,22 +971,46 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                       if (dietLogging.isReady) {
                         // Check for field changes
                         if (newDiet.Su !== prevDiet.Su) {
-                          dietLogging.logFieldChanged("Su", newDiet.Su, prevDiet.Su);
+                          dietLogging.logFieldChanged(
+                            "Su",
+                            newDiet.Su,
+                            prevDiet.Su
+                          );
                         }
                         if (newDiet.Fizik !== prevDiet.Fizik) {
-                          dietLogging.logFieldChanged("Fizik", newDiet.Fizik, prevDiet.Fizik);
+                          dietLogging.logFieldChanged(
+                            "Fizik",
+                            newDiet.Fizik,
+                            prevDiet.Fizik
+                          );
                         }
                         if (newDiet.Hedef !== prevDiet.Hedef) {
-                          dietLogging.logFieldChanged("Hedef", newDiet.Hedef, prevDiet.Hedef);
+                          dietLogging.logFieldChanged(
+                            "Hedef",
+                            newDiet.Hedef,
+                            prevDiet.Hedef
+                          );
                         }
                         if (newDiet.Sonuc !== prevDiet.Sonuc) {
-                          dietLogging.logFieldChanged("Sonuc", newDiet.Sonuc, prevDiet.Sonuc);
+                          dietLogging.logFieldChanged(
+                            "Sonuc",
+                            newDiet.Sonuc,
+                            prevDiet.Sonuc
+                          );
                         }
                         if (newDiet.Tarih !== prevDiet.Tarih) {
-                          dietLogging.logFieldChanged("Tarih", newDiet.Tarih, prevDiet.Tarih);
+                          dietLogging.logFieldChanged(
+                            "Tarih",
+                            newDiet.Tarih,
+                            prevDiet.Tarih
+                          );
                         }
                         if (newDiet.dietitianNote !== prevDiet.dietitianNote) {
-                          dietLogging.logFieldChanged("dietitianNote", newDiet.dietitianNote, prevDiet.dietitianNote);
+                          dietLogging.logFieldChanged(
+                            "dietitianNote",
+                            newDiet.dietitianNote,
+                            prevDiet.dietitianNote
+                          );
                         }
                       }
 
@@ -983,22 +1068,48 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Textarea
-                      placeholder="Danışana özel notunuzu buraya yazabilirsiniz..."
-                      className="min-h-[100px]"
-                      value={diet.dietitianNote || ""}
-                      onChange={(e) => {
-                        const previousValue = diet.dietitianNote;
-                        setDiet({
-                          ...diet,
-                          dietitianNote: e.target.value,
-                        });
-                        // Log field change
-                        if (dietLogging.isReady) {
-                          dietLogging.logFieldChanged("dietitianNote", e.target.value, previousValue);
-                        }
-                      }}
-                    />
+                    <div className="flex gap-2">
+                      <Textarea
+                        placeholder="Danışana özel notunuzu buraya yazabilirsiniz..."
+                        className="min-h-[100px] flex-1"
+                        value={diet.dietitianNote || ""}
+                        onChange={(e) => {
+                          const previousValue = diet.dietitianNote;
+                          setDiet({
+                            ...diet,
+                            dietitianNote: e.target.value,
+                          });
+                          // Log field change
+                          if (dietLogging.isReady) {
+                            dietLogging.logFieldChanged(
+                              "dietitianNote",
+                              e.target.value,
+                              previousValue
+                            );
+                          }
+                        }}
+                      />
+                      <div className="flex-shrink-0">
+                        <EmojiPickerButton
+                          onEmojiSelect={(emoji) => {
+                            const previousValue = diet.dietitianNote;
+                            const newValue = (diet.dietitianNote || "") + emoji;
+                            setDiet({
+                              ...diet,
+                              dietitianNote: newValue,
+                            });
+                            // Log field change
+                            if (dietLogging.isReady) {
+                              dietLogging.logFieldChanged(
+                                "dietitianNote",
+                                newValue,
+                                previousValue
+                              );
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

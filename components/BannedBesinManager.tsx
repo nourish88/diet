@@ -26,10 +26,11 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
   useEffect(() => {
     const fetchBesins = async () => {
       try {
-        const response = await fetch('/api/besinler');
+        const response = await fetch('/api/besinler?pageSize=200');
         if (response.ok) {
           const data = await response.json();
-          setAvailableBesins(data);
+          const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+          setAvailableBesins(items);
         }
       } catch (error) {
         console.error('Error fetching besins:', error);

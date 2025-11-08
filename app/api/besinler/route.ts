@@ -1,18 +1,72 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 200;
+
+export async function GET(request: NextRequest) {
   try {
-    const besins = await prisma.besin.findMany({
-      include: {
-        besinGroup: true, // Make sure we're including the group relation
-      },
-      orderBy: {
-        name: "asc",
-      },
+    const searchParams = request.nextUrl.searchParams;
+    const searchQuery = searchParams.get("q")?.trim() ?? "";
+
+    const pageParam = parseInt(searchParams.get("page") || "1", 10);
+    const pageSizeParam = parseInt(
+      searchParams.get("pageSize") || DEFAULT_PAGE_SIZE.toString(),
+      10
+    );
+
+    const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const pageSize = Number.isNaN(pageSizeParam)
+      ? DEFAULT_PAGE_SIZE
+      : Math.min(Math.max(pageSizeParam, 1), MAX_PAGE_SIZE);
+
+    const skip = (page - 1) * pageSize;
+
+    const whereClause = searchQuery
+      ? {
+          name: {
+            contains: searchQuery,
+            mode: "insensitive" as const,
+          },
+        }
+      : {};
+
+    const [items, total] = await prisma.$transaction([
+      prisma.besin.findMany({
+        where: whereClause,
+        include: {
+          besinGroup: true,
+        },
+        orderBy: [
+          {
+            priority: "asc",
+          },
+          {
+            name: "asc",
+          },
+          {
+            id: "asc",
+          },
+        ],
+        skip,
+        take: pageSize,
+      }),
+      prisma.besin.count({
+        where: whereClause,
+      }),
+    ]);
+
+    const hasMore = skip + items.length < total;
+    const nextPage = hasMore ? page + 1 : null;
+
+    return NextResponse.json({
+      items,
+      page,
+      pageSize,
+      total,
+      hasMore,
+      nextPage,
     });
-    console.log(besins, "besssssss");
-    return NextResponse.json(besins);
   } catch (error) {
     console.error("Database error:", error);
     return NextResponse.json(
@@ -76,7 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newBesin, { status: 201 });
   } catch (error: any) {
     console.error("Error creating besin:", error);
-    
+
     // Handle unique constraint violation
     if (error.code === "P2002") {
       return NextResponse.json(
