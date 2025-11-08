@@ -3,6 +3,42 @@ import prisma from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { sendExpoPushNotification } from "@/lib/expo-push";
+import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
+
+async function notifyWebSubscribers(
+  subscriptions: Array<{
+    endpoint: string;
+    auth: string;
+    p256dh: string;
+  }>,
+  payload: Record<string, unknown>
+) {
+  if (!isWebPushConfigured() || subscriptions.length === 0) {
+    return;
+  }
+
+  for (const subscription of subscriptions) {
+    try {
+      await sendWebPushNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            auth: subscription.auth,
+            p256dh: subscription.p256dh,
+          },
+        },
+        payload
+      );
+    } catch (error: any) {
+      console.error("❌ Web push notification error:", error);
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        await prisma.pushSubscription
+          .delete({ where: { endpoint: subscription.endpoint } })
+          .catch(() => {});
+      }
+    }
+  }
+}
 
 // GET - Get all messages/comments for a diet (conversation history)
 export async function GET(
@@ -290,36 +326,69 @@ export async function POST(
           `📤 Client (${client.name} ${client.surname}) sent message, notifying dietitian...`
         );
 
-        const dietitian = await prisma.user.findUnique({
-          where: { id: client.dietitianId! },
-          select: { pushToken: true, email: true },
-        });
+        if (client.dietitianId) {
+          const dietitian = await prisma.user.findUnique({
+            where: { id: client.dietitianId },
+            select: {
+              id: true,
+              pushToken: true,
+              email: true,
+              pushSubscriptions: {
+                select: {
+                  endpoint: true,
+                  auth: true,
+                  p256dh: true,
+                },
+              },
+            },
+          });
 
-        if (dietitian?.pushToken) {
-          console.log(
-            `✅ Found dietitian push token: ${dietitian.pushToken.substring(
-              0,
-              20
-            )}...`
-          );
-          await sendExpoPushNotification(
-            dietitian.pushToken,
-            `Yeni Mesaj: ${client.name} ${client.surname}`,
-            result!.content.substring(0, 100),
-            {
+          if (dietitian?.pushToken) {
+            console.log(
+              `✅ Found dietitian push token: ${dietitian.pushToken.substring(
+                0,
+                20
+              )}...`
+            );
+            await sendExpoPushNotification(
+              dietitian.pushToken,
+              `Yeni Mesaj: ${client.name} ${client.surname}`,
+              result!.content.substring(0, 100),
+              {
+                type: "new_message",
+                messageId: result!.id,
+                dietId,
+                clientId,
+                clientName: `${client.name} ${client.surname}`,
+              }
+            );
+            console.log(
+              `🔔 Push notification sent to dietitian (${dietitian.email})`
+            );
+          } else {
+            console.log(
+              `⚠️ Dietitian has no push token (${
+                dietitian?.email || "unknown"
+              })`
+            );
+          }
+
+          const webPushUrl = `/clients/${clientId}/messages?dietId=${dietId}`;
+          await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
+            title: `Yeni Mesaj: ${client.name} ${client.surname}`,
+            body: result!.content.substring(0, 120),
+            url: webPushUrl,
+            data: {
               type: "new_message",
               messageId: result!.id,
               dietId,
               clientId,
-              clientName: `${client.name} ${client.surname}`,
-            }
-          );
-          console.log(
-            `🔔 Push notification sent to dietitian (${dietitian.email})`
-          );
+              senderRole: "client",
+            },
+          });
         } else {
           console.log(
-            `⚠️ Dietitian has no push token (${dietitian?.email || "unknown"})`
+            `⚠️ Client has no assigned dietitian; skipping dietitian notifications`
           );
         }
       } else {
@@ -331,7 +400,18 @@ export async function POST(
         if (client.userId) {
           const clientUser = await prisma.user.findUnique({
             where: { id: client.userId },
-            select: { pushToken: true, email: true },
+            select: {
+              id: true,
+              pushToken: true,
+              email: true,
+              pushSubscriptions: {
+                select: {
+                  endpoint: true,
+                  auth: true,
+                  p256dh: true,
+                },
+              },
+            },
           });
 
           if (clientUser?.pushToken) {
@@ -360,6 +440,20 @@ export async function POST(
               `⚠️ Client has no push token (${clientUser?.email || "unknown"})`
             );
           }
+
+          const clientWebPushUrl = `/client/diets/${dietId}/messages`;
+          await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
+            title: "Diyetisyeninizden Yeni Mesaj",
+            body: result!.content.substring(0, 120),
+            url: clientWebPushUrl,
+            data: {
+              type: "new_message",
+              messageId: result!.id,
+              dietId,
+              clientId,
+              senderRole: "dietitian",
+            },
+          });
         } else {
           console.log(
             `⚠️ Client (${client.name} ${client.surname}) has no userId assigned`

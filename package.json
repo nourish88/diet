@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build --webpack",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
@@ -64,6 +64,7 @@
     "twemoji": "^14.0.2",
     "twilio": "^5.10.3",
     "uuid": "^11.1.0",
+    "web-push": "^3.6.6",
     "ws": "^8.13.0",
     "zod": "^3.24.1",
     "zustand": "^5.0.3"

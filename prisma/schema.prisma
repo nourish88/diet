@@ -278,6 +278,7 @@ model User {
   presets       MealPreset[] @relation("PresetDietitian")
   apiKeys       ApiKey[]
   dietFormLogs  DietFormLog[] @relation("DietFormLogDietitian")
+  pushSubscriptions PushSubscription[]
   
   @@index([supabaseId])
   @@index([email])
@@ -401,4 +402,17 @@ model SystemConfig {
   updatedAt   DateTime @updatedAt
   
   @@index([key])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

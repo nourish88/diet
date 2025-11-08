@@ -6,6 +6,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/lib/auth-context";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,9 +19,7 @@ export const metadata: Metadata = {
       { url: "/image.png", sizes: "192x192", type: "image/png" },
       { url: "/image.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: [
-      { url: "/image.png", sizes: "180x180", type: "image/png" },
-    ],
+    apple: [{ url: "/image.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -51,6 +50,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gray-50 min-h-screen`}>
         <AuthProvider>
           <QueryProvider>
+            <PushNotificationProvider />
             <ConditionalLayout>{children}</ConditionalLayout>
           </QueryProvider>
         </AuthProvider>
