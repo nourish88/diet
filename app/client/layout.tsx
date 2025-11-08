@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import ClientTopNav from "@/components/client/ClientTopNav";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -70,6 +71,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <ClientTopNav />
+      <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
+    </div>
+  );
 }
 

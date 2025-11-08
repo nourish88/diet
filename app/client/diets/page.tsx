@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,8 +9,8 @@ import {
   ChevronRight,
   Sparkles,
   MessageCircle,
-  ArrowLeft,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase-browser";
 
 interface Diet {
@@ -25,77 +25,54 @@ interface Diet {
     name: string;
     message: string;
   };
-  oguns: Array<{
-    id: number;
-    name: string;
-    time: string;
-  }>;
+  ogunCount: number;
 }
 
 export default function ClientDietsPage() {
   const router = useRouter();
-  const [diets, setDiets] = useState<Diet[]>([]);
-  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState<number | null>(null);
+  const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    loadDiets();
-  }, []);
-
-  const loadDiets = async () => {
-    try {
-      const supabase = createClient();
+  const {
+    data,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ["client-portal-overview"],
+    queryFn: async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session) return;
-
-      // Get user info first
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!userResponse.ok) return;
-
-      const userData = await userResponse.json();
-      const cId = userData.user.client?.id;
-      setClientId(cId);
-
-      if (!cId) return;
-
-      // Load diets
-      const dietsResponse = await fetch(`/api/clients/${cId}/diets`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (dietsResponse.ok) {
-        const dietsData = await dietsResponse.json();
-        setDiets(dietsData.diets || []);
+      if (!session) {
+        router.push("/login");
+        throw new Error("Session not found");
       }
 
-      // Load unread messages
-      const unreadResponse = await fetch(`/api/clients/${cId}/unread-messages`, {
+      const response = await fetch("/api/client/portal/overview", {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      if (unreadResponse.ok) {
-        const unreadData = await unreadResponse.json();
-        setUnreadCounts(unreadData.unreadByDiet || {});
+      if (!response.ok) {
+        throw new Error("Failed to load overview");
       }
-    } catch (error) {
-      console.error("Error loading diets:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      return response.json() as Promise<{
+        success: boolean;
+        client: { id: number; name: string; surname: string };
+        diets: Diet[];
+        unreadByDiet: Record<number, number>;
+      }>;
+    },
+  });
+
+  const diets = data?.diets ?? [];
+  const unreadCounts = data?.unreadByDiet ?? {};
+  const clientName = data?.client
+    ? `${data.client.name} ${data.client.surname}`
+    : null;
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Tarih belirtilmemiş";
@@ -124,7 +101,7 @@ export default function ClientDietsPage() {
     return null;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -136,50 +113,46 @@ export default function ClientDietsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header with Back Button */}
-        <div className="mb-6">
-          <Link
-            href="/client"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4 font-medium"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Anasayfaya Dön
-          </Link>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-            <div className="flex justify-center mb-4">
-              <img
-                src="/ezgi_evgin-removebg-preview.png"
-                alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
-                className="max-w-[150px] h-auto"
-                style={{ width: "150px", height: "auto" }}
-              />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
               Beslenme Programlarım
             </h1>
-            <p className="text-gray-600">
-              {diets.length > 0
-                ? `${diets.length} beslenme programınız bulunuyor`
-                : "Henüz beslenme programınız bulunmuyor"}
+            <p className="text-gray-600 mt-2">
+              {clientName
+                ? `${clientName} için`
+                : "Kişisel beslenme programlarınız"}
             </p>
           </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isFetching ? "Yenileniyor..." : "Listeyi Yenile"}
+          </button>
         </div>
+        <p className="text-gray-600 mt-4">
+          {diets.length > 0
+            ? `${diets.length} beslenme programınız bulunuyor`
+            : "Henüz beslenme programınız bulunmuyor"}
+        </p>
+      </div>
 
-        {/* Diets List */}
-        {diets.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 text-center">
-            <UtensilsCrossed className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Henüz beslenme programınız yok
-            </h3>
-            <p className="text-gray-600">
-              Diyetisyeniniz size bir program hazırladığında burada görünecektir
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
+      {diets.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 text-center">
+          <UtensilsCrossed className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Henüz beslenme programınız yok
+          </h3>
+          <p className="text-gray-600">
+            Diyetisyeniniz size bir program hazırladığında burada görünecektir
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
           {diets.map((diet, index) => {
             const status = getDietStatus(diet);
             const unreadCount = unreadCounts[diet.id] || 0;
@@ -189,12 +162,9 @@ export default function ClientDietsPage() {
                 key={diet.id}
                 href={`/client/diets/${diet.id}`}
                 className={`bg-white rounded-2xl shadow-lg border-2 ${
-                  index === 0
-                    ? "border-blue-500"
-                    : "border-gray-200"
+                  index === 0 ? "border-blue-500" : "border-gray-200"
                 } p-6 hover:shadow-xl hover:border-blue-400 transition-all group`}
               >
-                {/* Special Badge */}
                 {status && (
                   <div
                     className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-4 ${
@@ -208,7 +178,6 @@ export default function ClientDietsPage() {
                 )}
 
                 <div className="flex items-start justify-between">
-                  {/* Left: Icon & Date Badge */}
                   <div className="flex items-start space-x-4">
                     <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <UtensilsCrossed className="w-7 h-7 text-blue-600" />
@@ -227,7 +196,7 @@ export default function ClientDietsPage() {
 
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1.5" />
-                          {diet.oguns.length} öğün
+                          {diet.ogunCount} öğün
                         </div>
 
                         {unreadCount > 0 && (
@@ -249,7 +218,6 @@ export default function ClientDietsPage() {
                     </div>
                   </div>
 
-                  {/* Right: Arrow & Badge */}
                   <div className="flex items-center space-x-3">
                     {unreadCount > 0 && (
                       <div className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
@@ -262,10 +230,8 @@ export default function ClientDietsPage() {
               </Link>
             );
           })}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-

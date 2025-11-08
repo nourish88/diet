@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import ImageModal from "@/components/ImageModal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Message {
   id: number;
@@ -47,21 +48,74 @@ export default function ClientMessagesPage() {
   const params = useParams();
   const dietId = (params?.id as string) || "";
 
+  const supabase = useMemo(() => createClient(), []);
+  const queryClient = useQueryClient();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [oguns, setOguns] = useState<Ogun[]>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedOgun, setSelectedOgun] = useState<Ogun | null>(null);
   const [showOgunPicker, setShowOgunPicker] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [clientId, setClientId] = useState<number | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const {
+    data,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ["client-diet-messages", dietId],
+    enabled: Boolean(dietId),
+    queryFn: async () => {
+      if (!dietId) throw new Error("Diet ID missing");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push("/login");
+        throw new Error("Session not found");
+      }
+
+      const response = await fetch(
+        `/api/client/portal/diets/${dietId}/messages`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          router.push("/client/diets");
+        }
+        throw new Error("Failed to load messages");
+      }
+
+      return response.json() as Promise<{
+        success: boolean;
+        clientId: number;
+        userId: number;
+        messages: Message[];
+        oguns: Ogun[];
+      }>;
+    },
+  });
+
   useEffect(() => {
-    loadData();
-  }, [dietId]);
+    if (data) {
+      setMessages(data.messages || []);
+      setOguns(data.oguns || []);
+      setClientId(data.clientId);
+      setUserId(data.userId);
+    }
+  }, [data]);
 
   useEffect(() => {
     scrollToBottom();
@@ -84,74 +138,8 @@ export default function ClientMessagesPage() {
     }
   }, [messages, userId]);
 
-  const loadData = async () => {
-    try {
-      // Early return if dietId is missing
-      if (!dietId) {
-        console.error("❌ Diet ID is missing");
-        return;
-      }
-
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) return;
-
-      // Get user info
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!userResponse.ok) return;
-
-      const userData = await userResponse.json();
-      const cId = userData.user.client?.id;
-      const uId = userData.user.id;
-      setClientId(cId);
-      setUserId(uId);
-
-      if (!cId) return;
-
-      // Load messages
-      const messagesResponse = await fetch(
-        `/api/clients/${cId}/diets/${dietId}/messages`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (messagesResponse.ok) {
-        const messagesData = await messagesResponse.json();
-        setMessages(messagesData.messages || []);
-      }
-
-      // Load diet oguns
-      const dietResponse = await fetch(`/api/clients/${cId}/diets/${dietId}`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (dietResponse.ok) {
-        const dietData = await dietResponse.json();
-        setOguns(dietData.diet?.oguns || []);
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const markMessagesAsRead = async (messageIds: number[]) => {
     try {
-      const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -213,6 +201,9 @@ export default function ClientMessagesPage() {
         setMessages([...messages, data.message]);
         setMessageText("");
         setSelectedOgun(null);
+        queryClient.invalidateQueries({
+          queryKey: ["client-portal-overview"],
+        });
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -239,7 +230,7 @@ export default function ClientMessagesPage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -272,6 +263,13 @@ export default function ClientMessagesPage() {
           Diyetisyenimle İletişim
         </h1>
         <p className="text-sm text-gray-600">Diyet #{dietId}</p>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="mt-3 inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isFetching ? "Yenileniyor..." : "Konuşmayı Yenile"}
+        </button>
       </div>
 
       {/* Messages */}

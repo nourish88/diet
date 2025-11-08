@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase-browser";
 import DatabasePDFButton from "@/components/DatabasePDFButton";
 
@@ -50,76 +51,52 @@ export default function ClientDietDetailPage() {
   const params = useParams();
   const dietId = (params?.id as string) || "";
 
-  const [diet, setDiet] = useState<DietDetail | null>(null);
-  const [clientId, setClientId] = useState<number | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [expandedOguns, setExpandedOguns] = useState<Record<number, boolean>>({});
-  const [loading, setLoading] = useState(true);
+  const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    loadDiet();
-  }, [dietId]);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ["client-diet-detail", dietId],
+    enabled: Boolean(dietId),
+    queryFn: async () => {
+      if (!dietId) throw new Error("Diet ID missing");
 
-  const loadDiet = async () => {
-    try {
-      // Early return if dietId is missing
-      if (!dietId) {
-        console.error("❌ Diet ID is missing");
-        return;
-      }
-
-      const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session) return;
-
-      // Get user info
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!userResponse.ok) return;
-
-      const userData = await userResponse.json();
-      const cId = userData.user.client?.id;
-      setClientId(cId);
-
-      if (!cId) return;
-
-      // Load diet
-      const dietResponse = await fetch(`/api/clients/${cId}/diets/${dietId}`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (dietResponse.ok) {
-        const dietData = await dietResponse.json();
-        setDiet(dietData.diet);
+      if (!session) {
+        router.push("/login");
+        throw new Error("Session not found");
       }
 
-      // Load unread messages
-      const unreadResponse = await fetch(`/api/clients/${cId}/unread-messages`, {
+      const response = await fetch(`/api/client/portal/diets/${dietId}`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      if (unreadResponse.ok) {
-        const unreadData = await unreadResponse.json();
-        const count = unreadData.unreadByDiet?.[dietId] || 0;
-        setUnreadCount(count);
+      if (!response.ok) {
+        if (response.status === 404) {
+          router.push("/client/diets");
+        }
+        throw new Error("Failed to load diet");
       }
-    } catch (error) {
-      console.error("Error loading diet:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      return response.json() as Promise<{
+        success: boolean;
+        diet: DietDetail & { unreadCount: number; clientId: number };
+      }>;
+    },
+  });
+
+  const diet = data?.diet ?? null;
+  const unreadCount = diet?.unreadCount ?? 0;
+  const clientId = diet?.clientId ?? null;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("tr-TR", {
@@ -136,7 +113,7 @@ export default function ClientDietDetailPage() {
     }));
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -174,14 +151,23 @@ export default function ClientDietDetailPage() {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Diyetlerime Dön
           </Link>
-          <DatabasePDFButton
-            diet={diet}
-            className="bg-white text-blue-600 hover:bg-blue-50"
-            size="sm"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Diyeti İndir
-          </DatabasePDFButton>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isFetching ? "Yenileniyor..." : "Yenile"}
+            </button>
+            <DatabasePDFButton
+              diet={diet}
+              className="bg-white text-blue-600 hover:bg-blue-50"
+              size="sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Diyeti İndir
+            </DatabasePDFButton>
+          </div>
         </div>
         <h1 className="text-3xl font-bold mb-2">Beslenme Programı #{diet.id}</h1>
         <div className="flex items-center text-blue-100">
