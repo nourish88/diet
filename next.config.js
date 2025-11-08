@@ -1,8 +1,5 @@
 const path = require("path");
-const fontkitRoot = path.dirname(
-  require.resolve("@foliojs-fork/fontkit/package.json")
-);
-const fontkitIncludes = [path.join(fontkitRoot, "*.trie")];
+const fontkitIncludes = ["./node_modules/@foliojs-fork/fontkit/*.trie"];
 
 const cspDirectives = [
   "default-src 'self'",
