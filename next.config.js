@@ -2,7 +2,11 @@ const path = require("path");
 const fontkitRoot = path.dirname(
   require.resolve("@foliojs-fork/fontkit/package.json")
 );
-const fontkitData = path.join(fontkitRoot, "data.trie");
+const fontkitIncludes = [
+  path.join(fontkitRoot, "data.trie"),
+  path.join(fontkitRoot, "indic.trie"),
+  path.join(fontkitRoot, "use.trie"),
+];
 
 const cspDirectives = [
   "default-src 'self'",
@@ -44,6 +48,8 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
 ];
+
+console.log("Using diet/next.config.js");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -99,8 +105,9 @@ const nextConfig = {
     ];
   },
   outputFileTracingIncludes: {
-    "/api/diets/download/[id]": [fontkitData],
-    "/api/diets/download-pdfmake/[id]": [fontkitData],
+    "/api/diets/download/[id]": fontkitIncludes,
+    "/api/diets/download-pdfmake/[id]": fontkitIncludes,
+    "/api/diets/test-pdf/[id]": fontkitIncludes,
   },
 };
 
