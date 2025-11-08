@@ -14,6 +14,11 @@ import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
 import { toast } from "@/components/ui/use-toast";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import {
+  sanitizeMenuItems,
+  sanitizeMealNote,
+  sortMealsByTime,
+} from "@/lib/diet-utils";
 
 const formatDateTR = (dateString: string | null | undefined | Date) => {
   if (!dateString) return "Tarih Belirtilmemiş";
@@ -279,72 +284,73 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       : "tarihsiz";
   };
 
-  interface MenuItem {
-    miktar?: string;
-    birim?: { name: string } | string;
-    besin?: { name: string } | string;
-  }
-
-  const formatMenuItem = (item: MenuItem | string): string => {
-    if (typeof item === "string") return item;
-    const miktar = item.miktar ?? "";
-    const birim =
-      typeof item.birim === "string" ? item.birim : item.birim?.name ?? "";
-    const besin =
-      typeof item.besin === "string" ? item.besin : item.besin?.name ?? "";
-    return `${miktar} ${birim} ${besin}`.trim();
-  };
-
   const preparePdfData = (
     diet: Diet | undefined,
     pdfData: PDFData | undefined
   ): PDFData | null => {
     console.log("Starting preparePdfData with message:", importantDateMessage);
-    if (pdfData) {
-      // For pdfData case, ensure menu items are properly formatted
-      const processedData: PDFData = {
-        ...pdfData,
-        ogunler: pdfData.ogunler.map((ogun) => ({
-          ...ogun,
-          menuItems: ogun.menuItems
-            .map((item) => formatMenuItem(item))
-            .filter(Boolean),
-        })),
-        isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
-        isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
-        importantDate: pdfData.isImportantDateCelebrated
-          ? { message: importantDateMessage }
-          : undefined,
+  const normalizeMeals = (
+    meals: any[],
+    options: { fromDiet?: boolean } = {}
+  ) => {
+    const { fromDiet = false } = options;
+    const normalizedMeals = (meals || []).map((meal: any) => {
+      const sourceItems = fromDiet ? meal.items : meal.menuItems;
+      const menuItems = sanitizeMenuItems(
+        Array.isArray(sourceItems) ? sourceItems : []
+      );
+
+      const notesSource = fromDiet
+        ? meal.detail ?? meal.notes ?? ""
+        : meal.notes ?? meal.detail ?? "";
+
+      return {
+        name: (meal.name || "").toString().trim(),
+        time: (meal.time || "").toString().trim(),
+        menuItems: menuItems.length > 0 ? menuItems : ["-"],
+        notes: fromDiet
+          ? sanitizeMealNote(notesSource)
+          : sanitizeMealNote(notesSource),
       };
-      return processedData;
-    }
-    if (!diet) return null;
-    // Handle diet data case
-    const oguns = diet.Oguns || [];
-    const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
-    return {
-      fullName: clientName,
-      dietDate: diet.Tarih || new Date().toISOString(),
-      weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
-      target: diet.Hedef || "Hedef belirtilmemiş",
-      ogunler: oguns.map((meal: any) => ({
-        name: meal.name,
-        time: meal.time,
-        menuItems: meal.items
-          .map((item: any) => formatMenuItem(item))
-          .filter(Boolean),
-        notes: meal.detail || meal.notes || "",
-      })),
-      waterConsumption: diet.Su || "Belirtilmemiş",
-      physicalActivity: diet.Fizik || "Belirtilmemiş",
-      dietitianNote: diet.dietitianNote || "",
-      isBirthdayCelebration: diet.isBirthdayCelebration || false,
-      isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-      importantDate: diet.isImportantDateCelebrated
-        ? { message: importantDateMessage }
-        : undefined,
-    };
+    });
+
+    return sortMealsByTime(normalizedMeals);
   };
+
+  if (pdfData) {
+    return {
+      ...pdfData,
+      ogunler: normalizeMeals(pdfData.ogunler || []),
+      isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
+      isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
+      importantDate: pdfData.isImportantDateCelebrated
+        ? { message: importantDateMessage || pdfData.importantDate?.message || "" }
+        : undefined,
+      waterConsumption: pdfData.waterConsumption || "",
+      physicalActivity: pdfData.physicalActivity || "",
+    };
+  }
+
+  if (!diet) return null;
+
+  const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
+
+  return {
+    fullName: clientName,
+    dietDate: diet.Tarih || new Date().toISOString(),
+    weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
+    target: diet.Hedef || "Hedef belirtilmemiş",
+    ogunler: normalizeMeals(diet.Oguns || [], { fromDiet: true }),
+    waterConsumption: diet.Su || "Belirtilmemiş",
+    physicalActivity: diet.Fizik || "Belirtilmemiş",
+    dietitianNote: diet.dietitianNote || "",
+    isBirthdayCelebration: diet.isBirthdayCelebration || false,
+    isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
+    importantDate: diet.isImportantDateCelebrated
+      ? { message: importantDateMessage }
+      : undefined,
+  };
+};
 
   interface TableCell {
     text?: string | any[];
@@ -363,28 +369,40 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       ],
     ];
     for (const ogun of dietData.ogunler) {
-      const menuText = ogun.menuItems.join("\n• ");
+      const menuItems =
+        Array.isArray(ogun.menuItems) && ogun.menuItems.length > 0
+          ? ogun.menuItems
+          : ["-"];
+      const hasRealItems = menuItems.some(
+        (item) => item && item.trim() && item.trim() !== "-"
+      );
+      const menuText = hasRealItems
+        ? menuItems.map((item) => `• ${item}`).join("\n")
+        : "-";
+      const cleanedNote = sanitizeMealNote(ogun.notes);
+      const noteCell = {
+        text: cleanedNote || "-",
+        style: "tableCell",
+        alignment: "left",
+        noWrap: false,
+      };
       rows.push([
         {
-          text: ogun.name,
+          text: ogun.name || "-",
           style: "tableCell",
           alignment: "center",
         },
         {
-          text: ogun.time,
+          text: ogun.time || "-",
           style: "tableCell",
           alignment: "center",
         },
         {
-          text: `• ${menuText}`,
+          text: menuText,
           style: "tableCell",
           alignment: "left",
         },
-        {
-          ...buildInlineColumns(await convertEmojisToImages(ogun.notes || "-")),
-          style: "tableCell",
-          alignment: "left",
-        } as any,
+        noteCell as any,
       ]);
     }
     // Append water consumption row only if it has a value

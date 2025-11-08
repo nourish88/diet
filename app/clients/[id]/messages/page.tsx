@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import ImageModal from "@/components/ImageModal";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Message {
   id: number;
@@ -56,16 +57,26 @@ export default function ClientMessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [clientName, setClientName] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const supabaseClientRef = useRef(createClient());
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const authHeadersRef = useRef<Record<string, string>>({});
 
   // Helper function to get auth headers
   const getAuthHeaders = async () => {
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    return {
-      'Content-Type': 'application/json',
-      ...(session && { 'Authorization': `Bearer ${session.access_token}` }),
+    const supabase = supabaseClientRef.current;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(session && { Authorization: `Bearer ${session.access_token}` }),
     };
+
+    authHeadersRef.current = headers;
+    return headers;
   };
 
   useEffect(() => {
@@ -77,6 +88,10 @@ export default function ClientMessagesPage() {
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
   }, [messages]);
 
   // Auto-mark messages as read when visible
@@ -161,6 +176,154 @@ export default function ClientMessagesPage() {
     }
   };
 
+  const fetchMessageById = async (messageId: number): Promise<Message | null> => {
+    try {
+      const headers =
+        Object.keys(authHeadersRef.current).length > 0
+          ? authHeadersRef.current
+          : await getAuthHeaders();
+      const response = await fetch(
+        `/api/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`,
+        { headers }
+      );
+      const data = await response.json();
+      if (data.success && data.message) {
+        return data.message as Message;
+      }
+    } catch (error) {
+      console.error("Error fetching message by id:", error);
+    }
+    return null;
+  };
+
+  const updatePresence = async (
+    isActive: boolean,
+    options: { keepalive?: boolean } = {}
+  ) => {
+    if (!dietId) return;
+
+    try {
+      const headers =
+        Object.keys(authHeadersRef.current).length > 0
+          ? authHeadersRef.current
+          : await getAuthHeaders();
+      await fetch("/api/conversations/presence", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          dietId: Number(dietId),
+          isActive,
+          source: "web",
+        }),
+        keepalive: options.keepalive ?? false,
+      });
+    } catch (error) {
+      console.error("❌ Presence update error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!clientId || !dietId) return;
+
+    updatePresence(true);
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        updatePresence(false, { keepalive: true });
+      } else {
+        updatePresence(true);
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      updatePresence(false, { keepalive: true });
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    presenceIntervalRef.current = setInterval(() => {
+      updatePresence(true, { keepalive: true });
+    }, 20000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (presenceIntervalRef.current) {
+        clearInterval(presenceIntervalRef.current);
+        presenceIntervalRef.current = null;
+      }
+      updatePresence(false, { keepalive: true });
+    };
+  }, [clientId, dietId]);
+
+  useEffect(() => {
+    if (!clientId || !dietId) return;
+
+    const supabase = supabaseClientRef.current;
+    const channel = supabase
+      .channel(`diet-comments-${dietId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        async (payload) => {
+          const newMessageId = (payload.new as any)?.id as number | undefined;
+          if (!newMessageId) return;
+          if (messagesRef.current.some((msg) => msg.id === newMessageId)) {
+            return;
+          }
+          const message = await fetchMessageById(newMessageId);
+          if (message) {
+            setMessages((prev) => [...prev, message]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated?.id) return;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === updated.id
+                ? {
+                    ...msg,
+                    isRead:
+                      typeof updated.isRead === "boolean"
+                        ? updated.isRead
+                        : msg.isRead,
+                    readAt: updated.readAt
+                      ? new Date(updated.readAt).toISOString()
+                      : msg.readAt,
+                  }
+                : msg
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [clientId, dietId]);
+
   const markMessagesAsRead = async (messageIds: number[]) => {
     try {
       if (!clientId || !dietId) {
@@ -226,7 +389,7 @@ export default function ClientMessagesPage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessages([...messages, data.message]);
+        setMessages((prev) => [...prev, data.message]);
         setMessageText("");
       } else {
         console.error("Failed to send message:", data.error);

@@ -119,7 +119,7 @@ const Navbar = () => {
                 style={{ width: "120px", height: "auto" }}
               />
             </div>
-            <div>
+            <div className="hidden md:block">
               <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
                 Diyet Danışmanlık Hizmetleri
               </span>
@@ -146,7 +146,7 @@ const Navbar = () => {
               style={{ width: "120px", height: "auto" }}
             />
           </div>
-          <div>
+          <div className="hidden md:block">
             <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
               Diyet Danışmanlık Hizmetleri
             </span>

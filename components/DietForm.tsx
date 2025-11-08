@@ -22,13 +22,14 @@ import { useFontStore } from "@/store/store";
 import ClientWarnings from "./ClientWarnings";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Textarea } from "./ui/textarea";
+import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
 import TemplateService from "@/services/TemplateService";
 import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { useDietLogging } from "@/hooks/useDietLogging";
-import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
+import { sortMealsByTime, stripEmojis } from "@/lib/diet-utils";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -56,6 +57,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
   const { toast } = useToast();
   const { saveDiet } = useDietActions();
+  const [recentlyMovedOgunIndex, setRecentlyMovedOgunIndex] = useState<
+    number | null
+  >(null);
+  const [isSortingMeals, setIsSortingMeals] = useState(false);
 
   // Initialize diet logging - use refs to track changes
   const [currentDietId, setCurrentDietId] = useState<number | undefined>(
@@ -228,7 +233,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           })),
         };
 
-        setDiet(templateDiet);
+        setDiet({
+          ...templateDiet,
+          Oguns: sortMealsByTime(templateDiet.Oguns),
+        });
 
         // Log template loaded
         if (dietLogging.isReady) {
@@ -354,7 +362,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           setDiet((prev) => ({
             ...prev,
             id: undefined, // Ensure no ID for new diet
-            Oguns: OGUN,
+            Oguns: sortMealsByTime(
+              OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
+            ),
             Su: "",
             Fizik: "",
             Sonuc: "",
@@ -384,7 +394,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         console.log(
           `📋 Loaded latest diet (ID: ${data.id}) for display/reference only`
         );
-        setDiet(uiDiet);
+        setDiet({
+          ...uiDiet,
+          Oguns: sortMealsByTime(uiDiet.Oguns),
+        });
 
         // Log diet loaded (for reference/tracking)
         if (dietLogging.isReady) {
@@ -397,7 +410,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       setDiet((prev) => ({
         ...prev,
         id: undefined, // Ensure no ID for new diet
-        Oguns: OGUN,
+        Oguns: sortMealsByTime(
+          OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
+        ),
         Su: "",
         Fizik: "",
         Sonuc: "",
@@ -430,6 +445,41 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Function to convert database diet format to UI diet format
   const convertDbDietToUiDiet = (dbDiet: any, clientId?: number): Diet => {
     try {
+      const mappedOguns =
+        dbDiet.oguns?.map((dbOgun: any) => ({
+          name: dbOgun.name || "",
+          time: dbOgun.time || "",
+          detail: stripEmojis(dbOgun.detail || ""),
+          order: dbOgun.order || 0,
+          items:
+            dbOgun.items?.map((dbItem: any) => {
+              const miktarValue = dbItem.miktar || "";
+              const birimValue =
+                typeof dbItem.birim === "object" && dbItem.birim
+                  ? dbItem.birim.name || ""
+                  : dbItem.birim || "";
+              const besinValue =
+                typeof dbItem.besin === "object" && dbItem.besin
+                  ? dbItem.besin.name || ""
+                  : dbItem.besin || "";
+              const priorityValue =
+                typeof dbItem.besin === "object" && dbItem.besin
+                  ? dbItem.besin.priority ?? null
+                  : typeof dbItem.besinPriority === "number"
+                  ? dbItem.besinPriority
+                  : typeof dbItem.priority === "number"
+                  ? dbItem.priority
+                  : null;
+
+              return {
+                miktar: miktarValue,
+                birim: birimValue,
+                besin: besinValue,
+                besinPriority: priorityValue,
+              };
+            }) || [],
+        })) || OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }));
+
       return {
         id: dbDiet.id,
         AdSoyad: getClientFullName(clientId || selectedClientId),
@@ -443,40 +493,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         isImportantDateCelebrated: dbDiet.isImportantDateCelebrated || false,
         importantDateId: dbDiet.importantDateId || null,
         importantDateName: dbDiet.importantDateName || null,
-        Oguns:
-          dbDiet.oguns?.map((dbOgun: any) => ({
-            name: dbOgun.name || "",
-            time: dbOgun.time || "",
-            detail: dbOgun.detail || "",
-            order: dbOgun.order || 0,
-            items:
-              dbOgun.items?.map((dbItem: any) => {
-                const miktarValue = dbItem.miktar || "";
-                const birimValue =
-                  typeof dbItem.birim === "object" && dbItem.birim
-                    ? dbItem.birim.name || ""
-                    : dbItem.birim || "";
-                const besinValue =
-                  typeof dbItem.besin === "object" && dbItem.besin
-                    ? dbItem.besin.name || ""
-                    : dbItem.besin || "";
-                const priorityValue =
-                  typeof dbItem.besin === "object" && dbItem.besin
-                    ? dbItem.besin.priority ?? null
-                    : typeof dbItem.besinPriority === "number"
-                    ? dbItem.besinPriority
-                    : typeof dbItem.priority === "number"
-                    ? dbItem.priority
-                    : null;
-
-                return {
-                  miktar: miktarValue,
-                  birim: birimValue,
-                  besin: besinValue,
-                  besinPriority: priorityValue,
-                };
-              }) || [],
-          })) || OGUN,
+        Oguns: sortMealsByTime(mappedOguns),
       };
     } catch (error) {
       console.error("Error converting DB diet to UI diet:", error);
@@ -493,7 +510,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         isImportantDateCelebrated: false,
         importantDateId: null,
         importantDateName: null,
-        Oguns: OGUN,
+        Oguns: sortMealsByTime(
+          OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
+        ),
       };
     }
   };
@@ -511,10 +530,13 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       order: diet.Oguns.length + 1,
     };
     const ogunIndex = diet.Oguns.length;
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: [...prev.Oguns, newOgun],
-    }));
+    setDiet((prev) => {
+      const updatedOguns = [...prev.Oguns, newOgun];
+      return {
+        ...prev,
+        Oguns: sortMealsByTime(updatedOguns),
+      };
+    });
 
     // Log ogun added
     if (dietLogging.isReady) {
@@ -524,10 +546,13 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
   const handleRemoveOgun = (index: number) => {
     const ogunToRemove = diet.Oguns[index];
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: prev.Oguns.filter((_, idx) => idx !== index),
-    }));
+    setDiet((prev) => {
+      const remaining = prev.Oguns.filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        Oguns: sortMealsByTime(remaining),
+      };
+    });
 
     // Log ogun removed
     if (dietLogging.isReady) {
@@ -540,18 +565,49 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     field: keyof Ogun,
     value: string
   ) => {
-    const previousValue = diet.Oguns[index]?.[field];
+    const sanitizedValue =
+      field === "detail" ? stripEmojis(value || "") : value;
+
     setDiet((prev) => ({
       ...prev,
       Oguns: prev.Oguns.map((ogun, idx) =>
-        idx === index ? { ...ogun, [field]: value } : ogun
+        idx === index ? { ...ogun, [field]: sanitizedValue } : ogun
       ),
     }));
 
-    // Log ogun updated
     if (dietLogging.isReady) {
-      dietLogging.logOgunUpdated(index, field as string, value);
+      dietLogging.logOgunUpdated(index, field as string, sanitizedValue);
     }
+  };
+
+  const handleMealTimeBlur = (index: number) => {
+    const currentOgun = diet.Oguns[index];
+    if (!currentOgun || !currentOgun.time) {
+      return;
+    }
+
+    const mealLabel = currentOgun.name || "Öğün";
+    const sorted = sortMealsByTime([...diet.Oguns]);
+    const newIndex = sorted.indexOf(currentOgun);
+
+    setIsSortingMeals(true);
+    setDiet((prev) => ({
+      ...prev,
+      Oguns: sorted,
+    }));
+
+    if (newIndex !== -1 && newIndex !== index) {
+      setRecentlyMovedOgunIndex(newIndex);
+      toast({
+        title: "Öğün sırası güncellendi",
+        description: `${mealLabel} saat bilgisine göre yeniden konumlandı.`,
+        duration: 2500,
+      });
+    } else {
+      setRecentlyMovedOgunIndex(null);
+    }
+
+    setTimeout(() => setIsSortingMeals(false), 250);
   };
 
   // Check how menu items are being added
@@ -659,6 +715,15 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       dietLogging.logItemUpdated(ogunIndex, itemIndex, field, logValue);
     }
   };
+
+  useEffect(() => {
+    if (recentlyMovedOgunIndex !== null) {
+      const timeout = setTimeout(() => {
+        setRecentlyMovedOgunIndex(null);
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [recentlyMovedOgunIndex]);
   const generatePDF = async () => {
     const element = document.getElementById("content");
     console.log("Generating PDF with diet data:", diet);
@@ -906,7 +971,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                     })),
                   };
 
-                  setDiet(templateDiet);
+                  setDiet({
+                    ...templateDiet,
+                    Oguns: sortMealsByTime(templateDiet.Oguns),
+                  });
 
                   // Log template loaded
                   if (dietLogging.isReady) {
@@ -1050,6 +1118,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   handleAddMenuItem={handleAddMenuItem}
                   handleMenuItemChange={handleMenuItemChange}
                   disabled={isFormDisabled}
+                  isSorting={isSortingMeals}
                   bannedFoods={clientData.bannedFoods}
                   onAddOgun={handleAddOgun}
                   onItemRemoved={(ogunIndex, itemIndex) => {
@@ -1057,61 +1126,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                       dietLogging.logItemRemoved(ogunIndex, itemIndex);
                     }
                   }}
+                  highlightedIndex={recentlyMovedOgunIndex}
+                  onMealTimeBlur={handleMealTimeBlur}
                 />
-              </div>
-
-              <div className="space-y-4 mt-6">
-                <Card className="border-border/40">
-                  <CardHeader>
-                    <CardTitle className="text-xl font-semibold text-primary">
-                      Diyetisyen Notu
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Danışana özel notunuzu buraya yazabilirsiniz..."
-                        className="min-h-[100px] flex-1"
-                        value={diet.dietitianNote || ""}
-                        onChange={(e) => {
-                          const previousValue = diet.dietitianNote;
-                          setDiet({
-                            ...diet,
-                            dietitianNote: e.target.value,
-                          });
-                          // Log field change
-                          if (dietLogging.isReady) {
-                            dietLogging.logFieldChanged(
-                              "dietitianNote",
-                              e.target.value,
-                              previousValue
-                            );
-                          }
-                        }}
-                      />
-                      <div className="flex-shrink-0">
-                        <EmojiPickerButton
-                          onEmojiSelect={(emoji) => {
-                            const previousValue = diet.dietitianNote;
-                            const newValue = (diet.dietitianNote || "") + emoji;
-                            setDiet({
-                              ...diet,
-                              dietitianNote: newValue,
-                            });
-                            // Log field change
-                            if (dietLogging.isReady) {
-                              dietLogging.logFieldChanged(
-                                "dietitianNote",
-                                newValue,
-                                previousValue
-                              );
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
 
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-8">

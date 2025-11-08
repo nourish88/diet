@@ -54,6 +54,7 @@ model Diet {
   oguns Ogun[]
   comments DietComment[]
   mealPhotos MealPhoto[]
+  conversationPresences ConversationPresence[]
 
   isBirthdayCelebration        Boolean        @default(false)
 
@@ -279,6 +280,7 @@ model User {
   apiKeys       ApiKey[]
   dietFormLogs  DietFormLog[] @relation("DietFormLogDietitian")
   pushSubscriptions PushSubscription[]
+  conversationPresences ConversationPresence[]
   
   @@index([supabaseId])
   @@index([email])
@@ -326,6 +328,21 @@ model MealPhoto {
   @@index([dietId, ogunId])
   @@index([expiresAt])
   @@index([commentId])
+}
+
+model ConversationPresence {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dietId       Int
+  diet         Diet     @relation(fields: [dietId], references: [id], onDelete: Cascade)
+  isActive     Boolean  @default(false)
+  source       String?
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @updatedAt
+
+  @@unique([userId, dietId])
+  @@index([dietId, isActive])
 }
 
 model NotificationPreference {

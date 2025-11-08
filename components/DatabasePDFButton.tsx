@@ -5,6 +5,11 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import {
+  sanitizeMenuItems,
+  sanitizeMealNote,
+  sortMealsByTime,
+} from "@/lib/diet-utils";
 interface TableCell {
   text?: string | any[];
   style: string;
@@ -186,7 +191,6 @@ const DatabasePDFButton = ({
 
     console.log("Preparing PDF data from database diet:", diet);
 
-    // Extract client name
     let clientName = "İsimsiz Danışan";
     if (diet.client) {
       clientName =
@@ -194,32 +198,22 @@ const DatabasePDFButton = ({
         `${diet.client.name || ""} ${diet.client.surname || ""}`.trim();
     }
 
-    // Process meals (oguns)
-    const processedMeals = (diet.oguns || []).map((ogun: any) => {
-      // Process menu items
-      const menuItems = (ogun.items || []).map((item: any) => {
-        const besinName =
-          typeof item.besin === "string" ? item.besin : item.besin?.name;
-        const birimName =
-          typeof item.birim === "string" ? item.birim : item.birim?.name;
-        return `${besinName || ""} ${item.miktar || ""} ${
-          birimName || ""
-        }`.trim();
-      });
+    const unsortedMeals: PDFData["ogunler"] = (diet.oguns || []).map(
+      (ogun: any) => {
+        const menuItems = sanitizeMenuItems(
+          Array.isArray(ogun.items) ? ogun.items : []
+        );
 
-      return {
-        name: ogun.name || "Belirtilmemiş",
-        time: ogun.time || "",
-        menuItems: menuItems.length > 0 ? menuItems : ["Belirtilmemiş"],
-        notes: ogun.detail || "",
-        order: ogun.order || 0,
-      };
-    });
+        return {
+          name: (ogun.name || "Belirtilmemiş").toString(),
+          time: (ogun.time || "").toString(),
+          menuItems: menuItems.length > 0 ? menuItems : ["-"],
+          notes: sanitizeMealNote(ogun.detail || ogun.notes || ""),
+        };
+      }
+    ) as PDFData["ogunler"];
 
-    // Sort meals by order if available
-    const sortedMeals = processedMeals.sort(
-      (a: any, b: any) => (a.order || 0) - (b.order || 0)
-    );
+    const sortedMeals = sortMealsByTime(unsortedMeals);
 
     const pdfData = {
       fullName: clientName,
@@ -541,28 +535,40 @@ const DatabasePDFButton = ({
     ];
 
     for (const ogun of dietData.ogunler) {
-      const menuText = ogun.menuItems.join("\n• ");
+      const menuItems =
+        Array.isArray(ogun.menuItems) && ogun.menuItems.length > 0
+          ? ogun.menuItems
+          : ["-"];
+      const hasRealItems = menuItems.some(
+        (item) => item && item.trim() && item.trim() !== "-"
+      );
+      const menuText = hasRealItems
+        ? menuItems.map((item) => `• ${item}`).join("\n")
+        : "-";
+      const cleanedNote = sanitizeMealNote(ogun.notes);
+      const noteCell = {
+        text: cleanedNote || "-",
+        style: "tableCell",
+        alignment: "left",
+        noWrap: false,
+      };
       rows.push([
         {
-          text: ogun.name,
+          text: ogun.name || "-",
           style: "tableCell",
           alignment: "center",
         },
         {
-          text: ogun.time,
+          text: ogun.time || "-",
           style: "tableCell",
           alignment: "center",
         },
         {
-          text: `• ${menuText}`,
+          text: menuText,
           style: "tableCell",
           alignment: "left",
         },
-        {
-          ...buildInlineColumns(await convertEmojisToImages(ogun.notes || "-")),
-          style: "tableCell",
-          alignment: "left",
-        } as any,
+        noteCell as any,
       ]);
     }
 

@@ -27,7 +27,6 @@ import {
 import { OgunQuickActions } from "@/components/OgunQuickActions";
 import { MealPreset } from "@/services/PresetService";
 import { SmartBesinInput } from "@/components/SmartBesinInput";
-import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
 import { useToast } from "@/components/ui/use-toast";
 
 interface DietTableProps {
@@ -48,6 +47,9 @@ interface DietTableProps {
   bannedFoods?: Array<{ besin: { id: number; name: string } }>;
   onAddOgun: () => void;
   onItemRemoved?: (ogunIndex: number, itemIndex: number) => void;
+  highlightedIndex?: number | null;
+  onMealTimeBlur?: (ogunIndex: number) => void;
+  isSorting?: boolean;
 }
 
 const DietTable = ({
@@ -63,7 +65,12 @@ const DietTable = ({
   bannedFoods = [],
   onAddOgun,
   onItemRemoved,
+  highlightedIndex = null,
+  onMealTimeBlur,
+  isSorting = false,
 }: DietTableProps) => {
+  const effectiveDisabled = disabled || isSorting;
+
   const [windowWidth, setWindowWidth] = useState(0);
   const [columnWidths, setColumnWidths] = useState({
     ogun: 18,
@@ -279,8 +286,12 @@ const DietTable = ({
   // Check if mobile view (less than 768px)
   const isMobile = windowWidth > 0 && windowWidth < 768;
 
+  const containerClass = effectiveDisabled
+    ? "opacity-60 pointer-events-none transition-opacity duration-150"
+    : "";
+
   return (
-    <div className={disabled ? "opacity-50 pointer-events-none" : ""}>
+    <div className={containerClass}>
       {isMobile && isBrowser ? (
         // Mobile view: Card-based layout
         <div className="space-y-4">
@@ -303,7 +314,11 @@ const DietTable = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="bg-white border-2 border-purple-700 rounded-lg shadow-md p-4 space-y-3"
+                          className={`bg-white border-2 border-purple-700 rounded-lg shadow-md p-4 space-y-3 transition-all duration-300 ${
+                            highlightedIndex === index
+                              ? "ring-2 ring-indigo-400 animate-bounce"
+                              : ""
+                          }`}
                         >
                           {/* Ogun Header */}
                           <div className="flex items-center justify-between pb-2 border-b border-gray-200">
@@ -334,16 +349,19 @@ const DietTable = ({
                                     e.target.value
                                   )
                                 }
+                                onBlur={() => onMealTimeBlur?.(index)}
                                 className="w-20 text-sm border-gray-300"
                                 placeholder="Saat"
-                                disabled={disabled}
+                                disabled={effectiveDisabled}
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleSortMenuItems(index)}
-                                disabled={disabled || ogun.items.length < 2}
+                                disabled={
+                                  effectiveDisabled || ogun.items.length < 2
+                                }
                                 className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                               >
                                 <ArrowDownUp className="w-4 h-4 mr-1" />
@@ -354,7 +372,7 @@ const DietTable = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleRemoveOgun(index)}
-                                disabled={disabled}
+                                disabled={effectiveDisabled}
                                 className="text-red-600 hover:text-red-700"
                               >
                                 <Trash className="w-4 h-4" />
@@ -382,7 +400,7 @@ const DietTable = ({
                                     }
                                     placeholder="Miktar"
                                     className="w-full text-sm"
-                                    disabled={disabled}
+                                  disabled={effectiveDisabled}
                                   />
                                   <Input
                                     value={
@@ -403,7 +421,7 @@ const DietTable = ({
                                     }
                                     placeholder="Birim (örn: Yemek Kaşığı)"
                                     className="w-full text-sm"
-                                    disabled={disabled}
+                                  disabled={effectiveDisabled}
                                   />
                                 </div>
                                 <SmartBesinInput
@@ -452,7 +470,7 @@ const DietTable = ({
                                   onClick={() =>
                                     handleDeleteMenuItem(index, itemIndex)
                                   }
-                                  disabled={disabled}
+                                  disabled={effectiveDisabled}
                                   className="self-start text-red-600 hover:text-red-700 text-xs"
                                 >
                                   <Trash className="w-3 h-3 mr-1" />
@@ -465,7 +483,7 @@ const DietTable = ({
                               variant="outline"
                               size="sm"
                               onClick={() => handleAddMenuItem(index)}
-                              disabled={disabled}
+                              disabled={effectiveDisabled}
                               className="w-full border-dashed"
                             >
                               <Plus className="w-4 h-4 mr-1" />
@@ -474,30 +492,20 @@ const DietTable = ({
                           </div>
 
                           {/* Detail/Notes */}
-                          <div className="flex gap-2">
-                            <Textarea
-                              value={ogun.detail || ""}
-                              onChange={(e) =>
-                                handleOgunChange(
-                                  index,
-                                  "detail",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Açıklama/Not..."
-                              className="text-sm border-gray-300 flex-1"
-                              rows={2}
-                              disabled={disabled}
-                            />
-                            <div className="flex-shrink-0">
-                              <EmojiPickerButton
-                                onEmojiSelect={(emoji) => {
-                                  const newValue = (ogun.detail || "") + emoji;
-                                  handleOgunChange(index, "detail", newValue);
-                                }}
-                              />
-                            </div>
-                          </div>
+                          <Textarea
+                            value={ogun.detail || ""}
+                            onChange={(e) =>
+                              handleOgunChange(
+                                index,
+                                "detail",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Açıklama/Not..."
+                            className="text-sm border-gray-300"
+                            rows={2}
+                            disabled={effectiveDisabled}
+                          />
                         </div>
                       )}
                     </Draggable>
@@ -509,7 +517,7 @@ const DietTable = ({
                     type="button"
                     variant="outline"
                     onClick={onAddOgun}
-                    disabled={disabled}
+                    disabled={effectiveDisabled}
                     className="w-full border-2 border-dashed border-purple-700 text-purple-700 hover:bg-purple-50 mt-4"
                   >
                     <Plus className="w-5 h-5 mr-2" />
@@ -625,7 +633,11 @@ const DietTable = ({
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="divide-x divide-gray-300 hover:bg-gray-50/80 cursor-move transition-colors duration-150"
+                              className={`divide-x divide-gray-300 hover:bg-gray-50/80 cursor-move transition-colors duration-150 ${
+                                highlightedIndex === index
+                                  ? "ring-2 ring-indigo-400 animate-bounce"
+                                  : ""
+                              }`}
                             >
                               <td
                                 style={{ width: `${columnWidths.ogun}%` }}
@@ -671,7 +683,9 @@ const DietTable = ({
                                       e.target.value
                                     )
                                   }
+                                onBlur={() => onMealTimeBlur?.(index)}
                                   className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                disabled={effectiveDisabled}
                                 />
                               </td>
                               <td
@@ -730,19 +744,6 @@ const DietTable = ({
                                       placeholder="Öğüne Özel Açıklamalar Girebilirsiniz."
                                       className="resize-none h-20 text-sm flex-1"
                                     />
-                                    <div className="flex-shrink-0">
-                                      <EmojiPickerButton
-                                        onEmojiSelect={(emoji) => {
-                                          const newValue =
-                                            (ogun.detail || "") + emoji;
-                                          handleOgunChange(
-                                            index,
-                                            "detail",
-                                            newValue
-                                          );
-                                        }}
-                                      />
-                                    </div>
                                   </div>
                                 </div>
                               </td>

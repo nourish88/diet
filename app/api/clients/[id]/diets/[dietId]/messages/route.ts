@@ -5,6 +5,8 @@ import { addCorsHeaders } from "@/lib/cors";
 import { sendExpoPushNotification } from "@/lib/expo-push";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 
+const ACTIVE_THRESHOLD_MS = 30 * 1000;
+
 async function notifyWebSubscribers(
   subscriptions: Array<{
     endpoint: string;
@@ -78,6 +80,21 @@ async function notifyWebSubscribers(
   }
 }
 
+async function isUserActivelyViewing(userId: number, dietId: number) {
+  const presence = await prisma.conversationPresence.findFirst({
+    where: {
+      userId,
+      dietId,
+      isActive: true,
+      lastActiveAt: {
+        gte: new Date(Date.now() - ACTIVE_THRESHOLD_MS),
+      },
+    },
+  });
+
+  return Boolean(presence);
+}
+
 // GET - Get all messages/comments for a diet (conversation history)
 export async function GET(
   request: NextRequest,
@@ -100,6 +117,9 @@ export async function GET(
         NextResponse.json({ error: "Invalid ID" }, { status: 400 })
       );
     }
+
+    const searchParams = request.nextUrl.searchParams;
+    const messageIdParam = searchParams.get("messageId");
 
     // Verify client access
     const client = await prisma.client.findUnique({
@@ -128,6 +148,63 @@ export async function GET(
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
         NextResponse.json({ error: "Access denied" }, { status: 403 })
+      );
+    }
+
+    if (messageIdParam) {
+      const messageId = parseInt(messageIdParam);
+      if (isNaN(messageId)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid messageId" }, { status: 400 })
+        );
+      }
+
+      const message = await prisma.dietComment.findUnique({
+        where: {
+          id: messageId,
+          dietId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+            },
+          },
+          ogun: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          photos: {
+            where: {
+              expiresAt: {
+                gte: new Date(),
+              },
+            },
+            select: {
+              id: true,
+              imageData: true,
+              uploadedAt: true,
+              expiresAt: true,
+            },
+          },
+        },
+      });
+
+      if (!message) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Message not found" }, { status: 404 })
+        );
+      }
+
+      return addCorsHeaders(
+        NextResponse.json({
+          success: true,
+          message,
+        })
       );
     }
 
@@ -381,7 +458,12 @@ export async function POST(
             },
           });
 
-          if (dietitian?.pushToken) {
+          const dietitianActive = await isUserActivelyViewing(
+            client.dietitianId,
+            dietId
+          );
+
+          if (dietitian?.pushToken && !dietitianActive) {
             console.log(
               `✅ Found dietitian push token: ${dietitian.pushToken.substring(
                 0,
@@ -405,25 +487,31 @@ export async function POST(
             );
           } else {
             console.log(
-              `⚠️ Dietitian has no push token (${
-                dietitian?.email || "unknown"
-              })`
+              dietitianActive
+                ? "ℹ️ Dietitian is actively viewing the conversation, skipping push."
+                : `⚠️ Dietitian has no push token (${
+                    dietitian?.email || "unknown"
+                  })`
             );
           }
 
           const webPushUrl = `/clients/${clientId}/messages?dietId=${dietId}`;
-          await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
-            title: `Yeni Mesaj: ${client.name} ${client.surname}`,
-            body: result!.content.substring(0, 120),
-            url: webPushUrl,
-            data: {
-              type: "new_message",
-              messageId: result!.id,
-              dietId,
-              clientId,
-              senderRole: "client",
-            },
-          });
+          if (!dietitianActive) {
+            await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
+              title: `Yeni Mesaj: ${client.name} ${client.surname}`,
+              body: result!.content.substring(0, 120),
+              url: webPushUrl,
+              data: {
+                type: "new_message",
+                messageId: result!.id,
+                dietId,
+                clientId,
+                senderRole: "client",
+              },
+            });
+          } else {
+            console.log("ℹ️ Dietitian active in conversation, skipping web push.");
+          }
         } else {
           console.log(
             `⚠️ Client has no assigned dietitian; skipping dietitian notifications`
@@ -452,7 +540,12 @@ export async function POST(
             },
           });
 
-          if (clientUser?.pushToken) {
+          const clientActive = await isUserActivelyViewing(
+            client.userId,
+            dietId
+          );
+
+          if (clientUser?.pushToken && !clientActive) {
             console.log(
               `✅ Found client push token: ${clientUser.pushToken.substring(
                 0,
@@ -475,23 +568,29 @@ export async function POST(
             );
           } else {
             console.log(
-              `⚠️ Client has no push token (${clientUser?.email || "unknown"})`
+              clientActive
+                ? "ℹ️ Client is actively viewing the conversation, skipping push."
+                : `⚠️ Client has no push token (${clientUser?.email || "unknown"})`
             );
           }
 
           const clientWebPushUrl = `/client/diets/${dietId}/messages`;
-          await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
-            title: "Diyetisyeninizden Yeni Mesaj",
-            body: result!.content.substring(0, 120),
-            url: clientWebPushUrl,
-            data: {
-              type: "new_message",
-              messageId: result!.id,
-              dietId,
-              clientId,
-              senderRole: "dietitian",
-            },
-          });
+          if (!clientActive) {
+            await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
+              title: "Diyetisyeninizden Yeni Mesaj",
+              body: result!.content.substring(0, 120),
+              url: clientWebPushUrl,
+              data: {
+                type: "new_message",
+                messageId: result!.id,
+                dietId,
+                clientId,
+                senderRole: "dietitian",
+              },
+            });
+          } else {
+            console.log("ℹ️ Client active in conversation, skipping web push.");
+          }
         } else {
           console.log(
             `⚠️ Client (${client.name} ${client.surname}) has no userId assigned`

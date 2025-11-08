@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Image,
+  AppState,
 } from "react-native";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
@@ -26,6 +27,8 @@ import {
   ArrowLeft,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import supabase from "@/lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Message {
   id: number;
@@ -73,11 +76,18 @@ export default function MessagesScreen() {
   
   // Available oguns (will be fetched from diet)
   const [oguns, setOguns] = useState<Ogun[]>([]);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   useEffect(() => {
     loadMessages();
     loadDietOguns();
   }, []);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Auto-mark messages as read after they've been loaded and displayed
   useEffect(() => {
@@ -97,6 +107,39 @@ export default function MessagesScreen() {
       return () => clearTimeout(timer);
     }
   }, [messages, user]);
+
+  const updatePresence = async (isActive: boolean) => {
+    const clientId = user?.client?.id;
+    if (!clientId || !dietId) return;
+    try {
+      await api.post("/api/conversations/presence", {
+        dietId: Number(dietId),
+        isActive,
+        source: "pwa",
+      });
+    } catch (error) {
+      console.error("❌ Presence update error:", error);
+    }
+  };
+
+  const fetchMessageById = async (messageId: number): Promise<Message | null> => {
+    const clientId = user?.client?.id;
+    if (!clientId) return null;
+    try {
+      const response = await api.get<{
+        success: boolean;
+        message: Message;
+      }>(
+        `/api/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`
+      );
+      if (response.success && response.message) {
+        return response.message;
+      }
+    } catch (error) {
+      console.error("Error fetching message by id:", error);
+    }
+    return null;
+  };
 
   const loadMessages = async () => {
     try {
@@ -161,6 +204,104 @@ export default function MessagesScreen() {
       console.error("Error loading oguns:", error);
     }
   };
+
+  useEffect(() => {
+    if (!user?.client?.id || !dietId) return;
+
+    updatePresence(true);
+
+    const handleAppStateChange = (nextState: string) => {
+      if (nextState === "active") {
+        updatePresence(true);
+      } else if (nextState === "background" || nextState === "inactive") {
+        updatePresence(false);
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+
+    presenceIntervalRef.current = setInterval(() => {
+      updatePresence(true);
+    }, 20000);
+
+    return () => {
+      subscription.remove();
+      if (presenceIntervalRef.current) {
+        clearInterval(presenceIntervalRef.current);
+        presenceIntervalRef.current = null;
+      }
+      updatePresence(false);
+    };
+  }, [user?.client?.id, dietId]);
+
+  useEffect(() => {
+    if (!user?.client?.id || !dietId) return;
+
+    const channel = supabase
+      .channel(`diet-comments-${dietId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        async (payload) => {
+          const newMessageId = (payload.new as any)?.id as number | undefined;
+          if (!newMessageId) return;
+          if (messagesRef.current.some((msg) => msg.id === newMessageId)) {
+            return;
+          }
+          const message = await fetchMessageById(newMessageId);
+          if (message) {
+            setMessages((prev) => [...prev, message]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "DietComment",
+          filter: `dietId=eq.${dietId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated?.id) return;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === updated.id
+                ? {
+                    ...msg,
+                    isRead:
+                      typeof updated.isRead === "boolean"
+                        ? updated.isRead
+                        : msg.isRead,
+                    readAt: updated.readAt
+                      ? new Date(updated.readAt).toISOString()
+                      : msg.readAt,
+                  }
+                : msg
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [user?.client?.id, dietId]);
 
   const pickImage = async () => {
     try {
@@ -227,7 +368,7 @@ export default function MessagesScreen() {
       );
 
       // Add new message to list
-      setMessages([...messages, response.message]);
+      setMessages((prev) => [...prev, response.message]);
 
       // Clear form
       setMessageText("");
