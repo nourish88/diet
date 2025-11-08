@@ -1,7 +1,8 @@
 const path = require("path");
-const fontkitDir = path.dirname(
+const fontkitRoot = path.dirname(
   require.resolve("@foliojs-fork/fontkit/package.json")
 );
+const fontkitData = path.join(fontkitRoot, "data.trie");
 
 const cspDirectives = [
   "default-src 'self'",
@@ -61,8 +62,9 @@ const nextConfig = {
         "@neondatabase/serverless",
         "ws",
         "pdfmake",
-        "@foliojs-fork/fontkit",
-        "@foliojs-fork/pdfkit",
+        // Keep fontkit/pdfkit bundled so assets are available
+        // "@foliojs-fork/fontkit",
+        // "@foliojs-fork/pdfkit",
       ];
 
       // Fix for pdfkit in Next.js
@@ -96,8 +98,8 @@ const nextConfig = {
     ];
   },
   outputFileTracingIncludes: {
-    "/api/diets/download/[id]": [path.join(fontkitDir, "data.trie")],
-    "/api/diets/download-pdfmake/[id]": [path.join(fontkitDir, "data.trie")],
+    "/api/diets/download/[id]": [fontkitData],
+    "/api/diets/download-pdfmake/[id]": [fontkitData],
   },
 };
 
