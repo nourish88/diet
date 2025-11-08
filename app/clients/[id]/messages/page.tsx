@@ -57,6 +57,7 @@ export default function ClientMessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [clientName, setClientName] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const supabaseClientRef = useRef(createClient());
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -89,6 +90,18 @@ export default function ClientMessagesPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!realtimeError || !clientId || !dietId) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      loadMessages();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [realtimeError, clientId, dietId]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -261,6 +274,8 @@ export default function ClientMessagesPage() {
     if (!clientId || !dietId) return;
 
     const supabase = supabaseClientRef.current;
+    let isMounted = true;
+
     const channel = supabase
       .channel(`diet-comments-${dietId}`)
       .on(
@@ -311,12 +326,36 @@ export default function ClientMessagesPage() {
             )
           );
         }
-      )
-      .subscribe();
+      );
 
+    const subscribeToChannel = async () => {
+      try {
+        await channel.subscribe();
+        if (isMounted) {
+          setRealtimeError(null);
+        }
+      } catch (err) {
+        console.error("Realtime subscription failed:", err);
+        if (!isMounted) {
+          return;
+        }
+        const message =
+          err instanceof Error && /insecure/i.test(err.message)
+            ? "Tarayıcınız güvenli WebSocket bağlantısını engelledi. Mesajlar otomatik yenilenmeyecek."
+            : "Gerçek zamanlı bağlantı kurulamadı. Mesajlar otomatik yenilenmeyecek.";
+        setRealtimeError(message);
+        // Fallback: zorunlu olarak bir defa daha mesajları çekelim
+        loadMessages();
+        // Kanalı temizle
+        supabase.removeChannel(channel);
+      }
+    };
+
+    subscribeToChannel();
     channelRef.current = channel;
 
     return () => {
+      isMounted = false;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
@@ -472,6 +511,20 @@ export default function ClientMessagesPage() {
           </div>
         </div>
       </div>
+
+      {realtimeError && (
+        <div className="px-6 pt-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-sm px-4 py-3">
+            <p>{realtimeError}</p>
+            <button
+              onClick={() => loadMessages()}
+              className="mt-2 text-amber-900 underline"
+            >
+              Mesaj listesini şimdi yenile
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
