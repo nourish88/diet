@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
 import { toast } from "@/components/ui/use-toast";
+import { ensurePdfMake } from "@/lib/pdfmake";
 
 const formatDateTR = (dateString: string | null | undefined | Date) => {
   if (!dateString) return "Tarih Belirtilmemiş";
@@ -224,12 +225,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   const generatePDF = async () => {
     setIsLoading(true);
     try {
-      if (typeof window === "undefined")
-        throw new Error(
-          "PDF oluşturma işlemi yalnızca tarayıcı ortamında gerçekleştirilebilir"
-        );
-      await loadPdfMakeScripts();
-      if (!window.pdfMake) throw new Error("PDF oluşturma modülü yüklenemedi");
+      const pdfMake = await ensurePdfMake();
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
       const pdfDataToUse = preparePdfData(diet, pdfData);
       if (!pdfDataToUse) throw new Error("Beslenme programı verisi bulunamadı");
@@ -244,11 +240,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      // Initialize VFS if not exists
-      if (!window.pdfMake.vfs) {
-        window.pdfMake.vfs = {};
-      }
-
       // Note: Emojis will be converted to VFS during createDocDefinition
       // VFS is initialized above, and convertEmojisToImages will add emojis to VFS
 
@@ -261,7 +252,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         /\s+/g,
         "_"
       )}_${formatDateForFileName(pdfDataToUse.dietDate)}.pdf`;
-      window.pdfMake.createPdf(docDefinition).download(fileName);
+      pdfMake.createPdf(docDefinition).download(fileName);
       handleSuccess();
     } catch (error) {
       console.error("PDF oluşturma hatası:", error);
@@ -286,42 +277,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     return date instanceof Date && !isNaN(date.getTime())
       ? format(date, "yyyy-MM-dd")
       : "tarihsiz";
-  };
-
-  const loadPdfMakeScripts = async () => {
-    if (window.pdfMake) return;
-    try {
-      await loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"
-      );
-      await loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"
-      );
-      window.pdfMake.fonts = {
-        Roboto: {
-          normal:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf",
-          bold: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf",
-          italics:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Italic.ttf",
-          bolditalics:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-MediumItalic.ttf",
-        },
-      };
-    } catch (error) {
-      console.error("Script loading failed:", error);
-      throw new Error("PDF kütüphaneleri yüklenemedi");
-    }
-  };
-
-  const loadScript = (url: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = url;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
-      document.head.appendChild(script);
-    });
   };
 
   interface MenuItem {
@@ -1334,12 +1289,4 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     </div>
   );
 };
-
 export default DirectPDFButton;
-
-// Add TypeScript interface for the window object to include pdfMake
-declare global {
-  interface Window {
-    pdfMake: any;
-  }
-}

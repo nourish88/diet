@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
-
-// Extend the Window interface to include pdfMake
-declare global {
-  interface Window {
-    pdfMake: any;
-  }
-}
 import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
+import { ensurePdfMake } from "@/lib/pdfmake";
 interface TableCell {
   text?: string | any[];
   style: string;
@@ -143,14 +137,7 @@ const DatabasePDFButton = ({
   const generatePDF = async () => {
     try {
       setIsLoading(true);
-      if (typeof window === "undefined") {
-        throw new Error(
-          "PDF oluşturma işlemi yalnızca tarayıcı ortamında gerçekleştirilebilir"
-        );
-      }
-
-      await loadPdfMakeScripts();
-      if (!window.pdfMake) throw new Error("PDF oluşturma modülü yüklenemedi");
+      const pdfMake = await ensurePdfMake();
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
 
       const pdfData = preparePdfDataFromDatabase(diet);
@@ -178,7 +165,7 @@ const DatabasePDFButton = ({
         /\s+/g,
         "_"
       )}_${formatDateForFileName(pdfData.dietDate)}.pdf`;
-      window.pdfMake.createPdf(docDefinition).download(fileName);
+      pdfMake.createPdf(docDefinition).download(fileName);
     } catch (error) {
       console.error("PDF oluşturma hatası:", error);
       alert(`PDF oluşturulamadı: ${(error as Error).message}`);
@@ -192,44 +179,6 @@ const DatabasePDFButton = ({
     return date instanceof Date && !isNaN(date.getTime())
       ? format(date, "yyyy-MM-dd")
       : "tarihsiz";
-  };
-
-  const loadPdfMakeScripts = async () => {
-    if (window.pdfMake) return;
-
-    try {
-      await loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"
-      );
-      await loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"
-      );
-
-      window.pdfMake.fonts = {
-        Roboto: {
-          normal:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf",
-          bold: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf",
-          italics:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Italic.ttf",
-          bolditalics:
-            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-MediumItalic.ttf",
-        },
-      };
-    } catch (error) {
-      console.error("Script loading failed:", error);
-      throw new Error("PDF kütüphaneleri yüklenemedi");
-    }
-  };
-
-  const loadScript = (url: string) => {
-    return new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = url;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
-      document.head.appendChild(script);
-    });
   };
 
   const preparePdfDataFromDatabase = (diet: any): PDFData | null => {
