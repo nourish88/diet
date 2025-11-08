@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase-browser";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY;
 const PROMPT_KEY = "diet-push-permission-requested";
@@ -64,13 +65,15 @@ async function subscribeToPush(registration: ServiceWorkerRegistration) {
 
 async function sendSubscriptionToServer(
   subscription: PushSubscription,
-  userId: number
+  userId: number,
+  accessToken?: string
 ) {
   try {
     const response = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({
         subscription,
@@ -100,6 +103,12 @@ export default function PushNotificationProvider() {
 
     const setup = async () => {
       try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
         if (Notification.permission === "denied") {
           return;
         }
@@ -130,7 +139,11 @@ export default function PushNotificationProvider() {
           return;
         }
 
-        await sendSubscriptionToServer(subscription, databaseUser.id);
+        await sendSubscriptionToServer(
+          subscription,
+          databaseUser.id,
+          accessToken
+        );
       } catch (error) {
         console.error("❌ Push notification setup error:", error);
       }
