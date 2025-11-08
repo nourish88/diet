@@ -47,13 +47,17 @@ const nextConfig = {
   turbopack: {},
   webpack: (config, { isServer }) => {
     if (isServer) {
+      const externals = Array.isArray(config.externals)
+        ? config.externals
+        : config.externals
+        ? [config.externals]
+        : [];
+
       config.externals = [
-        ...config.externals,
+        ...externals,
         "@neondatabase/serverless",
         "ws",
         "pdfmake",
-        "@foliojs-fork/fontkit",
-        "@foliojs-fork/pdfkit",
       ];
 
       // Fix for pdfkit in Next.js
