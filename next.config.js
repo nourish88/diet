@@ -1,3 +1,8 @@
+const path = require("path");
+const fontkitDir = path.dirname(
+  require.resolve("@foliojs-fork/fontkit/package.json")
+);
+
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
@@ -47,17 +52,17 @@ const nextConfig = {
   turbopack: {},
   webpack: (config, { isServer }) => {
     if (isServer) {
-      const externals = Array.isArray(config.externals)
-        ? config.externals
-        : config.externals
-        ? [config.externals]
-        : [];
-
       config.externals = [
-        ...externals,
+        ...(Array.isArray(config.externals)
+          ? config.externals
+          : config.externals
+          ? [config.externals]
+          : []),
         "@neondatabase/serverless",
         "ws",
         "pdfmake",
+        "@foliojs-fork/fontkit",
+        "@foliojs-fork/pdfkit",
       ];
 
       // Fix for pdfkit in Next.js
@@ -89,6 +94,10 @@ const nextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+  outputFileTracingIncludes: {
+    "/api/diets/download/[id]": [path.join(fontkitDir, "data.trie")],
+    "/api/diets/download-pdfmake/[id]": [path.join(fontkitDir, "data.trie")],
   },
 };
 
