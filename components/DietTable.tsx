@@ -339,6 +339,13 @@ const DietTable = ({
                               />
                             </div>
                             <div className="flex items-center gap-2">
+                              <OgunQuickActions
+                                ogunName={ogun.name}
+                                ogunItems={ogun.items}
+                                onApplyPreset={(preset) =>
+                                  handleApplyPreset(index, preset)
+                                }
+                              />
                               <Input
                                 value={ogun.time}
                                 onChange={(e) =>
@@ -658,7 +665,7 @@ const DietTable = ({
                                       onApplyPreset={(preset) =>
                                         handleApplyPreset(index, preset)
                                       }
-                                      compact
+                                      compact={false}
                                     />
                                   </div>
                                 </div>

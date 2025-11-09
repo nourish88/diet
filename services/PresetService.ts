@@ -25,16 +25,8 @@ export interface PresetItem {
 const PresetService = {
   // Get all presets
   async getPresets(mealType?: string): Promise<MealPreset[]> {
-    try {
-      const url = mealType
-        ? `/presets?mealType=${mealType}`
-        : "/presets";
-
-      return await apiClient.get(url);
-    } catch (error) {
-      console.error("Error fetching presets:", error);
-      return [];
-    }
+    const url = mealType ? `/presets?mealType=${mealType}` : "/presets";
+    return await apiClient.get(url);
   },
 
   // Create preset

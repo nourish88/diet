@@ -19,7 +19,7 @@ export const OgunQuickActions = ({
   ogunName,
   ogunItems,
   onApplyPreset,
-  compact = false,
+  compact = true,
 }: OgunQuickActionsProps) => {
   const [showPresetSelector, setShowPresetSelector] = useState(false);
   const [presets, setPresets] = useState<MealPreset[]>([]);
@@ -50,6 +50,11 @@ export const OgunQuickActions = ({
       }
 
       setPresets(data);
+      console.log("🔍 Preset fetch result", {
+        ogunName,
+        mealType,
+        count: data?.length ?? 0,
+      });
 
       if (!data || data.length === 0) {
         toast({
@@ -59,9 +64,13 @@ export const OgunQuickActions = ({
       }
     } catch (error) {
       console.error("Error loading presets:", error);
+      const description =
+        error instanceof Error
+          ? error.message
+          : "Preset'ler yüklenirken bir hata oluştu.";
       toast({
         title: "Hata",
-        description: "Preset'ler yüklenirken bir hata oluştu.",
+        description,
         variant: "destructive",
       });
     } finally {

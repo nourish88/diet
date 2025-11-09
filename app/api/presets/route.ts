@@ -12,6 +12,15 @@ export const GET = requireDietitian(
       const searchParams = request.nextUrl.searchParams;
       const mealType = searchParams.get("mealType");
 
+      console.log(
+        "📥 Preset request",
+        JSON.stringify({
+          mealType,
+          dietitianId: auth.user?.id,
+          url: request.nextUrl.pathname,
+        })
+      );
+
       const whereClause: any = {
         isActive: true,
         dietitianId: auth.user!.id, // SECURITY: Only show own presets
@@ -36,6 +45,14 @@ export const GET = requireDietitian(
           { createdAt: "desc" },
         ],
       });
+
+      console.log(
+        "✅ Preset response",
+        JSON.stringify({
+          count: presets.length,
+          mealType,
+        })
+      );
 
       return addCorsHeaders(NextResponse.json(presets));
     } catch (error) {
