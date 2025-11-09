@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -339,7 +339,6 @@ const DietTable = ({
                               />
                             </div>
                             <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-gray-500" />
                               <Input
                                 value={ogun.time}
                                 onChange={(e) =>
@@ -362,10 +361,9 @@ const DietTable = ({
                                 disabled={
                                   effectiveDisabled || ogun.items.length < 2
                                 }
-                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 px-2"
                               >
-                                <ArrowDownUp className="w-4 h-4 mr-1" />
-                                Öncelik
+                                <ArrowDownUp className="w-4 h-4" />
                               </Button>
                               <Button
                                 type="button"
@@ -400,7 +398,7 @@ const DietTable = ({
                                     }
                                     placeholder="Miktar"
                                     className="w-full text-sm"
-                                  disabled={effectiveDisabled}
+                                    disabled={effectiveDisabled}
                                   />
                                   <Input
                                     value={
@@ -421,7 +419,7 @@ const DietTable = ({
                                     }
                                     placeholder="Birim (örn: Yemek Kaşığı)"
                                     className="w-full text-sm"
-                                  disabled={effectiveDisabled}
+                                    disabled={effectiveDisabled}
                                   />
                                 </div>
                                 <SmartBesinInput
@@ -495,11 +493,7 @@ const DietTable = ({
                           <Textarea
                             value={ogun.detail || ""}
                             onChange={(e) =>
-                              handleOgunChange(
-                                index,
-                                "detail",
-                                e.target.value
-                              )
+                              handleOgunChange(index, "detail", e.target.value)
                             }
                             placeholder="Açıklama/Not..."
                             className="text-sm border-gray-300"
@@ -664,6 +658,7 @@ const DietTable = ({
                                       onApplyPreset={(preset) =>
                                         handleApplyPreset(index, preset)
                                       }
+                                      compact
                                     />
                                   </div>
                                 </div>
@@ -683,9 +678,9 @@ const DietTable = ({
                                       e.target.value
                                     )
                                   }
-                                onBlur={() => onMealTimeBlur?.(index)}
+                                  onBlur={() => onMealTimeBlur?.(index)}
                                   className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                disabled={effectiveDisabled}
+                                  disabled={effectiveDisabled}
                                 />
                               </td>
                               <td

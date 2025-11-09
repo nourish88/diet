@@ -12,12 +12,14 @@ interface OgunQuickActionsProps {
   ogunName: string;
   ogunItems: MenuItem[];
   onApplyPreset: (preset: MealPreset) => void;
+  compact?: boolean;
 }
 
 export const OgunQuickActions = ({
   ogunName,
   ogunItems,
   onApplyPreset,
+  compact = false,
 }: OgunQuickActionsProps) => {
   const [showPresetSelector, setShowPresetSelector] = useState(false);
   const [presets, setPresets] = useState<MealPreset[]>([]);
@@ -28,7 +30,8 @@ export const OgunQuickActions = ({
   // Determine meal type from name
   const getMealType = (name: string): string => {
     const lower = name.toLowerCase();
-    if (lower.includes("uyanınca") || lower.includes("uyaninca")) return "ara_ogun";
+    if (lower.includes("uyanınca") || lower.includes("uyaninca"))
+      return "ara_ogun";
     if (lower.includes("kahvaltı")) return "kahvalti";
     if (lower.includes("öğle")) return "ogle";
     if (lower.includes("akşam")) return "aksam";
@@ -40,10 +43,27 @@ export const OgunQuickActions = ({
     try {
       setIsLoading(true);
       const mealType = getMealType(ogunName);
-      const data = await PresetService.getPresets(mealType);
+      let data = await PresetService.getPresets(mealType);
+
+      if ((!data || data.length === 0) && mealType) {
+        data = await PresetService.getPresets();
+      }
+
       setPresets(data);
+
+      if (!data || data.length === 0) {
+        toast({
+          title: "Preset bulunamadı",
+          description: "Bu öğün için kayıtlı preset mevcut değil.",
+        });
+      }
     } catch (error) {
       console.error("Error loading presets:", error);
+      toast({
+        title: "Hata",
+        description: "Preset'ler yüklenirken bir hata oluştu.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +91,8 @@ export const OgunQuickActions = ({
 
     // Ask for preset name
     const presetName = prompt(
-      `"${ogunName}" öğünü için preset adı girin:`,
+      `"${ogunName}" öğünü için preset adı girin:
+`,
       `${ogunName} - ${new Date().toLocaleDateString("tr-TR")}`
     );
 
@@ -86,7 +107,8 @@ export const OgunQuickActions = ({
         name: presetName.trim(),
         mealType: getMealType(ogunName),
         items: validItems.map((item) => ({
-          besinName: typeof item.besin === "string" ? item.besin : item.besin.name,
+          besinName:
+            typeof item.besin === "string" ? item.besin : item.besin.name,
           miktar: item.miktar,
           birim: typeof item.birim === "string" ? item.birim : item.birim.name,
         })),
@@ -121,9 +143,10 @@ export const OgunQuickActions = ({
         variant="outline"
         onClick={handleOpenPresets}
         className="text-xs border-purple-300 text-purple-600 hover:bg-purple-50"
+        aria-label={compact ? "Preset kullan" : undefined}
       >
-        <Sparkles className="h-3 w-3 mr-1" />
-        Preset Kullan
+        <Sparkles className={`h-3 w-3 ${compact ? "" : "mr-1"}`} />
+        {!compact && "Preset Kullan"}
       </Button>
 
       <Button
@@ -133,9 +156,11 @@ export const OgunQuickActions = ({
         onClick={handleSaveAsPreset}
         disabled={isSaving || ogunItems.length === 0}
         className="text-xs border-green-300 text-green-600 hover:bg-green-50"
+        aria-label={compact ? "Preset kaydet" : undefined}
       >
-        <Save className="h-3 w-3 mr-1" />
-        {isSaving ? "Kaydediliyor..." : "Preset Kaydet"}
+        <Save className={`h-3 w-3 ${compact ? "" : "mr-1"}`} />
+        {!compact && (isSaving ? "Kaydediliyor..." : "Preset Kaydet")}
+        {compact && isSaving && <span className="ml-2 text-xs">…</span>}
       </Button>
 
       <PresetSelector
