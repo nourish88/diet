@@ -38,13 +38,15 @@ export function formatTurkishDate(date: Date | string | null): string {
  * Format menu items as "miktar birim besin" (e.g., "2 adet Yumurta, 2 dilim Ekmek")
  */
 export function formatMenuItems(
-  items: Array<{ miktar: string | null; birim: string | null; besinName: string }>
+  items: Array<{ miktar: string | null; birim: string | null; besinName: string }>,
+  maxItems?: number
 ): string {
   if (!items || items.length === 0) {
     return "Menü belirtilmemiş";
   }
 
-  return items
+  const itemsToShow = maxItems ? items.slice(0, maxItems) : items;
+  const formatted = itemsToShow
     .map((item) => {
       const parts: string[] = [];
       if (item.miktar) parts.push(item.miktar);
@@ -55,10 +57,16 @@ export function formatMenuItems(
     })
     .filter(Boolean)
     .join(", ");
+
+  if (maxItems && items.length > maxItems) {
+    return `${formatted}...`;
+  }
+
+  return formatted;
 }
 
 /**
- * Format meal notification message
+ * Format meal notification message (full version for in-app display)
  */
 export function formatMealNotificationMessage(reminder: MealReminder): string {
   const dietDateStr = formatTurkishDate(reminder.dietDate);
@@ -70,6 +78,34 @@ export function formatMealNotificationMessage(reminder: MealReminder): string {
     message += `. ${reminder.ogunDetail}`;
   }
 
+  return message;
+}
+
+/**
+ * Format short meal notification message for push notifications (max 120 characters)
+ */
+export function formatShortMealNotificationMessage(reminder: MealReminder): string {
+  // Show first 2-3 menu items, then "..."
+  const menuItemsStr = formatMenuItems(reminder.menuItems, 3);
+  
+  // Build short message: "Öğün adı: İlk 2-3 item... Detaylar için tıklayın"
+  let message = `${reminder.ogunName}: ${menuItemsStr}`;
+  
+  // If message is too long, truncate it
+  const maxLength = 100; // Leave room for "Detaylar için tıklayın" or "..."
+  if (message.length > maxLength) {
+    message = message.substring(0, maxLength - 3) + "...";
+  }
+  
+  // Always add hint to click for details if there are more items or detail text
+  if (reminder.menuItems.length > 3 || reminder.ogunDetail) {
+    // Don't add if it makes message too long
+    const detailsHint = " Detaylar için tıklayın";
+    if (message.length + detailsHint.length <= 120) {
+      message += detailsHint;
+    }
+  }
+  
   return message;
 }
 
@@ -463,8 +499,10 @@ export async function sendMealReminders(): Promise<{
   for (const [userId, userData] of remindersByUser.entries()) {
     // For now, send one notification per meal (can be optimized to send grouped notification)
     for (const reminder of userData.reminders) {
-      const message = formatMealNotificationMessage(reminder);
+      // Use short message for notification body
+      const shortMessage = formatShortMealNotificationMessage(reminder);
       const title = `${reminder.ogunName} zamanı yaklaşıyor!`;
+      const notificationTag = `meal-reminder-${reminder.ogunId}`;
 
       for (const subscription of userData.pushSubscriptions) {
         try {
@@ -478,8 +516,10 @@ export async function sendMealReminders(): Promise<{
             },
             {
               title,
-              body: message,
-              url: `/client/diets/${reminder.dietId}`,
+              body: shortMessage,
+              url: `/client/diets/${reminder.dietId}?ogunId=${reminder.ogunId}`,
+              tag: notificationTag,
+              requireInteraction: false,
               data: {
                 type: "meal_reminder",
                 dietId: reminder.dietId,

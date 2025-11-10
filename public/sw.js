@@ -35,6 +35,8 @@ self.addEventListener("push", (event) => {
     },
     vibrate: [100, 50, 100],
     actions: payload.actions || [],
+    tag: payload.tag || undefined, // Tag for replacing notifications
+    requireInteraction: payload.requireInteraction || false, // Auto-dismiss after a few seconds
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -42,23 +44,61 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  
+  // Get URL from notification data, fallback to "/"
   const destination = event.notification.data?.url || "/";
+  
+  // For PWA, ensure we use the correct base URL
+  const baseUrl = self.location.origin;
+  const fullUrl = destination.startsWith("http") 
+    ? destination 
+    : `${baseUrl}${destination.startsWith("/") ? destination : `/${destination}`}`;
 
   event.waitUntil(
     (async () => {
-      const allClients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
+      try {
+        // Get all open windows/tabs
+        const allClients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
 
-      const existing = allClients.find((client) => {
-        return "url" in client && client.url.includes(destination);
-      });
+        // Check if we have any open client on the same origin
+        const sameOriginClient = allClients.find((client) => {
+          if (!("url" in client)) return false;
+          try {
+            const clientUrl = new URL(client.url);
+            return clientUrl.origin === baseUrl;
+          } catch {
+            return false;
+          }
+        });
 
-      if (existing) {
-        existing.focus();
-      } else if (self.clients.openWindow) {
-        await self.clients.openWindow(destination);
+        if (sameOriginClient && self.clients.openWindow) {
+          // Focus the existing window and navigate to the URL
+          // The page will handle the navigation via URL query params
+          await sameOriginClient.focus();
+          // Use navigate if available (Chrome), otherwise the URL change will be handled by the page
+          if ("navigate" in sameOriginClient && typeof sameOriginClient.navigate === "function") {
+            sameOriginClient.navigate(fullUrl);
+          } else {
+            // Fallback: open new window/tab with the URL
+            // This ensures the URL with query params is loaded
+            await self.clients.openWindow(fullUrl);
+          }
+        } else if (self.clients.openWindow) {
+          // No existing window, open new one
+          const newWindow = await self.clients.openWindow(fullUrl);
+          if (!newWindow) {
+            console.error("Failed to open window. User may have blocked popups.");
+          }
+        }
+      } catch (error) {
+        console.error("Error handling notification click:", error);
+        // Fallback: try to open the URL
+        if (self.clients.openWindow) {
+          await self.clients.openWindow(fullUrl);
+        }
       }
     })()
   );

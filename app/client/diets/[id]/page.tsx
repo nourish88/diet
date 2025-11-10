@@ -1,6 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Calendar,
@@ -18,6 +18,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase-browser";
 import DatabasePDFButton from "@/components/DatabasePDFButton";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DietDetail {
   id: number;
@@ -49,9 +50,13 @@ interface DietDetail {
 export default function ClientDietDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const dietId = (params?.id as string) || "";
+  const { toast } = useToast();
 
   const [expandedOguns, setExpandedOguns] = useState<Record<number, boolean>>({});
+  const [highlightedOgunId, setHighlightedOgunId] = useState<number | null>(null);
+  const ogunRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const supabase = useMemo(() => createClient(), []);
 
   const {
@@ -112,6 +117,71 @@ export default function ClientDietDetailPage() {
       [ogunId]: !prev[ogunId],
     }));
   };
+
+  const scrollToOgun = useMemo(() => {
+    return (ogunId: number) => {
+      // Expand the ogun first
+      setExpandedOguns((prev) => ({
+        ...prev,
+        [ogunId]: true,
+      }));
+
+      // Highlight the ogun
+      setHighlightedOgunId(ogunId);
+
+      // Scroll to the ogun element
+      setTimeout(() => {
+        const ogunElement = ogunRefs.current[ogunId];
+        if (ogunElement) {
+          ogunElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 100);
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedOgunId(null);
+      }, 3000);
+    };
+  }, []);
+
+  // Handle notification click - URL query params will be handled by the useEffect below
+  // The service worker will open the URL with ogunId parameter, and this page will handle it
+
+  // Handle ogunId from URL query params
+  useEffect(() => {
+    const ogunIdParam = searchParams?.get("ogunId");
+    if (ogunIdParam) {
+      const ogunId = parseInt(ogunIdParam, 10);
+      if (!isNaN(ogunId)) {
+        // Wait for diet data to be loaded
+        if (diet && diet.oguns && diet.oguns.length > 0) {
+          // Check if ogun exists
+          const ogun = diet.oguns.find((o) => o.id === ogunId);
+          if (ogun) {
+            // Scroll to ogun
+            scrollToOgun(ogunId);
+            
+            // Show toast notification (only once)
+            const hasScrolled = sessionStorage.getItem(`scrolled-to-ogun-${ogunId}`);
+            if (!hasScrolled) {
+              toast({
+                title: `${ogun.name} zamanı yaklaşıyor!`,
+                description: "Öğün detaylarını görmek için aşağı kaydırın.",
+              });
+              sessionStorage.setItem(`scrolled-to-ogun-${ogunId}`, "true");
+              // Clear after 5 seconds to allow scrolling again if needed
+              setTimeout(() => {
+                sessionStorage.removeItem(`scrolled-to-ogun-${ogunId}`);
+              }, 5000);
+            }
+          }
+        }
+      }
+    }
+  }, [searchParams, diet, toast, scrollToOgun]);
 
   if (isLoading) {
     return (
@@ -287,14 +357,26 @@ export default function ClientDietDetailPage() {
         <div className="space-y-3">
           {diet.oguns.map((ogun) => {
             const isExpanded = expandedOguns[ogun.id];
+            const isHighlighted = highlightedOgunId === ogun.id;
             return (
               <div
                 key={ogun.id}
-                className="border border-gray-200 rounded-lg overflow-hidden"
+                ref={(el) => {
+                  ogunRefs.current[ogun.id] = el;
+                }}
+                className={`border rounded-lg overflow-hidden transition-all duration-500 ${
+                  isHighlighted
+                    ? "border-blue-500 shadow-lg ring-2 ring-blue-300 ring-opacity-50"
+                    : "border-gray-200"
+                }`}
               >
                 <button
                   onClick={() => toggleOgun(ogun.id)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className={`w-full flex items-center justify-between p-4 transition-colors ${
+                    isHighlighted
+                      ? "bg-blue-50 hover:bg-blue-100"
+                      : "bg-gray-50 hover:bg-gray-100"
+                  }`}
                 >
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-blue-600" />

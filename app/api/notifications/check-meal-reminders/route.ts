@@ -4,6 +4,7 @@ import { addCorsHeaders } from "@/lib/cors";
 import prisma from "@/lib/prisma";
 import {
   formatMealNotificationMessage,
+  formatShortMealNotificationMessage,
   MealReminder,
   shouldSendReminder,
 } from "@/services/MealReminderService";
@@ -112,6 +113,8 @@ export async function GET(request: NextRequest) {
       ogunName: string;
       ogunTime: string;
       message: string;
+      shortMessage: string;
+      reminder: MealReminder;
     }> = [];
 
     for (const ogun of latestDiet.oguns) {
@@ -142,11 +145,14 @@ export async function GET(request: NextRequest) {
         };
 
         const message = formatMealNotificationMessage(reminder);
+        const shortMessage = formatShortMealNotificationMessage(reminder);
         pendingReminders.push({
           ogunId: ogun.id,
           ogunName: ogun.name,
           ogunTime: ogun.time,
           message,
+          shortMessage,
+          reminder,
         });
       }
     }
@@ -167,8 +173,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    for (const reminder of pendingReminders) {
-      const title = `${reminder.ogunName} zamanı yaklaşıyor!`;
+    for (const reminderData of pendingReminders) {
+      const title = `${reminderData.ogunName} zamanı yaklaşıyor!`;
+      const notificationTag = `meal-reminder-${reminderData.ogunId}`;
 
       for (const subscription of user.pushSubscriptions) {
         try {
@@ -182,22 +189,24 @@ export async function GET(request: NextRequest) {
             },
             {
               title,
-              body: reminder.message,
-              url: `/client/diets/${latestDiet.id}`,
+              body: reminderData.shortMessage,
+              url: `/client/diets/${latestDiet.id}?ogunId=${reminderData.ogunId}`,
+              tag: notificationTag,
+              requireInteraction: false,
               data: {
                 type: "meal_reminder",
                 dietId: latestDiet.id,
-                ogunId: reminder.ogunId,
+                ogunId: reminderData.ogunId,
               },
             }
           );
           sent++;
           console.log(
-            `✅ Sent meal reminder to user ${userId} for meal ${reminder.ogunName}`
+            `✅ Sent meal reminder to user ${userId} for meal ${reminderData.ogunName}`
           );
         } catch (error: any) {
           console.error(
-            `❌ Failed to send reminder for meal ${reminder.ogunName}:`,
+            `❌ Failed to send reminder for meal ${reminderData.ogunName}:`,
             error
           );
           failed++;
