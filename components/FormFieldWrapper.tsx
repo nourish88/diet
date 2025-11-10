@@ -29,11 +29,11 @@ const FormFieldWrapper = ({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="flex">
-          <FormLabel className="mt-3 mr-2 flex-col">
-            <span className="font-bold text-xs">{label}</span>
+        <FormItem className="flex items-start">
+          <FormLabel className="mt-3 mr-4 flex-shrink-0 min-w-[140px]">
+            <span className="font-bold text-xs text-gray-700">{label}</span>
           </FormLabel>
-          <FormControl className={className}>
+          <FormControl className={`${className} flex-1`}>
             {renderField ? renderField(field) : children}
           </FormControl>
           <FormMessage />

@@ -221,7 +221,7 @@ const DietFormBasicFields = ({
   };
 
   const inputBaseClass =
-    "w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500";
+    "w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3";
 
   return (
     <div
@@ -238,10 +238,10 @@ const DietFormBasicFields = ({
         </p>
       </div>
 
-      <div className="p-3 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+      <div className="p-4 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             <FormFieldWrapper form={form} name="dietDate" label="Diyet Tarihi">
               <div className="w-full">
                 <DatePicker
@@ -344,205 +344,37 @@ const DietFormBasicFields = ({
               )}
             />
 
-            {/* Moved Fiziksel Aktivite here with full width */}
-            <div className="md:col-span-2">
-              <FormFieldWrapper
-                form={form}
-                name="fizikselAktivite"
-                label="Fiziki Aktivite"
-                renderField={(field) => (
-                  <div className="space-y-2">
-                    {!showCustomFizik ? (
-                      <Select
-                        value={diet.Fizik || ""}
-                        onValueChange={(value) => {
-                          if (value === "__custom__") {
-                            setShowCustomFizik(true);
-                            setDiet((prevDiet) => ({ ...prevDiet, Fizik: "" }));
-                          } else {
-                            setDiet((prevDiet) => ({
-                              ...prevDiet,
-                              Fizik: value,
-                            }));
-                          }
-                        }}
-                      >
-                        <SelectTrigger className={inputBaseClass}>
-                          <SelectValue placeholder="Seçiniz..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fizikDefinitions.map((def) => (
-                            <SelectItem key={def.id} value={def.name}>
-                              {def.name}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="__custom__">
-                            ✏️ Özel giriş yap
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Input
-                          value={diet.Fizik || ""}
-                          className={inputBaseClass}
-                          placeholder="Özel fiziksel aktivite girin..."
-                          onChange={(e) => {
-                            setDiet((prevDiet) => ({
-                              ...prevDiet,
-                              Fizik: e.target.value,
-                            }));
-                          }}
-                          onBlur={async () => {
-                            // Save as definition when user leaves input
-                            if (diet.Fizik && diet.Fizik.trim()) {
-                              await saveCustomDefinition(
-                                "fiziksel_aktivite",
-                                diet.Fizik
-                              );
-                              setShowCustomFizik(false);
-                            }
-                          }}
-                          onKeyDown={async (e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              // Save as definition when Enter is pressed
-                              if (diet.Fizik && diet.Fizik.trim()) {
-                                await saveCustomDefinition(
-                                  "fiziksel_aktivite",
-                                  diet.Fizik
-                                );
-                                setShowCustomFizik(false);
-                              }
-                            } else if (e.key === "Escape") {
-                              setShowCustomFizik(false);
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowCustomFizik(false);
-                          }}
-                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                          title="İptal (Esc)"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              />
-            </div>
-
-            {/* Birthday celebration option */}
-            {showBirthdayCelebration && (
-              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <p className="text-sm text-purple-700 mb-2">
-                  Danışanın doğum günü yaklaşıyor! Kutlama eklemek ister
-                  misiniz?
-                </p>
-                <RadioGroup
-                  value={boolToRadioValue(diet.isBirthdayCelebration)}
-                  onValueChange={(value) =>
-                    setDiet((prevDiet) => ({
-                      ...prevDiet,
-                      isBirthdayCelebration: radioValueToBool(value),
-                    }))
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" id="celebration-yes" />
-                    <Label htmlFor="celebration-yes">Evet</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" id="celebration-no" />
-                    <Label htmlFor="celebration-no">Hayır</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
-
-            {/* Important date celebration option */}
-            {importantDate && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                <p className="text-sm text-amber-700 mb-2">
-                  {importantDate.name} zamanı! Kutlama eklemek ister misiniz?
-                </p>
-                <p className="text-xs text-amber-600 mb-3 italic">
-                  {importantDate.message}
-                </p>
-                <RadioGroup
-                  value={boolToRadioValue(diet.isImportantDateCelebrated)}
-                  onValueChange={(value) =>
-                    setDiet((prevDiet) => ({
-                      ...prevDiet,
-                      isImportantDateCelebrated: radioValueToBool(value),
-                      importantDateId: radioValueToBool(value)
-                        ? importantDate.id
-                        : null,
-                      importantDateName: radioValueToBool(value)
-                        ? importantDate.name
-                        : null,
-                    }))
-                  }
-                  disabled={disabled}
-                >
-                  <div className="flex items-center space-x-2 cursor-pointer">
-                    <RadioGroupItem value="yes" id="important-date-yes" />
-                    <Label
-                      htmlFor="important-date-yes"
-                      className="cursor-pointer"
-                    >
-                      Evet
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 cursor-pointer">
-                    <RadioGroupItem value="no" id="important-date-no" />
-                    <Label
-                      htmlFor="important-date-no"
-                      className="cursor-pointer"
-                    >
-                      Hayır
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
           </div>
 
           {/* Right Column */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             <FormFieldWrapper
               form={form}
               name="haftalikSonuc"
               label="Haftalık Sonuç"
               renderField={(field) => (
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Input
-                    value={diet.Sonuc || ""} // Add fallback empty string
+                    value={diet.Sonuc || ""}
                     className={inputBaseClass + " flex-1"}
                     placeholder="Haftalık sonuç notları"
                     onChange={(e) => {
-                      console.log("Updating Sonuc:", e.target.value); // Debug log
                       setDiet((prevDiet) => ({
                         ...prevDiet,
                         Sonuc: e.target.value,
                       }));
                     }}
                   />
-                  <div className="flex-shrink-0">
-                  <EmojiPickerButton
-                    onEmojiSelect={(emoji) => {
-                      const newValue = (diet.Sonuc || "") + emoji;
-                      setDiet((prevDiet) => ({
-                        ...prevDiet,
-                        Sonuc: newValue,
-                      }));
-                    }}
-                  />
+                  <div className="flex-shrink-0 self-center">
+                    <EmojiPickerButton
+                      onEmojiSelect={(emoji) => {
+                        const newValue = (diet.Sonuc || "") + emoji;
+                        setDiet((prevDiet) => ({
+                          ...prevDiet,
+                          Sonuc: newValue,
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
               )}
@@ -554,11 +386,10 @@ const DietFormBasicFields = ({
               label="Haftalık Hedef"
               renderField={(field) => (
                 <Input
-                  value={diet.Hedef || ""} // Add fallback empty string
+                  value={diet.Hedef || ""}
                   className={inputBaseClass}
                   placeholder="Haftalık hedef notları"
                   onChange={(e) => {
-                    console.log("Updating Hedef:", e.target.value); // Debug log
                     setDiet((prevDiet) => ({
                       ...prevDiet,
                       Hedef: e.target.value,
@@ -573,19 +404,19 @@ const DietFormBasicFields = ({
               name="diyetisyenNotu"
               label="Diyetisyen Notu"
               renderField={(field) => (
-                <div className="flex gap-2">
-                <Input
+                <div className="flex items-center gap-2">
+                  <Input
                     value={diet.dietitianNote || ""}
                     className={inputBaseClass + " flex-1"}
-                  placeholder="Diyetisyen notu..."
-                  onChange={(e) => {
-                    setDiet((prevDiet) => ({
-                      ...prevDiet,
-                      dietitianNote: e.target.value,
-                    }));
-                  }}
-                />
-                  <div className="flex-shrink-0">
+                    placeholder="Diyetisyen notu..."
+                    onChange={(e) => {
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        dietitianNote: e.target.value,
+                      }));
+                    }}
+                  />
+                  <div className="flex-shrink-0 self-center">
                     <EmojiPickerButton
                       onEmojiSelect={(emoji) => {
                         const newValue = (diet.dietitianNote || "") + emoji;
@@ -601,6 +432,173 @@ const DietFormBasicFields = ({
             />
           </div>
         </div>
+
+        {/* Fiziksel Aktivite - Full Width Below */}
+        <div className="mt-5">
+          <FormFieldWrapper
+            form={form}
+            name="fizikselAktivite"
+            label="Fiziki Aktivite"
+            renderField={(field) => (
+              <div className="space-y-2">
+                {!showCustomFizik ? (
+                  <Select
+                    value={diet.Fizik || ""}
+                    onValueChange={(value) => {
+                      if (value === "__custom__") {
+                        setShowCustomFizik(true);
+                        setDiet((prevDiet) => ({ ...prevDiet, Fizik: "" }));
+                      } else {
+                        setDiet((prevDiet) => ({
+                          ...prevDiet,
+                          Fizik: value,
+                        }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={inputBaseClass}>
+                      <SelectValue placeholder="Seçiniz..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fizikDefinitions.map((def) => (
+                        <SelectItem key={def.id} value={def.name}>
+                          {def.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">
+                        ✏️ Özel giriş yap
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      value={diet.Fizik || ""}
+                      className={inputBaseClass}
+                      placeholder="Özel fiziksel aktivite girin..."
+                      onChange={(e) => {
+                        setDiet((prevDiet) => ({
+                          ...prevDiet,
+                          Fizik: e.target.value,
+                        }));
+                      }}
+                      onBlur={async () => {
+                        // Save as definition when user leaves input
+                        if (diet.Fizik && diet.Fizik.trim()) {
+                          await saveCustomDefinition(
+                            "fiziksel_aktivite",
+                            diet.Fizik
+                          );
+                          setShowCustomFizik(false);
+                        }
+                      }}
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          // Save as definition when Enter is pressed
+                          if (diet.Fizik && diet.Fizik.trim()) {
+                            await saveCustomDefinition(
+                              "fiziksel_aktivite",
+                              diet.Fizik
+                            );
+                            setShowCustomFizik(false);
+                          }
+                        } else if (e.key === "Escape") {
+                          setShowCustomFizik(false);
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomFizik(false);
+                      }}
+                      className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                      title="İptal (Esc)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          />
+        </div>
+
+        {/* Birthday and Important Date Celebrations - Full Width Below */}
+        {showBirthdayCelebration && (
+          <div className="mt-5 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <p className="text-sm text-purple-700 mb-2">
+              Danışanın doğum günü yaklaşıyor! Kutlama eklemek ister
+              misiniz?
+            </p>
+            <RadioGroup
+              value={boolToRadioValue(diet.isBirthdayCelebration)}
+              onValueChange={(value) =>
+                setDiet((prevDiet) => ({
+                  ...prevDiet,
+                  isBirthdayCelebration: radioValueToBool(value),
+                }))
+              }
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="celebration-yes" />
+                <Label htmlFor="celebration-yes">Evet</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no" id="celebration-no" />
+                <Label htmlFor="celebration-no">Hayır</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        )}
+
+        {importantDate && (
+          <div className="mt-5 p-4 bg-amber-50 rounded-lg border border-amber-200">
+            <p className="text-sm text-amber-700 mb-2">
+              {importantDate.name} zamanı! Kutlama eklemek ister misiniz?
+            </p>
+            <p className="text-xs text-amber-600 mb-3 italic">
+              {importantDate.message}
+            </p>
+            <RadioGroup
+              value={boolToRadioValue(diet.isImportantDateCelebrated)}
+              onValueChange={(value) =>
+                setDiet((prevDiet) => ({
+                  ...prevDiet,
+                  isImportantDateCelebrated: radioValueToBool(value),
+                  importantDateId: radioValueToBool(value)
+                    ? importantDate.id
+                    : null,
+                  importantDateName: radioValueToBool(value)
+                    ? importantDate.name
+                    : null,
+                }))
+              }
+              disabled={disabled}
+            >
+              <div className="flex items-center space-x-2 cursor-pointer">
+                <RadioGroupItem value="yes" id="important-date-yes" />
+                <Label
+                  htmlFor="important-date-yes"
+                  className="cursor-pointer"
+                >
+                  Evet
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 cursor-pointer">
+                <RadioGroupItem value="no" id="important-date-no" />
+                <Label
+                  htmlFor="important-date-no"
+                  className="cursor-pointer"
+                >
+                  Hayır
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+        )}
       </div>
     </div>
   );
