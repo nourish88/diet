@@ -135,6 +135,7 @@ export default function TanimlamalarPage() {
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as DefinitionType)}
         className="w-full"
+        baseId="tanimlamalar-tabs"
       >
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="su_tuketimi" className="flex items-center gap-2">
