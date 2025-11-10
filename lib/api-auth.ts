@@ -79,19 +79,42 @@ export async function authenticateSupabase(
     // If no Authorization header, try to find Supabase auth token from cookies
     if (!token) {
       const allCookies = request.cookies.getAll();
-      const authCookie = allCookies.find(
-        (cookie) =>
-          cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token")
-      );
+      
+      // Try multiple cookie name patterns that Supabase SSR might use
+      const authCookie = allCookies.find((cookie) => {
+        const name = cookie.name.toLowerCase();
+        return (
+          name.startsWith("sb-") &&
+          (name.endsWith("-auth-token") ||
+           name.includes("auth-token") ||
+           name.includes("access-token"))
+        );
+      });
 
       if (authCookie?.value) {
         try {
-          // Supabase stores session as JSON in cookie
-          const sessionData = JSON.parse(authCookie.value);
-          token = sessionData.access_token || sessionData;
-        } catch {
-          // If not JSON, use the value directly
-          token = authCookie.value;
+          // Try to parse as JSON first (Supabase SSR stores session as JSON)
+          const sessionData = JSON.parse(decodeURIComponent(authCookie.value));
+          token = sessionData.access_token || sessionData.token || sessionData;
+        } catch (parseError) {
+          // If not JSON, check if it's a base64 encoded token
+          const cookieValue = decodeURIComponent(authCookie.value);
+          if (cookieValue.startsWith("base64-")) {
+            try {
+              const decoded = Buffer.from(
+                cookieValue.replace("base64-", ""),
+                "base64"
+              ).toString("utf-8");
+              const parsed = JSON.parse(decoded);
+              token = parsed.access_token || parsed.token || decoded;
+            } catch {
+              // If all else fails, use the value directly
+              token = cookieValue.replace("base64-", "");
+            }
+          } else {
+            // Use the value directly if it's not JSON or base64
+            token = cookieValue;
+          }
         }
       }
     }

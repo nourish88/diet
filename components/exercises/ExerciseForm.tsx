@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DatePicker from "@/components/CustomUI/Datepicker";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { createClient } from "@/lib/supabase-browser";
 
 const exerciseSchema = z.object({
   date: z.date({
@@ -97,10 +98,25 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
   const onSubmit = async (data: ExerciseFormData) => {
     setIsSubmitting(true);
     try {
+      // Get Supabase session for auth token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Hata",
+          description: "Oturum bulunamadı. Lütfen giriş yapın.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await fetch("/api/exercises", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
         },
         credentials: "include",
         body: JSON.stringify({

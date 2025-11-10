@@ -7,6 +7,7 @@ import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
 import { Activity, Clock, Footprints } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { createClient } from "@/lib/supabase-browser";
 
 export default function ExercisesPage() {
   const { toast } = useToast();
@@ -18,6 +19,15 @@ export default function ExercisesPage() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
+      
+      // Get Supabase session for auth token
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
+      }
+
       const params = new URLSearchParams();
       if (dateFrom) {
         params.append("dateFrom", dateFrom.toISOString());
@@ -28,6 +38,10 @@ export default function ExercisesPage() {
 
       const response = await fetch(`/api/exercises?${params.toString()}`, {
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
       });
 
       if (!response.ok) {
