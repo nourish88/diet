@@ -398,13 +398,9 @@ export default function ClientDietDetailPage() {
 
                 {isExpanded && (
                   <div className="p-4 bg-white">
-                    {ogun.detail && (
-                      <p className="text-sm text-gray-600 mb-3 italic">
-                        {ogun.detail}
-                      </p>
-                    )}
+                    {/* Menu items first */}
                     {ogun.items && ogun.items.length > 0 ? (
-                      <ul className="space-y-2">
+                      <ul className="space-y-2 mb-3">
                         {ogun.items.map((item) => (
                           <li
                             key={item.id}
@@ -420,8 +416,14 @@ export default function ClientDietDetailPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">
+                      <p className="text-sm text-gray-500 italic mb-3">
                         Bu öğün için besin eklenmemiş
+                      </p>
+                    )}
+                    {/* Detail after menu items */}
+                    {ogun.detail && (
+                      <p className="text-sm text-gray-600 italic">
+                        {ogun.detail}
                       </p>
                     )}
                   </div>

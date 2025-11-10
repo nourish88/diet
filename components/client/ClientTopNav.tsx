@@ -33,7 +33,8 @@ export default function ClientTopNav() {
               alt="Logo"
               className="h-10 w-auto object-contain"
             />
-            <div>
+            {/* Hide title text on mobile/PWA (screens smaller than md) */}
+            <div className="hidden md:block">
               <p className="text-sm font-semibold text-gray-800">
                 Ezgi Evgin Beslenme
               </p>
@@ -43,28 +44,33 @@ export default function ClientTopNav() {
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-2">
+          <nav className="flex items-center space-x-1 md:space-x-2">
             <Link
               href="/client"
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+              title="Anasayfa"
             >
-              <Home className="w-4 h-4 mr-2" />
-              Anasayfa
+              <Home className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Anasayfa</span>
             </Link>
             <Link
               href="/client/settings"
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition"
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition"
+              title="Ayarlar"
             >
-              <Settings className="w-4 h-4 mr-2" />
-              Ayarlar
+              <Settings className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Ayarlar</span>
             </Link>
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
+              title={isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              {isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              <LogOut className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">
+                {isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              </span>
             </button>
           </nav>
         </div>
