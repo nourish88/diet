@@ -29,14 +29,16 @@ const FormFieldWrapper = ({
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem className="flex flex-col sm:flex-row sm:items-start gap-2">
-          <FormLabel className="sm:mt-3 sm:mr-4 flex-shrink-0 sm:min-w-[140px] pt-2 sm:pt-3">
+        <FormItem className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <FormLabel className="flex-shrink-0 sm:w-32 pt-2 sm:pt-0">
             <span className="font-bold text-xs text-gray-700 whitespace-nowrap">{label}</span>
           </FormLabel>
-          <FormControl className={`${className} flex-1 w-full`}>
-            {renderField ? renderField(field) : children}
-          </FormControl>
-          <FormMessage className="sm:col-span-2" />
+          <div className="flex-1 min-w-0 w-full">
+            <FormControl className={`${className} w-full`}>
+              {renderField ? renderField(field) : children}
+            </FormControl>
+            <FormMessage />
+          </div>
         </FormItem>
       )}
     />
