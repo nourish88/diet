@@ -16,7 +16,16 @@ const DefinitionService = {
   async getDefinitions(type?: DefinitionType): Promise<Definition[]> {
     try {
       const url = type ? `/definitions?type=${type}` : "/definitions";
-      return await apiClient.get(url);
+      const response = await apiClient.get(url);
+      // Handle both array and object with definitions property
+      if (Array.isArray(response)) {
+        return response;
+      } else if (response && Array.isArray(response.definitions)) {
+        return response.definitions;
+      } else {
+        console.warn("Unexpected response format from definitions API:", response);
+        return [];
+      }
     } catch (error) {
       console.error("Error fetching definitions:", error);
       return [];

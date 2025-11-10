@@ -1,6 +1,6 @@
 "use client";
 import { Diet } from "@/types/types";
-import FormFieldWrapper from "./CustomUI/FormFieldWrapper";
+import FormFieldWrapper from "./FormFieldWrapper";
 import DatePicker from "./CustomUI/Datepicker";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
@@ -116,10 +116,14 @@ const DietFormBasicFields = ({
           DefinitionService.getDefinitions("su_tuketimi"),
           DefinitionService.getDefinitions("fiziksel_aktivite"),
         ]);
-        setSuDefinitions(suDefs);
-        setFizikDefinitions(fizikDefs);
+        // Ensure we always have arrays
+        setSuDefinitions(Array.isArray(suDefs) ? suDefs : []);
+        setFizikDefinitions(Array.isArray(fizikDefs) ? fizikDefs : []);
       } catch (error) {
         console.error("Error loading definitions:", error);
+        // Set empty arrays on error
+        setSuDefinitions([]);
+        setFizikDefinitions([]);
       }
     };
     loadDefinitions();
