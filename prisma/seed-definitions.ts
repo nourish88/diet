@@ -28,6 +28,23 @@ async function main() {
     "Haftada 5 gün egzersiz",
   ];
 
+  // Egzersiz Tipi Tanımlamaları
+  const egzersizDefinitions = [
+    "Yürüyüş",
+    "Koşu",
+    "Bisiklet",
+    "Yüzme",
+    "Pilates",
+    "Yoga",
+    "Ağırlık Antrenmanı",
+    "Kardiyo",
+    "Dans",
+    "Futbol",
+    "Basketbol",
+    "Tenis",
+    "Diğer",
+  ];
+
   // Su tüketimi tanımlamalarını ekle
   for (const name of suDefinitions) {
     await prisma.definition.upsert({
@@ -58,6 +75,23 @@ async function main() {
 
   console.log(
     `✅ ${fizikDefinitions.length} fiziksel aktivite tanımlaması eklendi`
+  );
+
+  // Egzersiz tipi tanımlamalarını ekle
+  for (const name of egzersizDefinitions) {
+    await prisma.definition.upsert({
+      where: { id: -1 }, // This will never match, so it will always create
+      update: {},
+      create: {
+        type: "egzersiz_tipi",
+        name,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log(
+    `✅ ${egzersizDefinitions.length} egzersiz tipi tanımlaması eklendi`
   );
   console.log("✨ Seed tamamlandı!");
 }

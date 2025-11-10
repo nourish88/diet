@@ -103,6 +103,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         {
           method: isEdit ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // Include credentials for authentication
           body: JSON.stringify({
             ...transformedValues,
             bannedBesins: selectedBesins,

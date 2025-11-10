@@ -10,28 +10,30 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Client {
-  id          Int          @id @default(autoincrement())
-  name        String
-  surname     String
-  birthdate   DateTime?
-  phoneNumber String?      @unique
-  notes       String?
-  gender      Int?
-  illness     String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  diets       Diet[]
-  bannedFoods BannedFood[]
-  user        User?        @relation(fields: [userId], references: [id])
-  userId      Int?         @unique
-  dietitianId Int?         // NEW: Assign to specific dietitian
-  dietitian   User?        @relation("ClientDietitian", fields: [dietitianId], references: [id])
-  mealPhotos  MealPhoto[]
+  id              Int             @id @default(autoincrement())
+  name            String
+  surname         String
+  birthdate       DateTime?
+  phoneNumber     String?         @unique
+  notes           String?
+  gender          Int?
+  illness         String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  diets           Diet[]
+  bannedFoods     BannedFood[]
+  user            User?           @relation(fields: [userId], references: [id])
+  userId          Int?            @unique
+  dietitianId     Int? // NEW: Assign to specific dietitian
+  dietitian       User?           @relation("ClientDietitian", fields: [dietitianId], references: [id])
+  mealPhotos      MealPhoto[]
+  progressEntries ProgressEntry[]
+  exerciseLogs    ExerciseLog[]
 }
 
 model Diet {
@@ -40,42 +42,42 @@ model Diet {
   updatedAt DateTime  @updatedAt
   tarih     DateTime?
 
-  su    String?
-  sonuc String?
-  hedef String?
-  fizik String?
+  su            String?
+  sonuc         String?
+  hedef         String?
+  fizik         String?
   dietitianNote String?
 
-  client   Client @relation(fields: [clientId], references: [id])
-  clientId Int
-  dietitianId Int?    // NEW: Assign to specific dietitian
-  dietitian   User?   @relation("DietDietitian", fields: [dietitianId], references: [id])
+  client      Client @relation(fields: [clientId], references: [id])
+  clientId    Int
+  dietitianId Int? // NEW: Assign to specific dietitian
+  dietitian   User?  @relation("DietDietitian", fields: [dietitianId], references: [id])
 
-  oguns Ogun[]
-  comments DietComment[]
-  mealPhotos MealPhoto[]
+  oguns                 Ogun[]
+  comments              DietComment[]
+  mealPhotos            MealPhoto[]
   conversationPresences ConversationPresence[]
 
-  isBirthdayCelebration        Boolean        @default(false)
+  isBirthdayCelebration Boolean @default(false)
 
-  importantDateId              Int?
-  importantDate               ImportantDate? @relation(fields: [importantDateId], references: [id])
-  isImportantDateCelebrated   Boolean        @default(false)
+  importantDateId           Int?
+  importantDate             ImportantDate? @relation(fields: [importantDateId], references: [id])
+  isImportantDateCelebrated Boolean        @default(false)
 }
 
 model Ogun {
-  id        Int         @id @default(autoincrement())
-  name      String
-  time      String
-  detail    String?
-  order     Int        @default(0)
-  dietId    Int
-  diet      Diet       @relation(fields: [dietId], references: [id])
-  items     MenuItem[]
-  comments  DietComment[]
+  id         Int           @id @default(autoincrement())
+  name       String
+  time       String
+  detail     String?
+  order      Int           @default(0)
+  dietId     Int
+  diet       Diet          @relation(fields: [dietId], references: [id])
+  items      MenuItem[]
+  comments   DietComment[]
   mealPhotos MealPhoto[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model MenuItem {
@@ -83,31 +85,32 @@ model MenuItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  miktar    String?
+  miktar String?
 
-  besinId   Int
-  besin     Besin    @relation(fields: [besinId], references: [id])
+  besinId Int
+  besin   Besin @relation(fields: [besinId], references: [id])
 
-  birimId   Int?
-  birim     Birim?   @relation(fields: [birimId], references: [id])
+  birimId Int?
+  birim   Birim? @relation(fields: [birimId], references: [id])
 
-  ogunId    Int
-  ogun      Ogun     @relation(fields: [ogunId], references: [id], onDelete: Cascade)
-  comments  DietComment[]
+  ogunId   Int
+  ogun     Ogun          @relation(fields: [ogunId], references: [id], onDelete: Cascade)
+  comments DietComment[]
 }
 
 model Besin {
-  id          Int               @id @default(autoincrement())
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  name        String            @unique
-  priority    Int               @default(0)
-  groupId     Int?              // Keep this for backward compatibility
-  besinGroup  BesinGroup?       @relation(fields: [groupId], references: [id])
+  id          Int              @id @default(autoincrement())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  name        String           @unique
+  priority    Int              @default(0)
+  groupId     Int? // Keep this for backward compatibility
+  besinGroup  BesinGroup?      @relation(fields: [groupId], references: [id])
   bannedFoods BannedFood[]
   menuItems   MenuItem[]
   usageStats  BesinUsageStats?
 }
+
 model BesinGroup {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())
@@ -118,14 +121,13 @@ model BesinGroup {
 }
 
 model Birim {
-  id        Int        @id @default(autoincrement())
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   name      String     @unique
   menuItems MenuItem[]
 }
-
 
 model BannedFood {
   id        Int      @id @default(autoincrement())
@@ -141,28 +143,29 @@ model BannedFood {
 }
 
 model ImportantDate {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   message     String
   startDate   DateTime
   endDate     DateTime
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  dietitianId Int?      // NEW: Assign to specific dietitian
-  dietitian   User?     @relation("ImportantDateDietitian", fields: [dietitianId], references: [id])
-  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dietitianId Int? // NEW: Assign to specific dietitian
+  dietitian   User?    @relation("ImportantDateDietitian", fields: [dietitianId], references: [id])
+
   // Add the opposite relation field
-  diets       Diet[]
+  diets Diet[]
 }
 
 model Definition {
-  id          Int      @id @default(autoincrement())
-  type        String   // "su_tuketimi" veya "fiziksel_aktivite"
-  name        String   // Tanımlama metni
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id           Int           @id @default(autoincrement())
+  type         String // "su_tuketimi", "fiziksel_aktivite", or "egzersiz_tipi"
+  name         String // Tanımlama metni
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  exerciseLogs ExerciseLog[]
+
   @@index([type, isActive])
 }
 
@@ -171,12 +174,12 @@ model BesinUsageStats {
   besinId     Int      @unique
   besin       Besin    @relation(fields: [besinId], references: [id], onDelete: Cascade)
   usageCount  Int      @default(1)
-  avgMiktar   String?  // "2", "30", "1"
-  commonBirim String?  // "adet", "gram", "porsiyon"
+  avgMiktar   String? // "2", "30", "1"
+  commonBirim String? // "adet", "gram", "porsiyon"
   lastUsed    DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([usageCount, lastUsed])
 }
 
@@ -184,7 +187,7 @@ model DietTemplate {
   id          Int            @id @default(autoincrement())
   name        String
   description String?
-  category    String?        // "kilo_verme", "kilo_alma", "diyabet" vb.
+  category    String? // "kilo_verme", "kilo_alma", "diyabet" vb.
   su          String?
   fizik       String?
   hedef       String?
@@ -192,7 +195,7 @@ model DietTemplate {
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-  dietitianId Int?           // NEW: Assign to specific dietitian
+  dietitianId Int? // NEW: Assign to specific dietitian
   dietitian   User?          @relation("TemplateDietitian", fields: [dietitianId], references: [id])
   oguns       TemplateOgun[]
 }
@@ -221,7 +224,7 @@ model TemplateMenuItem {
 model MealPreset {
   id              Int          @id @default(autoincrement())
   name            String
-  mealType        String?      // "kahvalti", "ara_ogun", "ogle", "aksam"
+  mealType        String? // "kahvalti", "ara_ogun", "ogle", "aksam"
   isAutoGenerated Boolean      @default(false)
   patternScore    Float?
   isActive        Boolean      @default(true)
@@ -229,10 +232,10 @@ model MealPreset {
   lastUsed        DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  dietitianId     Int?         // NEW: Assign to specific dietitian
+  dietitianId     Int? // NEW: Assign to specific dietitian
   dietitian       User?        @relation("PresetDietitian", fields: [dietitianId], references: [id])
   items           PresetItem[]
-  
+
   @@index([mealType, isActive])
   @@index([patternScore])
 }
@@ -250,81 +253,83 @@ model PresetItem {
 // Mobile App Models
 
 model User {
-  id            Int       @id @default(autoincrement())
-  supabaseId    String    @unique
-  email         String    @unique
-  role          String    // "dietitian" or "client"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id         Int      @id @default(autoincrement())
+  supabaseId String   @unique
+  email      String   @unique
+  role       String // "dietitian" or "client"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   // Reference code for client matching
-  referenceCode String?   @unique  // e.g., "REF-A1B2C3"
+  referenceCode String?   @unique // e.g., "REF-A1B2C3"
   isApproved    Boolean   @default(false)
   approvedAt    DateTime?
-  
+
   // Push notification token
-  pushToken     String?   // Expo Push Token
-  
-  client        Client?
-  comments      DietComment[]
+  pushToken String? // Expo Push Token
+
+  client                 Client?
+  comments               DietComment[]
   notificationPreference NotificationPreference?
-  
+
   // Relations for multi-dietitian support
-  clients       Client[] @relation("ClientDietitian")
-  diets         Diet[]   @relation("DietDietitian")
-  
+  clients Client[] @relation("ClientDietitian")
+  diets   Diet[]   @relation("DietDietitian")
+
   // NEW: Relations for dietitian-owned resources
-  templates     DietTemplate[] @relation("TemplateDietitian")
-  importantDates ImportantDate[] @relation("ImportantDateDietitian")
-  presets       MealPreset[] @relation("PresetDietitian")
-  apiKeys       ApiKey[]
-  dietFormLogs  DietFormLog[] @relation("DietFormLogDietitian")
-  pushSubscriptions PushSubscription[]
+  templates             DietTemplate[]         @relation("TemplateDietitian")
+  importantDates        ImportantDate[]        @relation("ImportantDateDietitian")
+  presets               MealPreset[]           @relation("PresetDietitian")
+  apiKeys               ApiKey[]
+  dietFormLogs          DietFormLog[]          @relation("DietFormLogDietitian")
+  pushSubscriptions     PushSubscription[]
   conversationPresences ConversationPresence[]
-  
+  progressEntries       ProgressEntry[]
+  exerciseLogs          ExerciseLog[]
+
   @@index([supabaseId])
   @@index([email])
 }
 
 model DietComment {
-  id          Int          @id @default(autoincrement())
-  content     String
-  userId      Int
-  user        User         @relation(fields: [userId], references: [id])
-  dietId      Int
-  diet        Diet         @relation(fields: [dietId], references: [id])
-  ogunId      Int?         // Optional: specific meal for context
-  ogun        Ogun?        @relation(fields: [ogunId], references: [id])
-  menuItemId  Int?         // Optional: specific item (not used for messages)
-  menuItem    MenuItem?    @relation(fields: [menuItemId], references: [id])
-  photos      MealPhoto[]  // Photos attached to this message/comment
-  
+  id         Int         @id @default(autoincrement())
+  content    String
+  userId     Int
+  user       User        @relation(fields: [userId], references: [id])
+  dietId     Int
+  diet       Diet        @relation(fields: [dietId], references: [id])
+  ogunId     Int? // Optional: specific meal for context
+  ogun       Ogun?       @relation(fields: [ogunId], references: [id])
+  menuItemId Int? // Optional: specific item (not used for messages)
+  menuItem   MenuItem?   @relation(fields: [menuItemId], references: [id])
+  photos     MealPhoto[] // Photos attached to this message/comment
+
   // Message read tracking
-  isRead      Boolean      @default(false)
-  readAt      DateTime?
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([dietId, createdAt])
   @@index([userId])
   @@index([dietId, isRead]) // For quickly finding unread messages
 }
 
 model MealPhoto {
-  id          Int           @id @default(autoincrement())
-  imageData   String        // Base64 encoded image data
-  dietId      Int
-  diet        Diet          @relation(fields: [dietId], references: [id])
-  ogunId      Int?          // Optional: Which meal (for context)
-  ogun        Ogun?         @relation(fields: [ogunId], references: [id])
-  clientId    Int
-  client      Client        @relation(fields: [clientId], references: [id])
-  commentId   Int?          // Optional: Attached to a message/comment
-  comment     DietComment?  @relation(fields: [commentId], references: [id])
-  uploadedAt  DateTime      @default(now())
-  expiresAt   DateTime      // Auto-delete date (12 hours)
-  
+  id         Int          @id @default(autoincrement())
+  imageData  String // Base64 encoded image data
+  dietId     Int
+  diet       Diet         @relation(fields: [dietId], references: [id])
+  ogunId     Int? // Optional: Which meal (for context)
+  ogun       Ogun?        @relation(fields: [ogunId], references: [id])
+  clientId   Int
+  client     Client       @relation(fields: [clientId], references: [id])
+  commentId  Int? // Optional: Attached to a message/comment
+  comment    DietComment? @relation(fields: [commentId], references: [id])
+  uploadedAt DateTime     @default(now())
+  expiresAt  DateTime // Auto-delete date (12 hours)
+
   @@index([dietId, ogunId])
   @@index([expiresAt])
   @@index([commentId])
@@ -346,32 +351,32 @@ model ConversationPresence {
 }
 
 model NotificationPreference {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
-  user        User     @relation(fields: [userId], references: [id])
-  mealReminders Boolean @default(true)
-  dietUpdates   Boolean @default(true)
-  comments      Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  user          User     @relation(fields: [userId], references: [id])
+  mealReminders Boolean  @default(true)
+  dietUpdates   Boolean  @default(true)
+  comments      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // API Key Management for External Applications
 model ApiKey {
-  id          Int      @id @default(autoincrement())
-  key         String   @unique // Hashed API key
-  name        String   // Human-readable name for the key
-  appName     String   // "mobile_app", "website", "integration", etc.
-  permissions Json     // Allowed endpoints and operations
-  isActive    Boolean  @default(true)
+  id          Int       @id @default(autoincrement())
+  key         String    @unique // Hashed API key
+  name        String // Human-readable name for the key
+  appName     String // "mobile_app", "website", "integration", etc.
+  permissions Json // Allowed endpoints and operations
+  isActive    Boolean   @default(true)
   expiresAt   DateTime?
   lastUsedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
   dietitianId Int
-  dietitian   User     @relation(fields: [dietitianId], references: [id], onDelete: Cascade)
-  
+  dietitian   User @relation(fields: [dietitianId], references: [id], onDelete: Cascade)
+
   @@index([key])
   @@index([dietitianId])
   @@index([isActive, expiresAt])
@@ -379,28 +384,28 @@ model ApiKey {
 
 // Diet Form Logging System
 model DietFormLog {
-  id          Int      @id @default(autoincrement())
+  id          Int  @id @default(autoincrement())
   dietitianId Int
-  dietitian   User     @relation("DietFormLogDietitian", fields: [dietitianId], references: [id], onDelete: Cascade)
-  
+  dietitian   User @relation("DietFormLogDietitian", fields: [dietitianId], references: [id], onDelete: Cascade)
+
   // Session tracking
-  sessionId   String   // Unique identifier for a form session
-  clientId    Int?     // Client being worked on (null if not selected yet)
-  dietId      Int?      // Diet being edited (null for new diets)
-  
+  sessionId String // Unique identifier for a form session
+  clientId  Int? // Client being worked on (null if not selected yet)
+  dietId    Int? // Diet being edited (null for new diets)
+
   // Action details
-  action      String   // "form_opened", "client_selected", "field_changed", "ogun_added", "ogun_removed", "item_added", "item_removed", "diet_saved", "diet_save_failed", etc.
-  fieldName   String?  // Field that changed (e.g., "su", "tarih", "dietitianNote")
-  fieldValue  String?  // New value (JSON stringified if complex)
+  action        String // "form_opened", "client_selected", "field_changed", "ogun_added", "ogun_removed", "item_added", "item_removed", "diet_saved", "diet_save_failed", etc.
+  fieldName     String? // Field that changed (e.g., "su", "tarih", "dietitianNote")
+  fieldValue    String? // New value (JSON stringified if complex)
   previousValue String? // Previous value (for change tracking)
-  
+
   // Context
-  metadata    Json?    // Additional context (e.g., ogun index, item index, error messages)
-  source      String   @default("client") // "client" for client-side logs, "server" for server-side logs
-  
+  metadata Json? // Additional context (e.g., ogun index, item index, error messages)
+  source   String @default("client") // "client" for client-side logs, "server" for server-side logs
+
   // Timestamps
-  createdAt   DateTime @default(now())
-  
+  createdAt DateTime @default(now())
+
   @@index([dietitianId, createdAt])
   @@index([sessionId])
   @@index([clientId])
@@ -417,7 +422,7 @@ model SystemConfig {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@index([key])
 }
 
@@ -432,4 +437,48 @@ model PushSubscription {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Progress Tracking
+model ProgressEntry {
+  id        Int      @id @default(autoincrement())
+  userId    Int // Client user ID
+  clientId  Int // Client ID
+  date      DateTime // Measurement date (required)
+  weight    Float? // Weight in kg
+  waist     Float? // Waist circumference in cm
+  hip       Float? // Hip circumference in cm
+  bodyFat   Float? // Body fat percentage
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([clientId, date])
+  @@index([date])
+}
+
+// Exercise Tracking
+model ExerciseLog {
+  id             Int         @id @default(autoincrement())
+  userId         Int // Client user ID
+  clientId       Int // Client ID
+  date           DateTime // Exercise date (required)
+  exerciseTypeId Int? // Definition ID for exercise type
+  definition     Definition? @relation(fields: [exerciseTypeId], references: [id], onDelete: SetNull)
+  description    String? // Custom description
+  duration       Int? // Duration in minutes
+  steps          Int? // Step count
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([clientId, date])
+  @@index([date])
+  @@index([exerciseTypeId])
 }

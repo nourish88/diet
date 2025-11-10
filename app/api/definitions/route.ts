@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(definitions);
+    return NextResponse.json({ definitions });
   } catch (error) {
     console.error("Database error:", error);
     return NextResponse.json(
@@ -47,7 +47,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate type
-    if (type !== "su_tuketimi" && type !== "fiziksel_aktivite") {
+    if (
+      type !== "su_tuketimi" &&
+      type !== "fiziksel_aktivite" &&
+      type !== "egzersiz_tipi"
+    ) {
       return NextResponse.json(
         { error: "Geçersiz tanımlama tipi" },
         { status: 400 }

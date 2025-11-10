@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addCorsHeaders } from "@/lib/cors";
 import { sendMealReminders } from "@/services/MealReminderService";
+import { sendNewDietNotifications } from "@/services/DietNotificationService";
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +30,16 @@ export async function GET(request: NextRequest) {
     console.log(
       `✅ Meal reminder job completed: ${result.sent} sent, ${result.failed} failed, ${result.reminders.length} reminders found`
     );
+
+    // Also send new diet notifications
+    console.log("🔔 Starting new diet notification job...");
+    try {
+      await sendNewDietNotifications();
+      console.log("✅ New diet notification job completed");
+    } catch (error: any) {
+      console.error("❌ New diet notification error:", error);
+      // Don't fail the entire request if new diet notifications fail
+    }
 
     return addCorsHeaders(
       NextResponse.json({

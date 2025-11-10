@@ -15,12 +15,22 @@ import {
   ChevronLeft,
   Loader2,
   MessageCircle,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { useClient } from "@/hooks/useApi";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase-browser";
+import ProgressChart from "@/components/progress/ProgressChart";
+import ProgressSummary from "@/components/progress/ProgressSummary";
+import ExerciseChart from "@/components/exercises/ExerciseChart";
+import DateRangePicker from "@/components/progress/DateRangePicker";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
+import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
+import { useState } from "react";
 
 export default function ClientDetailPage() {
   const { toast } = useToast();
@@ -28,6 +38,12 @@ export default function ClientDetailPage() {
   const router = useRouter();
 
   const clientId = params?.id ? Number(params.id) : undefined;
+  
+  // Date range for progress and exercise filtering
+  const [progressDateFrom, setProgressDateFrom] = useState<Date | null>(null);
+  const [progressDateTo, setProgressDateTo] = useState<Date | null>(null);
+  const [exerciseDateFrom, setExerciseDateFrom] = useState<Date | null>(null);
+  const [exerciseDateTo, setExerciseDateTo] = useState<Date | null>(null);
 
   // Use React Query hook for data fetching with automatic caching
   const { data: client, isLoading, error } = useClient(clientId);
@@ -65,6 +81,62 @@ export default function ClientDetailPage() {
     },
     enabled: !!clientId,
     refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch progress entries
+  const { data: progressData, isLoading: progressLoading } = useQuery({
+    queryKey: ["progress", clientId, progressDateFrom, progressDateTo],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const params = new URLSearchParams();
+      params.append("clientId", clientId.toString());
+      if (progressDateFrom) {
+        params.append("dateFrom", progressDateFrom.toISOString());
+      }
+      if (progressDateTo) {
+        params.append("dateTo", progressDateTo.toISOString());
+      }
+
+      const response = await fetch(`/api/progress?${params.toString()}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Progress data could not be fetched");
+      }
+
+      const data = await response.json();
+      return data.entries || [];
+    },
+    enabled: !!clientId,
+  });
+
+  // Fetch exercise logs
+  const { data: exerciseData, isLoading: exerciseLoading } = useQuery({
+    queryKey: ["exercises", clientId, exerciseDateFrom, exerciseDateTo],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const params = new URLSearchParams();
+      params.append("clientId", clientId.toString());
+      if (exerciseDateFrom) {
+        params.append("dateFrom", exerciseDateFrom.toISOString());
+      }
+      if (exerciseDateTo) {
+        params.append("dateTo", exerciseDateTo.toISOString());
+      }
+
+      const response = await fetch(`/api/exercises?${params.toString()}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Exercise data could not be fetched");
+      }
+
+      const data = await response.json();
+      return data.logs || [];
+    },
+    enabled: !!clientId,
   });
 
   // Update the formatDate function to properly handle the date format
@@ -336,6 +408,148 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Progress Tracking Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <CardTitle>Gelişim Takibi</CardTitle>
+            </div>
+            <DateRangePicker
+              dateFrom={progressDateFrom}
+              dateTo={progressDateTo}
+              onDateChange={(from, to) => {
+                setProgressDateFrom(from);
+                setProgressDateTo(to);
+              }}
+            />
+          </div>
+          <CardDescription>
+            Danışanın kilo, ölçü ve vücut yağ oranı takibi
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {progressLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+            </div>
+          ) : progressData && progressData.length > 0 ? (
+            <>
+              {(() => {
+                const summary = calculateProgressSummary(
+                  progressData,
+                  progressDateFrom || undefined,
+                  progressDateTo || undefined
+                );
+                const chartData = getChartData(
+                  progressData,
+                  progressDateFrom || undefined,
+                  progressDateTo || undefined
+                );
+                const hasWeight = progressData.some((e: ProgressEntry) => e.weight !== null);
+                const hasWaist = progressData.some((e: ProgressEntry) => e.waist !== null);
+                const hasHip = progressData.some((e: ProgressEntry) => e.hip !== null);
+                const hasBodyFat = progressData.some((e: ProgressEntry) => e.bodyFat !== null);
+
+                return (
+                  <>
+                    {summary && (
+                      <div className="mb-6">
+                        <ProgressSummary summary={summary} />
+                      </div>
+                    )}
+                    <ProgressChart
+                      data={chartData}
+                      showWeight={hasWeight}
+                      showWaist={hasWaist}
+                      showHip={hasHip}
+                      showBodyFat={hasBodyFat}
+                    />
+                  </>
+                );
+              })()}
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-500">Henüz gelişim verisi bulunmuyor</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Exercise Tracking Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-indigo-600" />
+              <CardTitle>Antrenman Takibi</CardTitle>
+            </div>
+            <DateRangePicker
+              dateFrom={exerciseDateFrom}
+              dateTo={exerciseDateTo}
+              onDateChange={(from, to) => {
+                setExerciseDateFrom(from);
+                setExerciseDateTo(to);
+              }}
+            />
+          </div>
+          <CardDescription>
+            Danışanın egzersiz ve aktivite kayıtları
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {exerciseLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+            </div>
+          ) : exerciseData && exerciseData.length > 0 ? (
+            <>
+              {(() => {
+                const stats = getExerciseStats(
+                  exerciseData,
+                  exerciseDateFrom || undefined,
+                  exerciseDateTo || undefined
+                );
+                const chartData = groupByExerciseType(
+                  exerciseData,
+                  exerciseDateFrom || undefined,
+                  exerciseDateTo || undefined
+                );
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500 mb-1">Toplam Egzersiz</p>
+                        <p className="text-2xl font-bold">{stats.totalExercises}</p>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
+                        <p className="text-2xl font-bold">{stats.totalDuration} dk</p>
+                      </div>
+                      <div className="bg-orange-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
+                        <p className="text-2xl font-bold">
+                          {stats.totalSteps.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <ExerciseChart data={chartData} />
+                  </>
+                );
+              })()}
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-500">Henüz egzersiz kaydı bulunmuyor</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Toaster />
     </div>
   );

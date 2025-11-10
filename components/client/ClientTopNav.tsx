@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Home, Settings } from "lucide-react";
+import { LogOut, Home, Settings, TrendingUp, Activity } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
@@ -52,6 +52,22 @@ export default function ClientTopNav() {
             >
               <Home className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">Anasayfa</span>
+            </Link>
+            <Link
+              href="/client/progress"
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition"
+              title="Gelişim Takibi"
+            >
+              <TrendingUp className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Gelişim</span>
+            </Link>
+            <Link
+              href="/client/exercises"
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition"
+              title="Antrenman Takibi"
+            >
+              <Activity className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Antrenman</span>
             </Link>
             <Link
               href="/client/settings"
