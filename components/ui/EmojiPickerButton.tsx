@@ -33,7 +33,7 @@ export const EmojiPickerButton = ({
           type="button"
           variant="outline"
           size="icon"
-          className={`h-9 w-9 ${className}`}
+          className={`h-10 w-10 flex-shrink-0 ${className}`}
           title="Emoji ekle"
         >
           <Smile className="h-4 w-4" />

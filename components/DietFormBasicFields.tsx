@@ -465,11 +465,11 @@ const DietFormBasicFields = ({
               name="haftalikSonuc"
               label="Haftalık Sonuç"
               renderField={(field) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   <Input
                     {...field}
                     value={diet.Sonuc || ""}
-                    className="flex-1 min-w-0 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
+                    className="flex-1 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
                     placeholder="Haftalık sonuç notları"
                     onChange={(e) => {
                       setDiet((prevDiet) => ({
@@ -477,18 +477,17 @@ const DietFormBasicFields = ({
                         Sonuc: e.target.value,
                       }));
                     }}
+                    style={{ minWidth: 0 }}
                   />
-                  <div className="flex-shrink-0">
-                    <EmojiPickerButton
-                      onEmojiSelect={(emoji) => {
-                        const newValue = (diet.Sonuc || "") + emoji;
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          Sonuc: newValue,
-                        }));
-                      }}
-                    />
-                  </div>
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.Sonuc || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        Sonuc: newValue,
+                      }));
+                    }}
+                  />
                 </div>
               )}
             />
@@ -517,11 +516,11 @@ const DietFormBasicFields = ({
               name="diyetisyenNotu"
               label="Diyetisyen Notu"
               renderField={(field) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   <Input
                     {...field}
                     value={diet.dietitianNote || ""}
-                    className="flex-1 min-w-0 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
+                    className="flex-1 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
                     placeholder="Diyetisyen notu..."
                     onChange={(e) => {
                       setDiet((prevDiet) => ({
@@ -529,18 +528,17 @@ const DietFormBasicFields = ({
                         dietitianNote: e.target.value,
                       }));
                     }}
+                    style={{ minWidth: 0 }}
                   />
-                  <div className="flex-shrink-0">
-                    <EmojiPickerButton
-                      onEmojiSelect={(emoji) => {
-                        const newValue = (diet.dietitianNote || "") + emoji;
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          dietitianNote: newValue,
-                        }));
-                      }}
-                    />
-                  </div>
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.dietitianNote || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        dietitianNote: newValue,
+                      }));
+                    }}
+                  />
                 </div>
               )}
             />
