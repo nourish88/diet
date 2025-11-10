@@ -497,16 +497,16 @@ const DietTable = ({
                           </div>
 
                           {/* Detail/Notes */}
-                            <Textarea
-                              value={ogun.detail || ""}
-                              onChange={(e) =>
+                          <Textarea
+                            value={ogun.detail || ""}
+                            onChange={(e) =>
                               handleOgunChange(index, "detail", e.target.value)
-                              }
-                              placeholder="Açıklama/Not..."
+                            }
+                            placeholder="Açıklama/Not..."
                             className="text-sm border-gray-300"
-                              rows={2}
+                            rows={2}
                             disabled={effectiveDisabled}
-                            />
+                          />
                         </div>
                       )}
                     </Draggable>

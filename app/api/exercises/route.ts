@@ -4,7 +4,7 @@ import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 
 // Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/exercises

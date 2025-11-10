@@ -22,7 +22,7 @@ const exerciseSchema = z.object({
   date: z.date({
     required_error: "Tarih zorunludur",
   }),
-  exerciseTypeId: z.string().optional(),
+  exerciseTypeId: z.string().optional().or(z.literal("none")),
   description: z.string().optional(),
   duration: z
     .string()
@@ -105,9 +105,10 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
         credentials: "include",
         body: JSON.stringify({
           date: data.date.toISOString(),
-          exerciseTypeId: data.exerciseTypeId
-            ? parseInt(data.exerciseTypeId, 10)
-            : null,
+          exerciseTypeId:
+            data.exerciseTypeId && data.exerciseTypeId !== "none"
+              ? parseInt(data.exerciseTypeId, 10)
+              : null,
           description: data.description || null,
           duration: data.duration ? parseInt(data.duration, 10) : null,
           steps: data.steps ? parseInt(data.steps, 10) : null,
@@ -162,14 +163,20 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
           <p className="text-sm text-gray-500">Yükleniyor...</p>
         ) : (
           <Select
-            value={exerciseTypeId || ""}
-            onValueChange={(value) => setValue("exerciseTypeId", value)}
+            value={exerciseTypeId || undefined}
+            onValueChange={(value) => {
+              if (value === "none") {
+                setValue("exerciseTypeId", undefined);
+              } else {
+                setValue("exerciseTypeId", value);
+              }
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Egzersiz tipi seçiniz (opsiyonel)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Seçilmemiş</SelectItem>
+              <SelectItem value="none">Seçilmemiş</SelectItem>
               {exerciseTypes.map((type) => (
                 <SelectItem key={type.id} value={type.id.toString()}>
                   {type.name}
