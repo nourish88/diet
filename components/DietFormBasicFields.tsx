@@ -267,7 +267,7 @@ const DietFormBasicFields = ({
 
       <div className="p-4 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column */}
+          {/* Left Column - 3 fields */}
           <div className="space-y-5">
             <FormFieldWrapper form={form} name="dietDate" label="Diyet Tarihi">
               <div className="w-full">
@@ -292,7 +292,7 @@ const DietFormBasicFields = ({
               name="suTuketimi"
               label="Su Tüketimi"
               renderField={(field) => (
-                <div className="space-y-2">
+                <div className="w-full">
                   {!showCustomSu ? (
                     <Select
                       value={diet.Su || ""}
@@ -323,7 +323,7 @@ const DietFormBasicFields = ({
                     <div className="flex gap-2">
                       <Input
                         value={diet.Su || ""}
-                        className={inputBaseClass}
+                        className={inputBaseClass + " flex-1"}
                         placeholder="Özel su tüketimi girin..."
                         onChange={(e) => {
                           setDiet((prevDiet) => ({
@@ -332,7 +332,6 @@ const DietFormBasicFields = ({
                           }));
                         }}
                         onBlur={async () => {
-                          // Save as definition when user leaves input
                           if (diet.Su && diet.Su.trim()) {
                             await saveCustomDefinition("su_tuketimi", diet.Su);
                             setShowCustomSu(false);
@@ -341,7 +340,6 @@ const DietFormBasicFields = ({
                         onKeyDown={async (e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            // Save as definition when Enter is pressed
                             if (diet.Su && diet.Su.trim()) {
                               await saveCustomDefinition(
                                 "su_tuketimi",
@@ -371,19 +369,106 @@ const DietFormBasicFields = ({
               )}
             />
 
+            <FormFieldWrapper
+              form={form}
+              name="fizikselAktivite"
+              label="Fiziki Aktivite"
+              renderField={(field) => (
+                <div className="w-full">
+                  {!showCustomFizik ? (
+                    <Select
+                      value={diet.Fizik || ""}
+                      onValueChange={(value) => {
+                        if (value === "__custom__") {
+                          setShowCustomFizik(true);
+                          setDiet((prevDiet) => ({ ...prevDiet, Fizik: "" }));
+                        } else {
+                          setDiet((prevDiet) => ({
+                            ...prevDiet,
+                            Fizik: value,
+                          }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={inputBaseClass}>
+                        <SelectValue placeholder="Seçiniz..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fizikDefinitions.map((def) => (
+                          <SelectItem key={`fizik-def-${def.id}`} value={def.name}>
+                            {def.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem key="fizik-custom" value="__custom__">
+                          ✏️ Özel giriş yap
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Input
+                        value={diet.Fizik || ""}
+                        className={inputBaseClass + " flex-1"}
+                        placeholder="Özel fiziksel aktivite girin..."
+                        onChange={(e) => {
+                          setDiet((prevDiet) => ({
+                            ...prevDiet,
+                            Fizik: e.target.value,
+                          }));
+                        }}
+                        onBlur={async () => {
+                          if (diet.Fizik && diet.Fizik.trim()) {
+                            await saveCustomDefinition(
+                              "fiziksel_aktivite",
+                              diet.Fizik
+                            );
+                            setShowCustomFizik(false);
+                          }
+                        }}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (diet.Fizik && diet.Fizik.trim()) {
+                              await saveCustomDefinition(
+                                "fiziksel_aktivite",
+                                diet.Fizik
+                              );
+                              setShowCustomFizik(false);
+                            }
+                          } else if (e.key === "Escape") {
+                            setShowCustomFizik(false);
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustomFizik(false);
+                        }}
+                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                        title="İptal (Esc)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
           </div>
 
-          {/* Right Column */}
+          {/* Right Column - 3 fields */}
           <div className="space-y-5">
             <FormFieldWrapper
               form={form}
               name="haftalikSonuc"
               label="Haftalık Sonuç"
               renderField={(field) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   <Input
                     value={diet.Sonuc || ""}
-                    className={inputBaseClass + " flex-1"}
+                    className={inputBaseClass + " flex-1 min-w-0"}
                     placeholder="Haftalık sonuç notları"
                     onChange={(e) => {
                       setDiet((prevDiet) => ({
@@ -392,17 +477,15 @@ const DietFormBasicFields = ({
                       }));
                     }}
                   />
-                  <div className="flex-shrink-0 self-center">
-                    <EmojiPickerButton
-                      onEmojiSelect={(emoji) => {
-                        const newValue = (diet.Sonuc || "") + emoji;
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          Sonuc: newValue,
-                        }));
-                      }}
-                    />
-                  </div>
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.Sonuc || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        Sonuc: newValue,
+                      }));
+                    }}
+                  />
                 </div>
               )}
             />
@@ -431,10 +514,10 @@ const DietFormBasicFields = ({
               name="diyetisyenNotu"
               label="Diyetisyen Notu"
               renderField={(field) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full">
                   <Input
                     value={diet.dietitianNote || ""}
-                    className={inputBaseClass + " flex-1"}
+                    className={inputBaseClass + " flex-1 min-w-0"}
                     placeholder="Diyetisyen notu..."
                     onChange={(e) => {
                       setDiet((prevDiet) => ({
@@ -443,114 +526,19 @@ const DietFormBasicFields = ({
                       }));
                     }}
                   />
-                  <div className="flex-shrink-0 self-center">
-                    <EmojiPickerButton
-                      onEmojiSelect={(emoji) => {
-                        const newValue = (diet.dietitianNote || "") + emoji;
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          dietitianNote: newValue,
-                        }));
-                      }}
-                    />
-                  </div>
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.dietitianNote || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        dietitianNote: newValue,
+                      }));
+                    }}
+                  />
                 </div>
               )}
             />
           </div>
-        </div>
-
-        {/* Fiziksel Aktivite - Full Width Below */}
-        <div className="mt-5">
-          <FormFieldWrapper
-            form={form}
-            name="fizikselAktivite"
-            label="Fiziki Aktivite"
-            renderField={(field) => (
-              <div className="space-y-2">
-                {!showCustomFizik ? (
-                  <Select
-                    value={diet.Fizik || ""}
-                    onValueChange={(value) => {
-                      if (value === "__custom__") {
-                        setShowCustomFizik(true);
-                        setDiet((prevDiet) => ({ ...prevDiet, Fizik: "" }));
-                      } else {
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          Fizik: value,
-                        }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger className={inputBaseClass}>
-                      <SelectValue placeholder="Seçiniz..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fizikDefinitions.map((def) => (
-                        <SelectItem key={`fizik-def-${def.id}`} value={def.name}>
-                          {def.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem key="fizik-custom" value="__custom__">
-                        ✏️ Özel giriş yap
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      value={diet.Fizik || ""}
-                      className={inputBaseClass}
-                      placeholder="Özel fiziksel aktivite girin..."
-                      onChange={(e) => {
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          Fizik: e.target.value,
-                        }));
-                      }}
-                      onBlur={async () => {
-                        // Save as definition when user leaves input
-                        if (diet.Fizik && diet.Fizik.trim()) {
-                          await saveCustomDefinition(
-                            "fiziksel_aktivite",
-                            diet.Fizik
-                          );
-                          setShowCustomFizik(false);
-                        }
-                      }}
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          // Save as definition when Enter is pressed
-                          if (diet.Fizik && diet.Fizik.trim()) {
-                            await saveCustomDefinition(
-                              "fiziksel_aktivite",
-                              diet.Fizik
-                            );
-                            setShowCustomFizik(false);
-                          }
-                        } else if (e.key === "Escape") {
-                          setShowCustomFizik(false);
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCustomFizik(false);
-                      }}
-                      className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                      title="İptal (Esc)"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          />
         </div>
 
         {/* Birthday and Important Date Celebrations - Full Width Below */}
