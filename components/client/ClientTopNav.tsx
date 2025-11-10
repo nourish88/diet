@@ -85,7 +85,7 @@ export default function ClientTopNav() {
             >
               <LogOut className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">
-                {isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              {isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
               </span>
             </button>
           </nav>

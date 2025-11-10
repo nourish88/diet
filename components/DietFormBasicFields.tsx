@@ -116,9 +116,36 @@ const DietFormBasicFields = ({
           DefinitionService.getDefinitions("su_tuketimi"),
           DefinitionService.getDefinitions("fiziksel_aktivite"),
         ]);
-        // Ensure we always have arrays
-        setSuDefinitions(Array.isArray(suDefs) ? suDefs : []);
-        setFizikDefinitions(Array.isArray(fizikDefs) ? fizikDefs : []);
+        // Ensure we always have arrays and remove duplicates
+        // Remove duplicates by name first (keep the first occurrence), then by ID
+        const uniqueSuDefs = Array.isArray(suDefs) 
+          ? suDefs
+              .filter((def, index, self) => {
+                // First, remove duplicates by name (case-insensitive)
+                const nameLower = def.name.toLowerCase().trim();
+                const nameIndex = self.findIndex(d => d.name.toLowerCase().trim() === nameLower);
+                return nameIndex === index;
+              })
+              .filter((def, index, self) => {
+                // Then, remove duplicates by ID (shouldn't happen, but just in case)
+                return index === self.findIndex(d => d.id === def.id);
+              })
+          : [];
+        const uniqueFizikDefs = Array.isArray(fizikDefs)
+          ? fizikDefs
+              .filter((def, index, self) => {
+                // First, remove duplicates by name (case-insensitive)
+                const nameLower = def.name.toLowerCase().trim();
+                const nameIndex = self.findIndex(d => d.name.toLowerCase().trim() === nameLower);
+                return nameIndex === index;
+              })
+              .filter((def, index, self) => {
+                // Then, remove duplicates by ID (shouldn't happen, but just in case)
+                return index === self.findIndex(d => d.id === def.id);
+              })
+          : [];
+        setSuDefinitions(uniqueSuDefs);
+        setFizikDefinitions(uniqueFizikDefs);
       } catch (error) {
         console.error("Error loading definitions:", error);
         // Set empty arrays on error
@@ -283,11 +310,11 @@ const DietFormBasicFields = ({
                       </SelectTrigger>
                       <SelectContent>
                         {suDefinitions.map((def) => (
-                          <SelectItem key={def.id} value={def.name}>
+                          <SelectItem key={`su-def-${def.id}`} value={def.name}>
                             {def.name}
                           </SelectItem>
                         ))}
-                        <SelectItem value="__custom__">
+                        <SelectItem key="su-custom" value="__custom__">
                           ✏️ Özel giriş yap
                         </SelectItem>
                       </SelectContent>
@@ -461,11 +488,11 @@ const DietFormBasicFields = ({
                     </SelectTrigger>
                     <SelectContent>
                       {fizikDefinitions.map((def) => (
-                        <SelectItem key={def.id} value={def.name}>
+                        <SelectItem key={`fizik-def-${def.id}`} value={def.name}>
                           {def.name}
                         </SelectItem>
                       ))}
-                      <SelectItem value="__custom__">
+                      <SelectItem key="fizik-custom" value="__custom__">
                         ✏️ Özel giriş yap
                       </SelectItem>
                     </SelectContent>
