@@ -71,7 +71,7 @@ export default function ClientMessagesPage() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-
+    
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(session && { Authorization: `Bearer ${session.access_token}` }),
@@ -172,7 +172,7 @@ export default function ClientMessagesPage() {
       const shouldShowLoader =
         options.replace || messagesRef.current.length === 0;
       if (shouldShowLoader) {
-        setLoading(true);
+      setLoading(true);
       }
 
       const headers = await getAuthHeaders();

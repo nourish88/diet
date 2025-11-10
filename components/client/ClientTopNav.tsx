@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Home } from "lucide-react";
+import { LogOut, Home, Settings } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
@@ -51,6 +51,13 @@ export default function ClientTopNav() {
               <Home className="w-4 h-4 mr-2" />
               Anasayfa
             </Link>
+            <Link
+              href="/client/settings"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Ayarlar
+            </Link>
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
@@ -65,5 +72,6 @@ export default function ClientTopNav() {
     </header>
   );
 }
+
 
 

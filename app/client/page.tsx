@@ -35,6 +35,38 @@ export default function ClientDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check for meal reminders when dashboard loads
+  useEffect(() => {
+    const checkMealReminders = async () => {
+      try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          return;
+        }
+
+        // Check for reminders (silently, don't show errors to user)
+        await fetch("/api/notifications/check-meal-reminders", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }).catch(() => {
+          // Silently fail - reminders are also handled by cron job
+        });
+      } catch (error) {
+        // Silently fail - reminders are also handled by cron job
+        console.debug("Meal reminder check failed:", error);
+      }
+    };
+
+    // Check reminders after a short delay to not block page load
+    const timeout = setTimeout(checkMealReminders, 2000);
+    return () => clearTimeout(timeout);
+  }, []);
+
   const loadData = async () => {
     try {
       const supabase = createClient();

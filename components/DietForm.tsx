@@ -446,38 +446,38 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const convertDbDietToUiDiet = (dbDiet: any, clientId?: number): Diet => {
     try {
       const mappedOguns =
-        dbDiet.oguns?.map((dbOgun: any) => ({
-          name: dbOgun.name || "",
-          time: dbOgun.time || "",
+          dbDiet.oguns?.map((dbOgun: any) => ({
+            name: dbOgun.name || "",
+            time: dbOgun.time || "",
           detail: stripEmojis(dbOgun.detail || ""),
-          order: dbOgun.order || 0,
-          items:
-            dbOgun.items?.map((dbItem: any) => {
-              const miktarValue = dbItem.miktar || "";
-              const birimValue =
-                typeof dbItem.birim === "object" && dbItem.birim
-                  ? dbItem.birim.name || ""
-                  : dbItem.birim || "";
-              const besinValue =
-                typeof dbItem.besin === "object" && dbItem.besin
-                  ? dbItem.besin.name || ""
-                  : dbItem.besin || "";
-              const priorityValue =
-                typeof dbItem.besin === "object" && dbItem.besin
-                  ? dbItem.besin.priority ?? null
-                  : typeof dbItem.besinPriority === "number"
-                  ? dbItem.besinPriority
-                  : typeof dbItem.priority === "number"
-                  ? dbItem.priority
-                  : null;
+            order: dbOgun.order || 0,
+            items:
+              dbOgun.items?.map((dbItem: any) => {
+                const miktarValue = dbItem.miktar || "";
+                const birimValue =
+                  typeof dbItem.birim === "object" && dbItem.birim
+                    ? dbItem.birim.name || ""
+                    : dbItem.birim || "";
+                const besinValue =
+                  typeof dbItem.besin === "object" && dbItem.besin
+                    ? dbItem.besin.name || ""
+                    : dbItem.besin || "";
+                const priorityValue =
+                  typeof dbItem.besin === "object" && dbItem.besin
+                    ? dbItem.besin.priority ?? null
+                    : typeof dbItem.besinPriority === "number"
+                    ? dbItem.besinPriority
+                    : typeof dbItem.priority === "number"
+                    ? dbItem.priority
+                    : null;
 
-              return {
-                miktar: miktarValue,
-                birim: birimValue,
-                besin: besinValue,
-                besinPriority: priorityValue,
-              };
-            }) || [],
+                return {
+                  miktar: miktarValue,
+                  birim: birimValue,
+                  besin: besinValue,
+                  besinPriority: priorityValue,
+                };
+              }) || [],
         })) || OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }));
 
       return {
@@ -533,7 +533,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     setDiet((prev) => {
       const updatedOguns = [...prev.Oguns, newOgun];
       return {
-        ...prev,
+      ...prev,
         Oguns: sortMealsByTime(updatedOguns),
       };
     });
@@ -549,7 +549,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     setDiet((prev) => {
       const remaining = prev.Oguns.filter((_, idx) => idx !== index);
       return {
-        ...prev,
+      ...prev,
         Oguns: sortMealsByTime(remaining),
       };
     });

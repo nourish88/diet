@@ -269,8 +269,8 @@ export async function GET(
       afterId != null
         ? undefined
         : messages.filter(
-            (msg) => !msg.isRead && msg.userId !== auth.user!.id
-          ).length;
+      (msg) => !msg.isRead && msg.userId !== auth.user!.id
+    ).length;
 
     console.log(
       `✅ Fetched ${messages.length} messages for diet ${dietId} (${unreadCount} unread)`
@@ -511,25 +511,25 @@ export async function POST(
               dietitianActive
                 ? "ℹ️ Dietitian is actively viewing the conversation, skipping push."
                 : `⚠️ Dietitian has no push token (${
-                    dietitian?.email || "unknown"
-                  })`
+                dietitian?.email || "unknown"
+              })`
             );
           }
 
           const webPushUrl = `/clients/${clientId}/messages?dietId=${dietId}`;
           if (!dietitianActive) {
-            await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
-              title: `Yeni Mesaj: ${client.name} ${client.surname}`,
-              body: result!.content.substring(0, 120),
-              url: webPushUrl,
-              data: {
-                type: "new_message",
-                messageId: result!.id,
-                dietId,
-                clientId,
-                senderRole: "client",
-              },
-            });
+          await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
+            title: `Yeni Mesaj: ${client.name} ${client.surname}`,
+            body: result!.content.substring(0, 120),
+            url: webPushUrl,
+            data: {
+              type: "new_message",
+              messageId: result!.id,
+              dietId,
+              clientId,
+              senderRole: "client",
+            },
+          });
           } else {
             console.log("ℹ️ Dietitian active in conversation, skipping web push.");
           }
@@ -597,18 +597,18 @@ export async function POST(
 
           const clientWebPushUrl = `/client/diets/${dietId}/messages`;
           if (!clientActive) {
-            await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
-              title: "Diyetisyeninizden Yeni Mesaj",
-              body: result!.content.substring(0, 120),
-              url: clientWebPushUrl,
-              data: {
-                type: "new_message",
-                messageId: result!.id,
-                dietId,
-                clientId,
-                senderRole: "dietitian",
-              },
-            });
+          await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
+            title: "Diyetisyeninizden Yeni Mesaj",
+            body: result!.content.substring(0, 120),
+            url: clientWebPushUrl,
+            data: {
+              type: "new_message",
+              messageId: result!.id,
+              dietId,
+              clientId,
+              senderRole: "dietitian",
+            },
+          });
           } else {
             console.log("ℹ️ Client active in conversation, skipping web push.");
           }

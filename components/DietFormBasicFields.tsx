@@ -137,9 +137,9 @@ const DietFormBasicFields = ({
           data: { session },
         } = await supabase.auth.getSession();
         const token = session?.access_token;
-
+        
         if (!token) return;
-
+        
         const response = await fetch("/api/important-dates", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -163,16 +163,16 @@ const DietFormBasicFields = ({
     // Check for birthday
     const checkBirthday = async () => {
       if (!selectedClientId) return;
-
+      
       try {
         // Get authentication token
         const {
           data: { session },
         } = await supabase.auth.getSession();
         const token = session?.access_token;
-
+        
         if (!token) return;
-
+        
         const response = await fetch(`/api/clients/${selectedClientId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -180,7 +180,7 @@ const DietFormBasicFields = ({
           },
         });
         const data = await response.json();
-
+        
         // Here, data is the unwrapped client object
         console.log(data, "data");
 
@@ -530,15 +530,15 @@ const DietFormBasicFields = ({
                     }}
                   />
                   <div className="flex-shrink-0">
-                    <EmojiPickerButton
-                      onEmojiSelect={(emoji) => {
-                        const newValue = (diet.Sonuc || "") + emoji;
-                        setDiet((prevDiet) => ({
-                          ...prevDiet,
-                          Sonuc: newValue,
-                        }));
-                      }}
-                    />
+                  <EmojiPickerButton
+                    onEmojiSelect={(emoji) => {
+                      const newValue = (diet.Sonuc || "") + emoji;
+                      setDiet((prevDiet) => ({
+                        ...prevDiet,
+                        Sonuc: newValue,
+                      }));
+                    }}
+                  />
                   </div>
                 </div>
               )}
@@ -570,17 +570,17 @@ const DietFormBasicFields = ({
               label="Diyetisyen Notu"
               renderField={(field) => (
                 <div className="flex gap-2">
-                  <Input
+                <Input
                     value={diet.dietitianNote || ""}
                     className={inputBaseClass + " flex-1"}
-                    placeholder="Diyetisyen notu..."
-                    onChange={(e) => {
-                      setDiet((prevDiet) => ({
-                        ...prevDiet,
-                        dietitianNote: e.target.value,
-                      }));
-                    }}
-                  />
+                  placeholder="Diyetisyen notu..."
+                  onChange={(e) => {
+                    setDiet((prevDiet) => ({
+                      ...prevDiet,
+                      dietitianNote: e.target.value,
+                    }));
+                  }}
+                />
                   <div className="flex-shrink-0">
                     <EmojiPickerButton
                       onEmojiSelect={(emoji) => {

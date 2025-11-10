@@ -267,31 +267,31 @@ export default function ClientMessagesPage() {
   const fetchMessages = async (
     afterId?: number | null
   ): Promise<MessagesResponse> => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!session) {
-      router.push("/login");
-      throw new Error("Session not found");
-    }
+      if (!session) {
+        router.push("/login");
+        throw new Error("Session not found");
+      }
 
     const query = afterId ? `?afterId=${afterId}` : "";
-    const response = await fetch(
+      const response = await fetch(
       `/api/client/portal/diets/${dietId}/messages${query}`,
-      {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        router.push("/client/diets");
+      if (!response.ok) {
+        if (response.status === 404) {
+          router.push("/client/diets");
+        }
+        throw new Error("Failed to load messages");
       }
-      throw new Error("Failed to load messages");
-    }
 
     return response.json();
   };
@@ -365,12 +365,12 @@ export default function ClientMessagesPage() {
       const response = await fetch(
         `/api/clients/${clientId}/diets/${dietId}/messages`,
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ messageIds }),
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ messageIds }),
         }
       );
 
@@ -581,28 +581,28 @@ export default function ClientMessagesPage() {
         imageUrl={selectedImage || ""}
         onClose={() => setSelectedImage(null)}
       />
-
+      
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <Link
-            href={`/client/diets/${dietId}`}
-            className="flex items-center text-blue-600 hover:text-blue-700 mb-2"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Diyete Dön
-          </Link>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Diyetisyenimle İletişim
-          </h1>
-          <p className="text-sm text-gray-600">Diyet #{dietId}</p>
-          <button
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <Link
+          href={`/client/diets/${dietId}`}
+          className="flex items-center text-blue-600 hover:text-blue-700 mb-2"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Diyete Dön
+        </Link>
+        <h1 className="text-xl font-semibold text-gray-900">
+          Diyetisyenimle İletişim
+        </h1>
+        <p className="text-sm text-gray-600">Diyet #{dietId}</p>
+        <button
             onClick={refreshConversation}
             disabled={isRefreshing}
-            className="mt-3 inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          className="mt-3 inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
             {isRefreshing ? "Yenileniyor..." : "Konuşmayı Yenile"}
-          </button>
-        </div>
+        </button>
+      </div>
 
         {realtimeError && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-lg">
@@ -616,57 +616,57 @@ export default function ClientMessagesPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="h-[500px] overflow-y-auto p-6">
-            {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Henüz mesaj yok</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Diyetisyeninize ilk mesajı gönderin
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message, index) => {
-                  const isMe = message.user.id === userId;
-                  const showDate =
-                    index === 0 ||
-                    formatDate(messages[index - 1].createdAt) !==
-                      formatDate(message.createdAt);
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="h-[500px] overflow-y-auto p-6">
+          {messages.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Henüz mesaj yok</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Diyetisyeninize ilk mesajı gönderin
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message, index) => {
+                const isMe = message.user.id === userId;
+                const showDate =
+                  index === 0 ||
+                  formatDate(messages[index - 1].createdAt) !==
+                    formatDate(message.createdAt);
 
-                  return (
-                    <div key={message.id}>
-                      {showDate && (
-                        <div className="text-center my-4">
-                          <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
-                            {formatDate(message.createdAt)}
-                          </span>
-                        </div>
-                      )}
+                return (
+                  <div key={message.id}>
+                    {showDate && (
+                      <div className="text-center my-4">
+                        <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
+                          {formatDate(message.createdAt)}
+                        </span>
+                      </div>
+                    )}
 
                       <div
                         className={`flex ${
                           isMe ? "justify-end" : "justify-start"
                         }`}
                       >
-                        <div
-                          className={`max-w-[70%] ${
-                            isMe
-                              ? "bg-blue-600 text-white rounded-lg rounded-br-none"
-                              : "bg-gray-100 text-gray-900 rounded-lg rounded-bl-none"
-                          } p-4`}
-                        >
-                          {!isMe && (
-                            <p className="text-xs text-gray-600 mb-1">
-                              Diyetisyen
-                            </p>
-                          )}
+                      <div
+                        className={`max-w-[70%] ${
+                          isMe
+                            ? "bg-blue-600 text-white rounded-lg rounded-br-none"
+                            : "bg-gray-100 text-gray-900 rounded-lg rounded-bl-none"
+                        } p-4`}
+                      >
+                        {!isMe && (
+                          <p className="text-xs text-gray-600 mb-1">
+                            Diyetisyen
+                          </p>
+                        )}
 
-                          {message.ogun && (
-                            <div className="mb-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-                              📍 {message.ogun.name}
-                            </div>
-                          )}
+                        {message.ogun && (
+                          <div className="mb-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                            📍 {message.ogun.name}
+                          </div>
+                        )}
 
                           {message.content && (
                             <p className="text-sm whitespace-pre-line">
@@ -674,58 +674,58 @@ export default function ClientMessagesPage() {
                             </p>
                           )}
 
-                          {message.photos && message.photos.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {message.photos.map((photo) => (
-                                <div
-                                  key={photo.id}
-                                  className="relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        {message.photos && message.photos.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {message.photos.map((photo) => (
+                              <div
+                                key={photo.id}
+                                className="relative rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={() =>
                                     setSelectedImage(photo.imageData)
                                   }
-                                >
-                                  <img
-                                    src={photo.imageData}
+                              >
+                                <img
+                                  src={photo.imageData}
                                     alt="Mesaj görseli"
-                                    className="h-32 w-32 object-cover rounded-lg"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-20 transition-all">
-                                    <ImageIcon className="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
-                                  </div>
+                                  className="h-32 w-32 object-cover rounded-lg"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-20 transition-all">
+                                  <ImageIcon className="h-6 w-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                          <p
-                            className={`text-xs mt-2 ${
-                              isMe ? "text-blue-100" : "text-gray-500"
-                            }`}
-                          >
-                            {formatTime(message.createdAt)}
-                          </p>
-                        </div>
+                        <p
+                          className={`text-xs mt-2 ${
+                            isMe ? "text-blue-100" : "text-gray-500"
+                          }`}
+                        >
+                          {formatTime(message.createdAt)}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
 
-          <div className="border-t border-gray-200 p-4">
-            {selectedOgun && (
+        <div className="border-t border-gray-200 p-4">
+          {selectedOgun && (
               <div className="flex items-center justify-between bg-yellow-50 text-yellow-800 px-3 py-2 rounded-lg mb-3">
-                <span className="text-sm">📍 {selectedOgun.name}</span>
-                <button
-                  onClick={() => setSelectedOgun(null)}
-                  className="text-yellow-600 hover:text-yellow-800"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+              <span className="text-sm">📍 {selectedOgun.name}</span>
+              <button
+                onClick={() => setSelectedOgun(null)}
+                className="text-yellow-600 hover:text-yellow-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
             {pendingPhotos.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-3">
@@ -748,42 +748,42 @@ export default function ClientMessagesPage() {
               </div>
             )}
 
-            <div className="flex items-end space-x-2">
-              <div className="relative">
-                <button
-                  onClick={() => setShowOgunPicker(!showOgunPicker)}
-                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                  title="Öğün seç"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
+          <div className="flex items-end space-x-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowOgunPicker(!showOgunPicker)}
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                title="Öğün seç"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
 
-                {showOgunPicker && oguns.length > 0 && (
+              {showOgunPicker && oguns.length > 0 && (
                   <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px] z-10">
+                  <button
+                    onClick={() => {
+                      setSelectedOgun(null);
+                      setShowOgunPicker(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                  >
+                    ❌ Öğün seçme
+                  </button>
+                  {oguns.map((ogun) => (
                     <button
+                      key={ogun.id}
                       onClick={() => {
-                        setSelectedOgun(null);
+                        setSelectedOgun(ogun);
                         setShowOgunPicker(false);
                       }}
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
                     >
-                      ❌ Öğün seçme
-                    </button>
-                    {oguns.map((ogun) => (
-                      <button
-                        key={ogun.id}
-                        onClick={() => {
-                          setSelectedOgun(ogun);
-                          setShowOgunPicker(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-                      >
                         {ogun.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -794,27 +794,27 @@ export default function ClientMessagesPage() {
               </button>
 
               <textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                placeholder="Mesajınızı yazın..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Mesajınızı yazın..."
                 className="flex-1 border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                 rows={3}
-              />
+            />
 
-              <button
-                onClick={sendMessage}
+            <button
+              onClick={sendMessage}
                 disabled={sending}
                 className="flex items-center justify-center bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sending ? (
+            >
+              {sending ? (
                   <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
-              </button>
-            </div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </div>
+      </div>
       </div>
 
       <input

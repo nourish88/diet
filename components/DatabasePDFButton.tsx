@@ -204,12 +204,12 @@ const DatabasePDFButton = ({
           Array.isArray(ogun.items) ? ogun.items : []
         );
 
-        return {
+      return {
           name: (ogun.name || "Belirtilmemiş").toString(),
           time: (ogun.time || "").toString(),
           menuItems: menuItems.length > 0 ? menuItems : ["-"],
           notes: sanitizeMealNote(ogun.detail || ogun.notes || ""),
-        };
+      };
       }
     ) as PDFData["ogunler"];
 

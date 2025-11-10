@@ -317,40 +317,40 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     return sortMealsByTime(normalizedMeals);
   };
 
-  if (pdfData) {
+    if (pdfData) {
     return {
-      ...pdfData,
+        ...pdfData,
       ogunler: normalizeMeals(pdfData.ogunler || []),
-      isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
-      isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
-      importantDate: pdfData.isImportantDateCelebrated
+        isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
+        isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
+        importantDate: pdfData.isImportantDateCelebrated
         ? { message: importantDateMessage || pdfData.importantDate?.message || "" }
-        : undefined,
+          : undefined,
       waterConsumption: pdfData.waterConsumption || "",
       physicalActivity: pdfData.physicalActivity || "",
-    };
-  }
+      };
+    }
 
-  if (!diet) return null;
+    if (!diet) return null;
 
-  const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
+    const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
 
-  return {
-    fullName: clientName,
-    dietDate: diet.Tarih || new Date().toISOString(),
-    weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
-    target: diet.Hedef || "Hedef belirtilmemiş",
+    return {
+      fullName: clientName,
+      dietDate: diet.Tarih || new Date().toISOString(),
+      weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
+      target: diet.Hedef || "Hedef belirtilmemiş",
     ogunler: normalizeMeals(diet.Oguns || [], { fromDiet: true }),
-    waterConsumption: diet.Su || "Belirtilmemiş",
-    physicalActivity: diet.Fizik || "Belirtilmemiş",
-    dietitianNote: diet.dietitianNote || "",
-    isBirthdayCelebration: diet.isBirthdayCelebration || false,
-    isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-    importantDate: diet.isImportantDateCelebrated
-      ? { message: importantDateMessage }
-      : undefined,
+      waterConsumption: diet.Su || "Belirtilmemiş",
+      physicalActivity: diet.Fizik || "Belirtilmemiş",
+      dietitianNote: diet.dietitianNote || "",
+      isBirthdayCelebration: diet.isBirthdayCelebration || false,
+      isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
+      importantDate: diet.isImportantDateCelebrated
+        ? { message: importantDateMessage }
+        : undefined,
+    };
   };
-};
 
   interface TableCell {
     text?: string | any[];
