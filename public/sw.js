@@ -46,7 +46,11 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   
   // Get URL from notification data, fallback to "/"
+  // Supports both meal_reminder and birthday_reminder notification types
+  const notificationType = event.notification.data?.type;
   const destination = event.notification.data?.url || "/";
+  
+  console.log("Notification clicked:", { type: notificationType, destination });
   
   // For PWA, ensure we use the correct base URL
   const baseUrl = self.location.origin;
@@ -76,7 +80,8 @@ self.addEventListener("notificationclick", (event) => {
 
         if (sameOriginClient && self.clients.openWindow) {
           // Focus the existing window and navigate to the URL
-          // The page will handle the navigation via URL query params
+          // For meal reminders, this includes ogunId query param
+          // For birthday reminders, this navigates to /birthdays
           await sameOriginClient.focus();
           // Use navigate if available (Chrome), otherwise the URL change will be handled by the page
           if ("navigate" in sameOriginClient && typeof sameOriginClient.navigate === "function") {
