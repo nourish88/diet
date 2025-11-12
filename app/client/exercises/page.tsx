@@ -5,9 +5,18 @@ import ExerciseForm from "@/components/exercises/ExerciseForm";
 import ExerciseChart from "@/components/exercises/ExerciseChart";
 import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
-import { Activity, Clock, Footprints } from "lucide-react";
+import { Activity, Clock, Footprints, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase-browser";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function ExercisesPage() {
   const { toast } = useToast();
@@ -15,6 +24,7 @@ export default function ExercisesPage() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const fetchLogs = async () => {
     try {
@@ -67,6 +77,7 @@ export default function ExercisesPage() {
 
   const handleSuccess = () => {
     fetchLogs();
+    setDialogOpen(false);
   };
 
   const chartData = groupByExerciseType(logs, dateFrom || undefined, dateTo || undefined);
@@ -81,6 +92,23 @@ export default function ExercisesPage() {
             Egzersiz ve aktivite kayıtlarınızı takip edin
           </p>
         </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Yeni Egzersiz Ekle
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Yeni Egzersiz Ekle</DialogTitle>
+              <DialogDescription>
+                Egzersiz tipi, süre ve açıklama bilgilerinizi girin
+              </DialogDescription>
+            </DialogHeader>
+            <ExerciseForm onSuccess={handleSuccess} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -126,51 +154,36 @@ export default function ExercisesPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Card */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Yeni Egzersiz Ekle</CardTitle>
-            <CardDescription>
-              Egzersiz tipi, süre ve açıklama bilgilerinizi girin
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ExerciseForm onSuccess={handleSuccess} />
-          </CardContent>
-        </Card>
-
-        {/* Chart Card */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Egzersiz Dağılımı</CardTitle>
-                <CardDescription>
-                  Egzersiz tiplerine göre aktivite dağılımı
-                </CardDescription>
-              </div>
-              <DateRangePicker
-                dateFrom={dateFrom}
-                dateTo={dateTo}
-                onDateChange={(from, to) => {
-                  setDateFrom(from);
-                  setDateTo(to);
-                }}
-              />
+      {/* Chart Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Egzersiz Dağılımı</CardTitle>
+              <CardDescription>
+                Egzersiz tiplerine göre aktivite dağılımı
+              </CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Yükleniyor...</p>
-              </div>
-            ) : (
-              <ExerciseChart data={chartData} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateChange={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+              }}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-500">Yükleniyor...</p>
+            </div>
+          ) : (
+            <ExerciseChart data={chartData} />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Logs */}
       <Card>

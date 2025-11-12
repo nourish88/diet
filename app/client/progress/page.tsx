@@ -6,9 +6,18 @@ import ProgressChart from "@/components/progress/ProgressChart";
 import ProgressSummary from "@/components/progress/ProgressSummary";
 import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
-import { TrendingUp, Scale, Ruler } from "lucide-react";
+import { TrendingUp, Scale, Ruler, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase-browser";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function ProgressPage() {
   const { toast } = useToast();
@@ -16,6 +25,7 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const fetchEntries = async () => {
     try {
@@ -68,6 +78,7 @@ export default function ProgressPage() {
 
   const handleSuccess = () => {
     fetchEntries();
+    setDialogOpen(false);
   };
 
   const summary = calculateProgressSummary(entries, dateFrom || undefined, dateTo || undefined);
@@ -88,66 +99,68 @@ export default function ProgressPage() {
             Kilo, ölçü ve vücut yağ oranı takibinizi yapın
           </p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Card */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Yeni Ölçüm Ekle</CardTitle>
-            <CardDescription>
-              Kilo, bel/kalça çevresi ve vücut yağ oranı bilgilerinizi girin
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Yeni Ölçüm Ekle
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Yeni Ölçüm Ekle</DialogTitle>
+              <DialogDescription>
+                Kilo, bel/kalça çevresi ve vücut yağ oranı bilgilerinizi girin
+              </DialogDescription>
+            </DialogHeader>
             <ProgressForm onSuccess={handleSuccess} />
-          </CardContent>
-        </Card>
-
-        {/* Chart and Summary Card */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Gelişim Grafiği</CardTitle>
-                <CardDescription>
-                  Zaman içindeki değişimlerinizi görselleştirin
-                </CardDescription>
-              </div>
-              <DateRangePicker
-                dateFrom={dateFrom}
-                dateTo={dateTo}
-                onDateChange={(from, to) => {
-                  setDateFrom(from);
-                  setDateTo(to);
-                }}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Yükleniyor...</p>
-              </div>
-            ) : (
-              <>
-                {summary && (
-                  <div className="mb-6">
-                    <ProgressSummary summary={summary} />
-                  </div>
-                )}
-                <ProgressChart
-                  data={chartData}
-                  showWeight={hasWeight}
-                  showWaist={hasWaist}
-                  showHip={hasHip}
-                  showBodyFat={hasBodyFat}
-                />
-              </>
-            )}
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Chart and Summary Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Gelişim Grafiği</CardTitle>
+              <CardDescription>
+                Zaman içindeki değişimlerinizi görselleştirin
+              </CardDescription>
+            </div>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateChange={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+              }}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-500">Yükleniyor...</p>
+            </div>
+          ) : (
+            <>
+              {summary && (
+                <div className="mb-6">
+                  <ProgressSummary summary={summary} />
+                </div>
+              )}
+              <ProgressChart
+                data={chartData}
+                showWeight={hasWeight}
+                showWaist={hasWaist}
+                showHip={hasHip}
+                showBodyFat={hasBodyFat}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Entries */}
       <Card>
