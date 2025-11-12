@@ -821,7 +821,6 @@ export default function ClientMessagesPage() {
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         multiple
         className="hidden"
         onChange={handleFileChange}
