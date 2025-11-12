@@ -88,20 +88,27 @@ export function formatBirthdayMessage(clientName: string): string {
 
 /**
  * Generate WhatsApp deep link URL
- * @param phoneNumber Phone number in international format (e.g., 905551234567)
+ * @param phoneNumber Phone number (can be in various formats)
  * @param message Pre-filled message
  */
 export function generateWhatsAppURL(
   phoneNumber: string,
   message: string
 ): string {
-  // Remove any non-digit characters and ensure it starts with country code
+  // Remove any non-digit characters
   const cleanedPhone = phoneNumber.replace(/\D/g, "");
   
-  // If phone doesn't start with country code, assume Turkey (90)
-  const formattedPhone = cleanedPhone.startsWith("90")
-    ? cleanedPhone
-    : `90${cleanedPhone}`;
+  // Format phone number for WhatsApp (international format)
+  let formattedPhone = cleanedPhone;
+  
+  // If phone starts with 0 (Turkish local format), replace with 90
+  if (formattedPhone.startsWith("0")) {
+    formattedPhone = "90" + formattedPhone.substring(1);
+  }
+  // If phone doesn't start with country code and doesn't start with 0, assume Turkey (90)
+  else if (!formattedPhone.startsWith("90")) {
+    formattedPhone = "90" + formattedPhone;
+  }
 
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
