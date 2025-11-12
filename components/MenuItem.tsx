@@ -49,7 +49,15 @@ const MenuItem = ({
   onDelete,
   onItemChange,
 }: MenuItemProps) => {
-  const [miktar, setMiktar] = useState(item.miktar || "");
+  // Normalize miktar: if empty or "1.0", "1.00", etc., default to "1"
+  const normalizeMiktar = (miktarValue: string | undefined): string => {
+    if (!miktarValue || miktarValue.trim() === "") return "1";
+    if (miktarValue === "1.0" || miktarValue === "1.00" || miktarValue === "1.000" || /^1\.0+$/.test(miktarValue)) {
+      return "1";
+    }
+    return miktarValue;
+  };
+  const [miktar, setMiktar] = useState(normalizeMiktar(item.miktar));
   const [birimOpen, setBirimOpen] = useState(false);
   // Initialize birim with the item's birim value
   const [birim, setBirim] = useState(
@@ -86,7 +94,11 @@ const MenuItem = ({
   }, []);
 
   useEffect(() => {
-    const miktarValue = item.miktar || "";
+    let miktarValue = normalizeMiktar(item.miktar);
+    // If normalized value is different from original, update parent state
+    if (miktarValue !== item.miktar && miktarValue === "1") {
+      onItemChange(ogunIndex, index, "miktar", "1");
+    }
     const birimValue =
       typeof item.birim === "object" ? item.birim?.name : item.birim || "";
     const besinValue =
@@ -100,7 +112,7 @@ const MenuItem = ({
         ? (item.besin as any).priority ?? null
         : item.besinPriority ?? null
     );
-  }, [item, index]);
+  }, [item, index, ogunIndex, onItemChange]);
 
   const updateParentState = (field: string, value: string) => {
     onItemChange(ogunIndex, index, field, value);
@@ -161,9 +173,18 @@ const MenuItem = ({
               type="text"
               value={miktar}
               onChange={(e) => {
-                const value = e.target.value;
+                let value = e.target.value;
                 setMiktar(value);
                 updateParentState("miktar", value);
+              }}
+              onBlur={(e) => {
+                // On blur, normalize "1.0", "1.00", etc. to "1"
+                let value = e.target.value;
+                const normalized = normalizeMiktar(value);
+                if (normalized !== value) {
+                  setMiktar(normalized);
+                  updateParentState("miktar", normalized);
+                }
               }}
               placeholder="Miktar"
               className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"

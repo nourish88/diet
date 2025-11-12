@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       return {
         id: besin.id,
         name: besin.name,
-        miktar: besin.usageStats?.avgMiktar || "",
+        miktar: "1", // Always return "1" for miktar in suggestions
         birim: besin.usageStats?.commonBirim || "",
         usageCount,
         isFrequent,

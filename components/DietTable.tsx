@@ -447,14 +447,13 @@ const DietTable = ({
 
                                     // Auto-fill miktar and birim if suggestion selected
                                     if (suggestion) {
-                                      if (suggestion.miktar) {
-                                        handleMenuItemChange(
-                                          index,
-                                          itemIndex,
-                                          "miktar",
-                                          suggestion.miktar
-                                        );
-                                      }
+                                      // Always set miktar to "1" for suggestions
+                                      handleMenuItemChange(
+                                        index,
+                                        itemIndex,
+                                        "miktar",
+                                        "1"
+                                      );
                                       if (suggestion.birim) {
                                         handleMenuItemChange(
                                           index,

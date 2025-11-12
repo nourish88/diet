@@ -623,7 +623,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 ...ogun.items,
                 {
                   birim: {} as Birim,
-                  miktar: "",
+                  miktar: "1", // Default miktar is "1"
                   besin: {} as Besin,
                   besinPriority: null,
                 },
