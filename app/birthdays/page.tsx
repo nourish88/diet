@@ -105,22 +105,42 @@ export default function BirthdaysPage() {
 
       const data = await response.json();
 
-      // Open WhatsApp - use multiple methods for PWA compatibility
-      // Method 1: Create a temporary anchor element and click it (most reliable for PWA)
-      const link = document.createElement("a");
-      link.href = data.whatsappUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.style.display = "none";
-      document.body.appendChild(link);
+      // Open WhatsApp - try multiple methods for PWA compatibility
+      // In PWA, especially iOS Safari PWA, we need to use window.location.href
+      // which will navigate away from the PWA to open WhatsApp
       
-      // Trigger click immediately
-      link.click();
+      // Check if we're in a PWA or mobile environment
+      const isPWA = window.matchMedia("(display-mode: standalone)").matches || 
+                    (window.navigator as any).standalone === true ||
+                    document.referrer.includes("android-app://");
       
-      // Clean up after a short delay
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 100);
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isPWA || isMobile) {
+        // For PWA and mobile, use window.location.href to open WhatsApp app directly
+        // This will navigate away from the PWA, which is expected behavior
+        window.location.href = data.whatsappUrl;
+      } else {
+        // For desktop web, try to open in new tab
+        try {
+          const newWindow = window.open(data.whatsappUrl, "_blank");
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
+            // If popup blocked, fallback to location.href
+            window.location.href = data.whatsappUrl;
+          }
+        } catch (error) {
+          // Fallback: Create anchor and click
+          const link = document.createElement("a");
+          link.href = data.whatsappUrl;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+          }, 100);
+        }
+      }
 
       // Show toast
       toast({
