@@ -211,7 +211,7 @@ export default function ClientDashboard() {
 
           {/* Messages Card */}
           <Link
-            href="/client/unread-messages"
+            href="/client/conversations"
             className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-purple-500 p-8 transition-all transform hover:scale-105 cursor-pointer group relative"
           >
             <div className="flex flex-col items-center text-center">
@@ -224,12 +224,12 @@ export default function ClientDashboard() {
                 )}
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Sohbetler
+                Sohbetlerim
               </h3>
               <p className="text-gray-600 mb-4">
                 {unreadData.totalUnread > 0
                   ? `${unreadData.totalUnread} yeni mesajınız var`
-                  : "Diyetisyeninizle mesajlaşın"}
+                  : "Tüm sohbetlerinizi görüntüleyin"}
               </p>
               <div className="flex items-center text-purple-600 font-medium">
                 Görüntüle
