@@ -17,7 +17,16 @@ const stripEmojiFromString = (value: string): string => {
       if (char >= "0" && char <= "9") {
         return true;
       }
+      
+      // Always keep ASCII printable characters (including *, -, etc.)
+      // ASCII printable range is 32-126 (space to tilde)
+      const code = char.charCodeAt(0);
+      if (code >= 32 && code <= 126) {
+        // ASCII printable characters are never emojis, so always keep them
+        return true;
+      }
 
+      // For non-ASCII characters, check if they are emojis
       emojiPattern.lastIndex = 0;
       return !emojiPattern.test(char);
     })

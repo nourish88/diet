@@ -49,13 +49,16 @@ const MenuItem = ({
   onDelete,
   onItemChange,
 }: MenuItemProps) => {
-  // Normalize miktar: if empty or "1.0", "1.00", etc., default to "1"
+  // Normalize miktar: if empty or any integer-like decimal (e.g., "1.0", "2.0", "3.00"), normalize to integer
   const normalizeMiktar = (miktarValue: string | undefined): string => {
     if (!miktarValue || miktarValue.trim() === "") return "1";
-    if (miktarValue === "1.0" || miktarValue === "1.00" || miktarValue === "1.000" || /^1\.0+$/.test(miktarValue)) {
-      return "1";
+    
+    const trimmed = miktarValue.trim();
+    // Match any integer followed by .0, .00, .000, etc. (e.g., "2.0", "3.00", "10.000")
+    if (/^\d+\.0+$/.test(trimmed)) {
+      return trimmed.split('.')[0];
     }
-    return miktarValue;
+    return trimmed;
   };
   const [miktar, setMiktar] = useState(normalizeMiktar(item.miktar));
   const [birimOpen, setBirimOpen] = useState(false);
