@@ -105,12 +105,27 @@ export default function BirthdaysPage() {
 
       const data = await response.json();
 
-      // Open WhatsApp in new tab/window
-      window.open(data.whatsappUrl, "_blank");
+      // Open WhatsApp - use multiple methods for PWA compatibility
+      // Method 1: Create a temporary anchor element and click it (most reliable for PWA)
+      const link = document.createElement("a");
+      link.href = data.whatsappUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      
+      // Trigger click immediately
+      link.click();
+      
+      // Clean up after a short delay
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
 
+      // Show toast
       toast({
         title: "Başarılı",
-        description: "WhatsApp açıldı. Mesajınızı gönderebilirsiniz.",
+        description: "WhatsApp açılıyor...",
         variant: "default",
       });
     } catch (error) {
