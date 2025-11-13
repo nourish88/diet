@@ -69,11 +69,11 @@ export async function POST(
       data: { userId: null },
     });
 
-    // Set user.isApproved to false so they can be re-mapped
+    // Delete the user so they can register again with the same email
+    // This allows them to create a new account and be re-mapped
     if (client.user) {
-      await prisma.user.update({
+      await prisma.user.delete({
         where: { id: client.user.id },
-        data: { isApproved: false, approvedAt: null },
       });
     }
 
