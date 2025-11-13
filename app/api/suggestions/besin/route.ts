@@ -28,6 +28,35 @@ export async function GET(request: NextRequest) {
       take: 10,
     });
 
+    // Helper function to round miktar intelligently:
+    // - If decimal part is exactly 0.5, keep it as "0.5" (don't round)
+    // - If decimal part < 0.5, round down (floor)
+    // - If decimal part > 0.5, round up (ceil)
+    const roundMiktar = (miktar: string | number | null | undefined): number => {
+      if (!miktar) return 1;
+      
+      const miktarStr = String(miktar).trim();
+      if (miktarStr === "") return 1;
+      
+      const numValue = parseFloat(miktarStr);
+      if (isNaN(numValue)) return 1;
+      
+      const decimalPart = numValue % 1;
+      
+      // If decimal part is exactly 0.5, keep it (don't round)
+      if (Math.abs(decimalPart - 0.5) < 0.0001) {
+        return numValue;
+      }
+      
+      // If decimal part < 0.5, round down
+      if (decimalPart < 0.5) {
+        return Math.floor(numValue);
+      }
+      
+      // If decimal part > 0.5, round up
+      return Math.ceil(numValue);
+    };
+
     // Helper function to normalize miktar: convert "1.0", "2.0" to "1", "2", but preserve "0.5", "1.5"
     const normalizeMiktar = (miktar: string | number | null | undefined): string => {
       if (!miktar) return "1";
@@ -49,9 +78,10 @@ export async function GET(request: NextRequest) {
       const usageCount = besin.usageStats?.usageCount || 0;
       const isFrequent = usageCount > 5; // Frequently used threshold
       
-      // Get miktar from usage stats, normalize if it's an integer-like decimal
+      // Get miktar from usage stats, round intelligently, then normalize
       const avgMiktar = besin.usageStats?.avgMiktar;
-      const miktar = normalizeMiktar(avgMiktar);
+      const roundedMiktar = roundMiktar(avgMiktar);
+      const miktar = normalizeMiktar(roundedMiktar);
 
       return {
         id: besin.id,
