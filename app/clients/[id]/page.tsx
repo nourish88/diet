@@ -17,11 +17,13 @@ import {
   MessageCircle,
   TrendingUp,
   Activity,
+  Mail,
+  Unlink,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { useClient } from "@/hooks/useApi";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase-browser";
 import ProgressChart from "@/components/progress/ProgressChart";
 import ProgressSummary from "@/components/progress/ProgressSummary";
@@ -31,6 +33,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function ClientDetailPage() {
   const { toast } = useToast();
@@ -44,6 +54,12 @@ export default function ClientDetailPage() {
   const [progressDateTo, setProgressDateTo] = useState<Date | null>(null);
   const [exerciseDateFrom, setExerciseDateFrom] = useState<Date | null>(null);
   const [exerciseDateTo, setExerciseDateTo] = useState<Date | null>(null);
+  
+  // Unlink dialog state
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+
+  const queryClient = useQueryClient();
 
   // Use React Query hook for data fetching with automatic caching
   const { data: client, isLoading, error } = useClient(clientId);
@@ -138,6 +154,58 @@ export default function ClientDetailPage() {
     },
     enabled: !!clientId,
   });
+
+  // Handle unlink client from user account
+  const handleUnlink = async () => {
+    if (!clientId) return;
+
+    setIsUnlinking(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        toast({
+          title: "Hata",
+          description: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/clients/${clientId}/unlink`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "İlişki kaldırılamadı");
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Danışan hesabı ile ilişki kaldırıldı. Tekrar eşleştirme yapılabilir.",
+        variant: "default",
+      });
+
+      setShowUnlinkDialog(false);
+      // Refetch client data using React Query
+      await queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+    } catch (error: any) {
+      console.error("Error unlinking client:", error);
+      toast({
+        title: "Hata",
+        description: error.message || "İlişki kaldırılırken bir hata oluştu",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
 
   // Update the formatDate function to properly handle the date format
   const formatDate = (dateString: string | null | undefined) => {
@@ -278,6 +346,24 @@ export default function ClientDetailPage() {
                 </div>
               </div>
 
+              {/* Email Address */}
+              <div className="flex items-start">
+                <Mail className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-600">
+                    E-posta
+                  </div>
+                  <div className="text-gray-800">
+                    {client.user?.email || "E-posta ilişkilendirilmemiş"}
+                  </div>
+                  {!client.user?.email && (
+                    <div className="text-xs text-amber-600 mt-1">
+                      Danışan hesabı ile eşleştirme yapılmamış
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Add Gender */}
               <div className="flex items-start gap-2">
                 <User className="h-5 w-5 text-indigo-500 mt-1" />
@@ -292,6 +378,23 @@ export default function ClientDetailPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Unlink Button - Only show if client has userId */}
+              {client.userId && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowUnlinkDialog(true)}
+                    className="w-full"
+                  >
+                    <Unlink className="h-4 w-4 mr-2" />
+                    İlişki Kaldır
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    İlişki kaldırıldıktan sonra danışan tekrar e-posta ve şifre ile eşleştirilebilir.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Client notes */}
@@ -549,6 +652,46 @@ export default function ClientDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Unlink Confirmation Dialog */}
+      <Dialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>İlişkiyi Kaldır</DialogTitle>
+            <DialogDescription>
+              Bu işlem danışan hesabı ile ilişkiyi kaldıracak. Danışan daha sonra
+              tekrar e-posta ve şifre ile eşleştirilebilir. Devam etmek istediğinize
+              emin misiniz?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowUnlinkDialog(false)}
+              disabled={isUnlinking}
+            >
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleUnlink}
+              disabled={isUnlinking}
+            >
+              {isUnlinking ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Kaldırılıyor...
+                </>
+              ) : (
+                <>
+                  <Unlink className="h-4 w-4 mr-2" />
+                  İlişkiyi Kaldır
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </div>

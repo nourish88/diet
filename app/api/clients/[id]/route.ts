@@ -58,6 +58,12 @@ export async function GET(
             besin: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -156,6 +162,12 @@ export async function PUT(
             besin: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -220,6 +232,12 @@ export async function PATCH(
         bannedFoods: {
           include: {
             besin: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
           },
         },
       },

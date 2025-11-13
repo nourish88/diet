@@ -50,6 +50,11 @@ export interface Client {
   notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  userId?: number | null;
+  user?: {
+    id: number;
+    email: string;
+  } | null;
   bannedFoods?: Array<{
     id: number;
     besin: {
