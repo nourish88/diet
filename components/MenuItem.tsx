@@ -97,11 +97,9 @@ const MenuItem = ({
   }, []);
 
   useEffect(() => {
-    let miktarValue = normalizeMiktar(item.miktar);
-    // If normalized value is different from original, update parent state
-    if (miktarValue !== item.miktar && miktarValue === "1") {
-      onItemChange(ogunIndex, index, "miktar", "1");
-    }
+    // Don't normalize here - allow free editing
+    // Only sync the value from parent state
+    const miktarValue = item.miktar || "";
     const birimValue =
       typeof item.birim === "object" ? item.birim?.name : item.birim || "";
     const besinValue =
@@ -115,7 +113,7 @@ const MenuItem = ({
         ? (item.besin as any).priority ?? null
         : item.besinPriority ?? null
     );
-  }, [item, index, ogunIndex, onItemChange]);
+  }, [item, index, ogunIndex]);
 
   const updateParentState = (field: string, value: string) => {
     onItemChange(ogunIndex, index, field, value);
@@ -135,8 +133,10 @@ const MenuItem = ({
               // If a suggestion was selected, auto-fill miktar and birim
               if (suggestion) {
                 if (suggestion.miktar) {
-                  setMiktar(suggestion.miktar);
-                  updateParentState("miktar", suggestion.miktar);
+                  // Normalize suggestion miktar (e.g., "1.0" -> "1", but preserve "0.5")
+                  const normalizedMiktar = normalizeMiktar(suggestion.miktar);
+                  setMiktar(normalizedMiktar);
+                  updateParentState("miktar", normalizedMiktar);
                 }
                 if (suggestion.birim) {
                   setBirim(suggestion.birim);

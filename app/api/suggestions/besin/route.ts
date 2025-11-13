@@ -28,15 +28,35 @@ export async function GET(request: NextRequest) {
       take: 10,
     });
 
+    // Helper function to normalize miktar: convert "1.0", "2.0" to "1", "2", but preserve "0.5", "1.5"
+    const normalizeMiktar = (miktar: string | number | null | undefined): string => {
+      if (!miktar) return "1";
+      
+      const miktarStr = String(miktar).trim();
+      if (miktarStr === "") return "1";
+      
+      // Check if it's an integer-like decimal (e.g., "1.0", "2.00", "10.000")
+      if (/^\d+\.0+$/.test(miktarStr)) {
+        return miktarStr.split('.')[0];
+      }
+      
+      // Preserve real decimals (0.5, 1.5, 2.3, etc.)
+      return miktarStr;
+    };
+
     // Transform and score results
     const suggestions = besins.map((besin) => {
       const usageCount = besin.usageStats?.usageCount || 0;
       const isFrequent = usageCount > 5; // Frequently used threshold
+      
+      // Get miktar from usage stats, normalize if it's an integer-like decimal
+      const avgMiktar = besin.usageStats?.avgMiktar;
+      const miktar = normalizeMiktar(avgMiktar);
 
       return {
         id: besin.id,
         name: besin.name,
-        miktar: "1", // Always return "1" for miktar in suggestions
+        miktar: miktar,
         birim: besin.usageStats?.commonBirim || "",
         usageCount,
         isFrequent,
