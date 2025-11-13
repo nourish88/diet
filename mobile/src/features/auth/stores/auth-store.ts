@@ -110,24 +110,45 @@ export const useAuthStore = create<AuthState>()(
           console.log("📝 Starting registration for:", email);
           
           // Sign up with Supabase
-          const { data: authData, error: authError } =
-            await supabase.auth.signUp({
-              email,
-              password,
-            });
+          let authData: any = null;
+          let authError: any = null;
+          
+          const signUpResult = await supabase.auth.signUp({
+            email,
+            password,
+          });
+
+          authData = signUpResult.data;
+          authError = signUpResult.error;
 
           console.log("📧 Registration auth data:", authData);
           console.log("❌ Registration auth error:", authError);
 
-          if (authError) {
+          // If user already exists in Supabase, try to sign in instead
+          if (authError && (authError.message?.includes("already registered") || authError.message?.includes("User already registered"))) {
+            console.log("🔄 User already exists in Supabase, attempting sign in...");
+            
+            const signInResult = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (signInResult.error) {
+              throw new Error(signInResult.error.message || "Giriş yapılamadı. Şifrenizi kontrol edin.");
+            }
+
+            authData = signInResult.data;
+            authError = null;
+            console.log("✅ Signed in with existing Supabase user");
+          } else if (authError) {
             throw new Error(authError.message || "Kayıt başarısız.");
           }
 
-          if (!authData.user) {
-            throw new Error("Kullanıcı oluşturulamadı");
+          if (!authData?.user) {
+            throw new Error("Kullanıcı oluşturulamadı veya giriş yapılamadı");
           }
 
-          console.log("✅ Supabase user created, syncing with backend...");
+          console.log("✅ Supabase user ready, syncing with backend...");
 
           // Sync user with backend (as client) and get user data
           const syncResponse = await api.post<{ success: boolean; user: User }>(
