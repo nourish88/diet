@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    // Check if user already exists by supabaseId
+    let existingUser = await prisma.user.findUnique({
       where: { supabaseId },
     });
 
@@ -39,6 +39,69 @@ export async function POST(request: NextRequest) {
         message: "User already exists",
       });
       return addCorsHeaders(response);
+    }
+
+    // Check if user exists by email (for clients who were unlinked)
+    // If email exists and user has no client relationship, update the user with new supabaseId
+    if (role === "client") {
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email },
+        include: { client: true },
+      });
+
+      if (existingUserByEmail) {
+        // If user has no client relationship, update with new supabaseId
+        if (!existingUserByEmail.client) {
+          // Generate new reference code (ensure it's unique)
+          let newReferenceCode = generateReferenceCode();
+          while (await prisma.user.findUnique({ where: { referenceCode: newReferenceCode } })) {
+            newReferenceCode = generateReferenceCode();
+          }
+
+          existingUser = await prisma.user.update({
+            where: { id: existingUserByEmail.id },
+            data: {
+              supabaseId,
+              isApproved: false,
+              approvedAt: null,
+              referenceCode: newReferenceCode,
+            },
+          });
+
+          // Ensure notification preferences exist
+          const existingPrefs = await prisma.notificationPreference.findUnique({
+            where: { userId: existingUser.id },
+          });
+
+          if (!existingPrefs) {
+            await prisma.notificationPreference.create({
+              data: {
+                userId: existingUser.id,
+                mealReminders: true,
+                dietUpdates: true,
+                comments: true,
+              },
+            });
+          }
+
+          const response = NextResponse.json({
+            success: true,
+            user: existingUser,
+            message: "User updated with new supabaseId",
+          });
+          return addCorsHeaders(response);
+        } else {
+          // User exists and has a client relationship - return error
+          const response = NextResponse.json(
+            {
+              success: false,
+              error: "User with this email already exists and is linked to a client",
+            },
+            { status: 400 }
+          );
+          return addCorsHeaders(response);
+        }
+      }
     }
 
     // SECURITY: Prevent NEW dietitian creation through API
