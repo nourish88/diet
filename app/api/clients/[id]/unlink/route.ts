@@ -6,6 +6,7 @@ import {
   AuthResult,
 } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(
   request: NextRequest,
@@ -69,9 +70,40 @@ export async function POST(
       data: { userId: null },
     });
 
-    // Delete the user so they can register again with the same email
+    // Delete the user from Prisma and Supabase
     // This allows them to create a new account and be re-mapped
     if (client.user) {
+      // Delete from Supabase using Admin API (if service role key is available)
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY && client.user.supabaseId) {
+        try {
+          const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            {
+              auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+              },
+            }
+          );
+
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
+            client.user.supabaseId
+          );
+
+          if (deleteError) {
+            console.error("Error deleting Supabase user:", deleteError);
+            // Continue with Prisma deletion even if Supabase deletion fails
+          } else {
+            console.log("✅ Supabase user deleted successfully");
+          }
+        } catch (supabaseError) {
+          console.error("Error deleting Supabase user:", supabaseError);
+          // Continue with Prisma deletion even if Supabase deletion fails
+        }
+      }
+
+      // Delete from Prisma
       await prisma.user.delete({
         where: { id: client.user.id },
       });
