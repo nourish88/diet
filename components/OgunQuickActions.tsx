@@ -30,10 +30,11 @@ export const OgunQuickActions = ({
   // Determine meal type from name
   const getMealType = (name: string): string => {
     const lower = name.toLowerCase();
+    // Check "uyanınca" FIRST before "ara" check
     if (lower.includes("uyanınca") || lower.includes("uyaninca"))
-      return "ara_ogun";
+      return "uyaninca";
     if (lower.includes("kahvaltı")) return "kahvalti";
-    if (lower.includes("öğle")) return "ogle";
+    if (lower.includes("öğle") || lower.includes("öğlen")) return "ogle";
     if (lower.includes("akşam")) return "aksam";
     if (lower.includes("ara")) return "ara_ogun";
     return "";
