@@ -6,7 +6,7 @@ import { apiClient } from "@/lib/api-client";
 export function useDietActions() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const saveDiet = async (dietData: Diet) => {
+  const saveDiet = async (dietData: Diet, isUpdateMode?: boolean) => {
     setIsLoading(true);
 
     try {
@@ -19,6 +19,9 @@ export function useDietActions() {
         su: dietData.Su || "",
         fizik: dietData.Fizik || "",
         dietitianNote: dietData.dietitianNote || "",
+        isBirthdayCelebration: dietData.isBirthdayCelebration || false,
+        isImportantDateCelebrated: dietData.isImportantDateCelebrated || false,
+        importantDateId: dietData.importantDateId || null,
         oguns: dietData.Oguns.filter((ogun) => ogun) // Filter out any null/undefined oguns
           .map((ogun) => {
             // Use proper function body with explicit return
@@ -68,8 +71,16 @@ export function useDietActions() {
           }),
       };
 
-      // Make the API call
-      const result = await apiClient.post("/diets", apiData);
+      // CRITICAL LOGIC: If isUpdateMode is true AND diet has an ID, use PUT to update
+      // Otherwise, use POST to create a new diet
+      let result;
+      if (isUpdateMode === true && dietData.id) {
+        // Update existing diet using PUT
+        result = await apiClient.put(`/diets/${dietData.id}`, apiData);
+      } else {
+        // Create new diet using POST
+        result = await apiClient.post("/diets", apiData);
+      }
 
       // Track usage in background (non-blocking)
       // Use API response data which has besin IDs instead of raw dietData

@@ -137,6 +137,186 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await authenticateRequest(request);
+
+    if (!auth.user || auth.user.role !== "dietitian") {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      );
+    }
+
+    // Handle CORS preflight
+    const corsResponse = handleCors(request);
+    if (corsResponse) return corsResponse;
+
+    const { id } = await params;
+    const dietId = parseInt(id);
+
+    if (isNaN(dietId)) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Invalid diet ID" }, { status: 400 })
+      );
+    }
+
+    // SECURITY: Check if dietitian owns this diet
+    const hasAccess = await requireOwnDiet(dietId, auth);
+    if (!hasAccess) {
+      return addCorsHeaders(
+        NextResponse.json({ error: "Access denied" }, { status: 403 })
+      );
+    }
+
+      // Parse request body
+      let data: any;
+      try {
+        data = await request.json();
+      } catch (parseError) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Invalid request body" },
+            { status: 400 }
+          )
+        );
+      }
+
+      // Update diet using transaction to ensure consistency
+      const updatedDiet = await prisma.$transaction(async (tx) => {
+        // First, delete all existing oguns (cascade will delete items)
+        await tx.ogun.deleteMany({
+          where: { dietId },
+        });
+
+        // Update diet fields
+        const diet = await tx.diet.update({
+          where: { id: dietId },
+          data: {
+            tarih: data.tarih ? new Date(data.tarih) : null,
+            su: data.su || "",
+            sonuc: data.sonuc || "",
+            hedef: data.hedef || "",
+            fizik: data.fizik || "",
+            isBirthdayCelebration: data.isBirthdayCelebration || false,
+            isImportantDateCelebrated: data.isImportantDateCelebrated || false,
+            importantDateId: data.importantDateId || null,
+            dietitianNote: data.dietitianNote || "",
+            oguns: {
+              create: (data.oguns || []).map((ogun: any) => ({
+                name: ogun.name || "",
+                time: ogun.time || "",
+                detail: ogun.detail || "",
+                order: ogun.order || 0,
+                items: {
+                  create: (ogun.items || []).map((item: any) => ({
+                    miktar: item.miktar || "",
+                    birim: {
+                      connectOrCreate: {
+                        where: { name: item.birim || "" },
+                        create: { name: item.birim || "" },
+                      },
+                    },
+                    besin: {
+                      connectOrCreate: {
+                        where: { name: item.besin || "" },
+                        create: { name: item.besin || "" },
+                      },
+                    },
+                  })),
+                },
+              })),
+            },
+          },
+          include: {
+            oguns: {
+              include: {
+                items: {
+                  include: {
+                    birim: true,
+                    besin: true,
+                  },
+                },
+              },
+            },
+            client: true,
+            importantDate: {
+              select: {
+                id: true,
+                message: true,
+              },
+            },
+          },
+        });
+
+        return diet;
+      });
+
+      // Log diet update on server side
+      try {
+        const logResponse = await fetch(
+          `${request.nextUrl.origin}/api/diet-logs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: request.headers.get("Authorization") || "",
+            },
+            body: JSON.stringify({
+              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              dietitianId: auth.user!.id,
+              clientId: updatedDiet.clientId,
+              dietId: updatedDiet.id,
+              action: "diet_updated",
+              source: "server",
+              metadata: {
+                ogunCount: updatedDiet.oguns.length,
+                totalItems: updatedDiet.oguns.reduce(
+                  (sum, ogun) => sum + (ogun.items?.length || 0),
+                  0
+                ),
+              },
+            }),
+          }
+        );
+        if (!logResponse.ok) {
+          console.warn("Failed to log diet update:", logResponse.statusText);
+        }
+      } catch (logError) {
+        console.warn("Error logging diet update:", logError);
+      }
+
+      // Normalize date fields
+      const normalized = {
+        ...updatedDiet,
+        tarih:
+          (updatedDiet as any).tarih instanceof Date
+            ? ((updatedDiet as any).tarih as Date).toISOString()
+            : (updatedDiet as any).tarih ?? null,
+        createdAt:
+          (updatedDiet as any).createdAt instanceof Date
+            ? ((updatedDiet as any).createdAt as Date).toISOString()
+            : (updatedDiet as any).createdAt,
+        updatedAt:
+          (updatedDiet as any).updatedAt instanceof Date
+            ? ((updatedDiet as any).updatedAt as Date).toISOString()
+            : (updatedDiet as any).updatedAt,
+      };
+
+      return addCorsHeaders(NextResponse.json(normalized));
+    } catch (error: any) {
+      console.error("Error updating diet:", error);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: error.message || "Failed to update diet" },
+          { status: 500 }
+        )
+      );
+    }
+  }
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

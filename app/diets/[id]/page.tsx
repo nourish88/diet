@@ -207,6 +207,13 @@ export default function DietDetailPage() {
             </Button>
             <Button
               variant="ghost"
+              className="text-white hover:bg-blue-600"
+              onClick={() => router.push(`/diets/new?updateDietId=${dietId}`)}
+            >
+              Güncelle
+            </Button>
+            <Button
+              variant="ghost"
               className="text-white hover:bg-red-600"
               onClick={handleDeleteDiet}
             >

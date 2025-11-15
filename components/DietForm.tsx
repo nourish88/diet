@@ -62,6 +62,15 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   >(null);
   const [isSortingMeals, setIsSortingMeals] = useState(false);
 
+  // Update mode state - tracks if we're updating an existing diet
+  // CRITICAL: This distinguishes between:
+  // - Update mode: User clicked "Güncelle" button -> Should UPDATE existing diet
+  // - New diet mode: User clicked "Yeni Program Ekle" -> Should CREATE new diet even if loadLatestDiet loaded an existing diet
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
+  const [updateDietId, setUpdateDietId] = useState<number | undefined>(
+    undefined
+  );
+
   // Initialize diet logging - use refs to track changes
   const [currentDietId, setCurrentDietId] = useState<number | undefined>(
     diet.id
@@ -378,7 +387,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
       if (data && data.id) {
         // Create the UI diet with correct field mapping from API response
-        // NOTE: We keep the ID for logging/reference, but it will be cleared before saving
+        // NOTE: In new diet mode (loadLatestDiet), we keep the ID for logging/reference but won't update
         // IMPORTANT: Set date to today - old diet date should not be used for new diet
         const uiDiet = {
           ...convertDbDietToUiDiet(data, targetClientId),
@@ -441,6 +450,114 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       setIsLoading(false);
     }
   };
+
+  // Function to load a specific diet by ID for editing
+  const loadDietById = async (dietId: number) => {
+    if (!dietId) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Get authentication token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Oturum açmanız gerekli",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/diets/${dietId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast({
+            title: "Hata",
+            description: "Diyet bulunamadı",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.id) {
+        // Set update mode flags
+        setIsUpdateMode(true);
+        setUpdateDietId(dietId);
+        setCurrentDietId(dietId);
+
+        // Get client ID from diet
+        const clientId = data.client?.id || selectedClientId;
+        if (clientId) {
+          setSelectedClientId(clientId);
+        }
+
+        // Create the UI diet with correct field mapping from API response
+        // Keep the original date when editing
+        const uiDiet = {
+          ...convertDbDietToUiDiet(data, clientId),
+          Su: data.su || "",
+          Fizik: data.fizik || "",
+          Sonuc: data.sonuc || "",
+          Hedef: data.hedef || "",
+          dietitianNote: data.dietitianNote || "",
+          Tarih: data.tarih || data.createdAt || new Date().toISOString(), // Keep original date
+          isBirthdayCelebration: data.isBirthdayCelebration || false,
+          isImportantDateCelebrated: data.isImportantDateCelebrated || false,
+          importantDateId: data.importantDateId || null,
+          importantDateName: data.importantDate?.message || null,
+        };
+
+        setDiet(uiDiet);
+
+        // Log diet loaded for editing
+        if (dietLogging.isReady) {
+          dietLogging.logDietLoaded(dietId);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading diet by ID:", error);
+      toast({
+        title: "Hata",
+        description: "Diyet yüklenirken bir hata oluştu",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check for updateDietId query parameter on mount (after loadDietById is defined)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    // Use URLSearchParams to get query parameters from window.location
+    const searchParams = new URLSearchParams(window.location.search);
+    const updateDietIdParam = searchParams.get("updateDietId");
+    if (updateDietIdParam) {
+      const dietId = parseInt(updateDietIdParam);
+      if (!isNaN(dietId)) {
+        // Load diet for editing - don't call loadLatestDiet in this case
+        loadDietById(dietId);
+        // Don't continue with normal initialization
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   // Function to convert database diet format to UI diet format
   const convertDbDietToUiDiet = (dbDiet: any, clientId?: number): Diet => {
@@ -623,7 +740,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 ...ogun.items,
                 {
                   birim: {} as Birim,
-                  miktar: "1", // Default miktar is "1"
+                  miktar: "", // Allow empty miktar for cases like "sınırsız salata"
                   besin: {} as Besin,
                   besinPriority: null,
                 },
@@ -781,64 +898,80 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
 
     try {
-      // Always create a new diet - clear ID to prevent update attempts
-      // The loaded diet is for display/reference only, not for editing
-      const { id: _oldId, ...dietWithoutId } = diet;
-
-      // Include all diet properties including celebration flags
-      const dietToSave = {
-        ...dietWithoutId,
-        id: undefined, // Explicitly ensure no ID is sent
-        Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
-        clientId: selectedClientId,
-        isBirthdayCelebration: diet.isBirthdayCelebration || false,
-        isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-        importantDateId: diet.importantDateId || null,
-        importantDateName: diet.importantDateName || null,
-      };
-      console.log("💾 Saving new diet (ID cleared):", {
+      // CRITICAL: If in update mode, keep the ID to update existing diet
+      // Otherwise, clear ID to create a new diet (even if loadLatestDiet loaded an existing one)
+      const dietToSave: Diet = isUpdateMode && diet.id
+        ? {
+            ...diet,
+            Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
+            clientId: selectedClientId,
+            isBirthdayCelebration: diet.isBirthdayCelebration || false,
+            isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
+            importantDateId: diet.importantDateId || null,
+            importantDateName: diet.importantDateName || null,
+          }
+        : {
+            ...diet,
+            id: undefined, // Explicitly ensure no ID is sent for new diet
+            Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
+            clientId: selectedClientId,
+            isBirthdayCelebration: diet.isBirthdayCelebration || false,
+            isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
+            importantDateId: diet.importantDateId || null,
+            importantDateName: diet.importantDateName || null,
+          };
+      
+      console.log(`💾 ${isUpdateMode ? "Updating" : "Saving new"} diet:`, {
         ...dietToSave,
-        id: undefined,
+        id: isUpdateMode ? dietToSave.id : undefined,
+        isUpdateMode,
       });
-      const result = await saveDiet(dietToSave);
+      const result = await saveDiet(dietToSave, isUpdateMode);
 
       if (result) {
-        // Extract the new diet ID from the result
-        // API returns the created diet object with id
-        const newDietId = result.id || result.diet?.id;
+        // Extract the diet ID from the result
+        // API returns the created/updated diet object with id
+        const dietId = result.id || result.diet?.id || dietToSave.id;
 
-        if (!newDietId) {
+        if (!dietId) {
           console.warn("⚠️ No diet ID returned from save operation:", result);
         }
 
-        // Log diet saved from client-side (server-side also logs, but with source="server")
-        if (dietLogging.isReady && newDietId) {
-          dietLogging.logDietSaved(newDietId);
+        // Log diet saved/updated from client-side (server-side also logs, but with source="server")
+        // Note: Server-side logging distinguishes between create and update, client-side uses same action
+        if (dietLogging.isReady && dietId) {
+          dietLogging.logDietSaved(dietId);
         }
 
-        // Update local state with new diet ID if available
-        if (newDietId) {
+        // Update local state with diet ID if available
+        if (dietId) {
           setDiet((prev) => ({
             ...prev,
-            id: newDietId,
+            id: dietId,
           }));
 
-          // Redirect to diet detail page after successful save
+          // Show success message
           toast({
             title: "Başarılı",
-            description:
-              "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
+            description: isUpdateMode
+              ? "Beslenme programı güncellendi."
+              : "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
             variant: "default",
           });
 
-          // Small delay to show toast, then redirect
-          setTimeout(() => {
-            router.push(`/diets/${newDietId}`);
-          }, 1000);
+          // Redirect to diet detail page after successful save (only for new diets)
+          if (!isUpdateMode) {
+            // Small delay to show toast, then redirect
+            setTimeout(() => {
+              router.push(`/diets/${dietId}`);
+            }, 1000);
+          }
         } else {
           toast({
             title: "Başarılı",
-            description: "Beslenme programı veritabanına kaydedildi.",
+            description: isUpdateMode
+              ? "Beslenme programı güncellendi."
+              : "Beslenme programı veritabanına kaydedildi.",
             variant: "default",
           });
         }
@@ -1168,6 +1301,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   onSaveToDatabase={handleSaveToDB}
                   disabled={isFormDisabled}
                   phoneNumber={clientPhoneNumber}
+                  isUpdateMode={isUpdateMode}
                 />
               </div>
             </div>

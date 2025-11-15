@@ -5,14 +5,16 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
 
 export function createWhatsAppMessage(
   clientName: string,
-  dietDate: string
+  dietDate: string,
+  dietDetailUrl?: string
 ): string {
-  return (
-    `Merhaba ${clientName}! 👋\n\n` +
-    `Yeni beslenme programınız hazır 📋\n\n` +
-    `Tarih: ${dietDate}\n\n` +
-    `Mobil uygulamadan detayları görebilirsiniz.`
-  );
+  let message = `Merhaba ${clientName}, ${dietDate} tarihindeki diyetiniz ektedir. Diyetinizle ilgili diyetisyeninizle iletişime geçmekten çekinmeyiniz.`;
+  
+  if (dietDetailUrl) {
+    message += `\n\nDetaylar için: ${dietDetailUrl}`;
+  }
+  
+  return message;
 }
 
 export function getWhatsAppURL(phoneNumber: string, message: string): string {

@@ -49,9 +49,10 @@ const MenuItem = ({
   onDelete,
   onItemChange,
 }: MenuItemProps) => {
-  // Normalize miktar: if empty or any integer-like decimal (e.g., "1.0", "2.0", "3.00"), normalize to integer
+  // Normalize miktar: if any integer-like decimal (e.g., "1.0", "2.0", "3.00"), normalize to integer
+  // Allow empty strings for cases like "sınırsız salata"
   const normalizeMiktar = (miktarValue: string | undefined): string => {
-    if (!miktarValue || miktarValue.trim() === "") return "1";
+    if (!miktarValue || miktarValue.trim() === "") return "";
     
     const trimmed = miktarValue.trim();
     // Match any integer followed by .0, .00, .000, etc. (e.g., "2.0", "3.00", "10.000")
@@ -60,7 +61,7 @@ const MenuItem = ({
     }
     return trimmed;
   };
-  const [miktar, setMiktar] = useState(normalizeMiktar(item.miktar));
+  const [miktar, setMiktar] = useState(item.miktar || "");
   const [birimOpen, setBirimOpen] = useState(false);
   // Initialize birim with the item's birim value
   const [birim, setBirim] = useState(
@@ -137,6 +138,9 @@ const MenuItem = ({
                   const normalizedMiktar = normalizeMiktar(suggestion.miktar);
                   setMiktar(normalizedMiktar);
                   updateParentState("miktar", normalizedMiktar);
+                } else {
+                  // If suggestion has no miktar, allow empty (don't force "1")
+                  // User can manually enter or leave empty
                 }
                 if (suggestion.birim) {
                   setBirim(suggestion.birim);
@@ -182,11 +186,19 @@ const MenuItem = ({
               }}
               onBlur={(e) => {
                 // On blur, normalize "1.0", "1.00", etc. to "1"
+                // But preserve empty strings
                 let value = e.target.value;
-                const normalized = normalizeMiktar(value);
-                if (normalized !== value) {
-                  setMiktar(normalized);
-                  updateParentState("miktar", normalized);
+                // Only normalize if value is not empty
+                if (value.trim() !== "") {
+                  const normalized = normalizeMiktar(value);
+                  if (normalized !== value) {
+                    setMiktar(normalized);
+                    updateParentState("miktar", normalized);
+                  }
+                } else {
+                  // Allow empty string
+                  setMiktar("");
+                  updateParentState("miktar", "");
                 }
               }}
               placeholder="Miktar"

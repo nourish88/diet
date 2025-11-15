@@ -56,9 +56,15 @@ export async function POST(request: NextRequest) {
       ? new Date(diet.tarih).toLocaleDateString("tr-TR")
       : "Yeni";
 
-    // Create WhatsApp message
+    // Get the origin/host for the diet detail URL
+    const headersList = request.headers;
+    const host = headersList.get("host") || "";
+    const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+    const dietDetailUrl = `${protocol}://${host}/diets/${dietId}`;
+
+    // Create WhatsApp message with diet detail URL
     const clientName = `${client.name} ${client.surname}`;
-    const message = createWhatsAppMessage(clientName, dietDate);
+    const message = createWhatsAppMessage(clientName, dietDate, dietDetailUrl);
 
     // Generate WhatsApp URL
     const whatsappURL = getWhatsAppURL(client.phoneNumber, message);

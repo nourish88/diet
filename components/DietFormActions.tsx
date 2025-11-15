@@ -19,6 +19,7 @@ interface DietFormActionsProps {
   disabled?: boolean;
   phoneNumber?: string;
   importantDateId?: number | null;
+  isUpdateMode?: boolean;
 }
 
 const DietFormActions = ({
@@ -30,6 +31,7 @@ const DietFormActions = ({
   onSaveToDatabase,
   disabled = false,
   phoneNumber,
+  isUpdateMode = false,
 }: DietFormActionsProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -46,8 +48,7 @@ const DietFormActions = ({
     ? `90${formattedPhoneNumber}`
     : undefined;
 
-  // Check if diet is saved by verifying it has an ID
-  const isDietSaved = Boolean(diet?.id);
+  // Button text: If in update mode, show "Güncelle", otherwise show "Kaydet"
 
   const handleSaveToDatabase = async () => {
     if (!clientId) {
@@ -231,7 +232,7 @@ const DietFormActions = ({
         ) : (
           <>
             <Save className="h-4 w-4 mr-2" />
-            {isDietSaved ? "Güncelle" : "Kaydet"}
+            {isUpdateMode ? "Güncelle" : "Kaydet"}
           </>
         )}
       </Button>
