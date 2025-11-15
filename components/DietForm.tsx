@@ -30,6 +30,7 @@ import { FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { useDietLogging } from "@/hooks/useDietLogging";
 import { sortMealsByTime, stripEmojis } from "@/lib/diet-utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DietFormProps {
   initialClientId?: number;
@@ -57,6 +58,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
   const { toast } = useToast();
   const { saveDiet } = useDietActions();
+  const queryClient = useQueryClient();
   const [recentlyMovedOgunIndex, setRecentlyMovedOgunIndex] = useState<
     number | null
   >(null);
@@ -958,6 +960,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
               : "Beslenme programı veritabanına kaydedildi. Yönlendiriliyorsunuz...",
             variant: "default",
           });
+
+          // Invalidate React Query cache after successful update
+          if (isUpdateMode && dietId) {
+            queryClient.invalidateQueries({ queryKey: ['diet', dietId] });
+            queryClient.invalidateQueries({ queryKey: ['diets'] });
+          }
 
           // Redirect to diet detail page after successful save (only for new diets)
           if (!isUpdateMode) {

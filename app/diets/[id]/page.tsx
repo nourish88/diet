@@ -9,6 +9,7 @@ import { tr } from "date-fns/locale/tr";
 import DirectPDFButton from "@/components/DirectPDFButton";
 import { useDiet, useDeleteDiet } from "@/hooks/useApi";
 import { apiClient } from "@/lib/api-client";
+import { useEffect } from "react";
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
 const formatDateTR = (dateString: string | null | undefined | Date) => {
@@ -38,8 +39,20 @@ export default function DietDetailPage() {
   const dietId = params?.id ? Number(params.id) : undefined;
 
   // Use React Query hook for data fetching with automatic caching
-  const { data: diet, isLoading, error } = useDiet(dietId);
+  // Set staleTime to 0 to always fetch fresh data (cache can cause phoneNumber to be missing)
+  const { data: diet, isLoading, error, refetch } = useDiet(dietId, {
+    staleTime: 0, // Always fetch fresh data
+  });
   const deleteDietMutation = useDeleteDiet();
+
+  // Debug: Log diet data to check phoneNumber
+  useEffect(() => {
+    if (diet) {
+      console.log("Diet data:", diet);
+      console.log("Client data:", diet.client);
+      console.log("Phone number:", diet.client?.phoneNumber);
+    }
+  }, [diet]);
 
   const handleDeleteDiet = async () => {
     if (!confirm("Bu beslenme programını silmek istediğinize emin misiniz?")) {
@@ -74,16 +87,45 @@ export default function DietDetailPage() {
   };
 
   const handleSendViaWhatsApp = async () => {
-    if (!diet?.client?.id || !dietId) return;
+    console.log("🔵 handleSendViaWhatsApp called");
+    console.log("🔵 diet:", diet);
+    console.log("🔵 diet?.client:", diet?.client);
+    console.log("🔵 diet?.client?.id:", diet?.client?.id);
+    console.log("🔵 dietId:", dietId);
+    console.log("🔵 diet?.client?.phoneNumber:", diet?.client?.phoneNumber);
+
+    if (!diet?.client?.id || !dietId) {
+      console.log("❌ Early return - missing client.id or dietId");
+      toast({
+        title: "Hata",
+        description: "Danışan bilgisi veya diyet ID bulunamadı",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("✅ Proceeding with WhatsApp request...");
 
     try {
+      console.log("📞 Sending request to /whatsapp/send-diet", {
+        clientId: diet.client.id,
+        dietId: dietId,
+      });
+
       const data = await apiClient.post("/whatsapp/send-diet", {
         clientId: diet.client.id,
         dietId: dietId,
       });
 
+      console.log("✅ WhatsApp API response:", data);
+
       // Open WhatsApp with the generated URL
-      window.open(data.whatsappURL, "_blank");
+      if (data?.whatsappURL) {
+        console.log("🔗 Opening WhatsApp URL:", data.whatsappURL);
+        window.open(data.whatsappURL, "_blank");
+      } else {
+        console.error("❌ No whatsappURL in response:", data);
+      }
 
       toast({
         title: "Başarılı",
@@ -91,6 +133,7 @@ export default function DietDetailPage() {
           "WhatsApp açıldı! Mesajı göndermek için 'Gönder' butonuna basın.",
       });
     } catch (error) {
+      console.error("❌ WhatsApp error:", error);
       toast({
         title: "Hata",
         description: "WhatsApp URL oluşturulamadı",
@@ -200,8 +243,13 @@ export default function DietDetailPage() {
             <Button
               variant="ghost"
               className="text-white hover:bg-indigo-700"
-              onClick={handleSendViaWhatsApp}
-              disabled={!diet.client?.phoneNumber}
+              onClick={(e) => {
+                console.log("🔵 WhatsApp button clicked");
+                console.log("🔵 Event:", e);
+                console.log("🔵 Button disabled?", !diet?.client || !diet.client.phoneNumber || !diet.client.phoneNumber.trim());
+                handleSendViaWhatsApp();
+              }}
+              disabled={!diet?.client || !diet.client.phoneNumber || !diet.client.phoneNumber.trim()}
             >
               📱 WhatsApp
             </Button>

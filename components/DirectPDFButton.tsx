@@ -7,7 +7,6 @@ import {
   Loader2,
   X,
   Share,
-  MessageCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
@@ -1215,96 +1214,22 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
   };
 
-  const handleClick = async () => {
-    if (!dietId || !phoneNumber) {
-      onError?.("DietId ve telefon numarası gereklidir");
-      return;
-    }
-    try {
-      setIsLoading(true);
-      // Format phone number (remove spaces, +, etc.)
-      let formattedPhone = phoneNumber.replace(/\D/g, "");
-      // If it doesn't start with country code, add Turkish code
-      if (!formattedPhone.startsWith("90")) {
-        formattedPhone = `90${formattedPhone}`;
-      }
-      // Create the download URL using the diet ID
-      const baseUrl = window.location.origin;
-      // Create a message with the download link
-      const message = encodeURIComponent(
-        `Merhaba ${pdfData!.fullName || "Danışanım"},\n\n` +
-          `${
-            pdfData!.dietDate
-              ? format(new Date(pdfData!.dietDate), "dd.MM.yyyy")
-              : "Bugün"
-          } ` +
-          `tarihli beslenme programınızı hazırladım.\n\n` +
-          `Sağlıklı günler dilerim,\n` +
-          `Dyt. Ezgi Evgin Aktaş`
-      );
-      // Create WhatsApp URL
-      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
-      // Open WhatsApp in a new window
-      window.open(whatsappUrl, "_blank");
-      toast({
-        title: "WhatsApp Açıldı",
-        description: "WhatsApp mesajınız hazırlandı, göndermeye hazır.",
-        variant: "default",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error("Error sharing via WhatsApp:", error);
-      onError?.(
-        error instanceof Error
-          ? error.message
-          : "WhatsApp açılırken bir hata oluştu"
-      );
-      toast({
-        title: "Hata",
-        description: `WhatsApp üzerinden paylaşım yapılırken bir hata oluştu: ${
-          error instanceof Error ? error.message : "Beklenmeyen bir hata"
-        }`,
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="flex gap-2">
-      <Button
-        variant={variant}
-        size={size}
-        className={`gap-2 ${className}`}
-        onClick={generatePDF}
-        disabled={isLoading}
-        {...props}
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <FileText className="h-4 w-4" />
-        )}
-        PDF İndir
-      </Button>
-      <Button
-        type="button"
-        variant={variant}
-        size={size}
-        onClick={handleClick}
-        className={className}
-        disabled={disabled || isLoading}
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          <MessageCircle className="h-4 w-4 mr-2" />
-        )}
-        WhatsApp
-      </Button>
-    </div>
+    <Button
+      variant={variant}
+      size={size}
+      className={`gap-2 ${className}`}
+      onClick={generatePDF}
+      disabled={isLoading}
+      {...props}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <FileText className="h-4 w-4" />
+      )}
+      PDF İndir
+    </Button>
   );
 };
 export default DirectPDFButton;

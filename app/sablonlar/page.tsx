@@ -6,7 +6,7 @@ import TemplateService, { DietTemplate } from "@/services/TemplateService";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 

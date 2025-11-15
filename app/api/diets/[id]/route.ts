@@ -81,6 +81,7 @@ export async function GET(
             id: true,
             name: true,
             surname: true,
+            phoneNumber: true,
           },
         },
         oguns: {
@@ -111,6 +112,10 @@ export async function GET(
       );
     }
 
+    // Debug: Log client phoneNumber
+    console.log("🔵 API - Diet client:", diet.client);
+    console.log("🔵 API - Client phoneNumber:", diet.client?.phoneNumber);
+
     // Normalize date fields to ISO strings to avoid invalid date on frontend
     const normalized = {
       ...diet,
@@ -126,7 +131,15 @@ export async function GET(
         (diet as any).updatedAt instanceof Date
           ? ((diet as any).updatedAt as Date).toISOString()
           : (diet as any).updatedAt,
+      // Ensure client object is preserved with phoneNumber
+      client: diet.client ? {
+        ...diet.client,
+        phoneNumber: diet.client.phoneNumber,
+      } : null,
     };
+
+    console.log("🔵 API - Normalized client:", normalized.client);
+    console.log("🔵 API - Normalized client phoneNumber:", normalized.client?.phoneNumber);
 
     return addCorsHeaders(NextResponse.json(normalized));
   } catch (error) {
