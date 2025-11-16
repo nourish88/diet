@@ -50,7 +50,7 @@ export default function ClientDashboard() {
         }
 
         // Check for reminders (silently, don't show errors to user)
-        await apiClient.post("/notifications/check-meal-reminders").catch(() => {
+        await apiClient.get<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders").catch(() => {
           // Silently fail - reminders are also handled by cron job
         });
       } catch (error) {

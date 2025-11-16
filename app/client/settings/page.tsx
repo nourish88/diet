@@ -138,7 +138,7 @@ export default function SettingsPage() {
   const handleCheckReminders = async () => {
     setCheckingReminders(true);
     try {
-      const data = await apiClient.post<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders");
+      const data = await apiClient.get<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders");
       if (data.success) {
         toast({
           title: "Kontrol tamamlandı",
