@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import DatePicker from "@/components/CustomUI/Datepicker";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 const exerciseSchema = z.object({
   date: z.date({
@@ -80,11 +80,8 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
     // Fetch exercise types
     const fetchExerciseTypes = async () => {
       try {
-        const response = await fetch("/api/definitions?type=egzersiz_tipi");
-        if (response.ok) {
-          const data = await response.json();
-          setExerciseTypes(data.definitions || []);
-        }
+        const data = await apiClient.get<{ definitions: any[] }>("/definitions?type=egzersiz_tipi");
+        setExerciseTypes(data.definitions || []);
       } catch (error) {
         console.error("Error fetching exercise types:", error);
       } finally {
@@ -98,43 +95,16 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
   const onSubmit = async (data: ExerciseFormData) => {
     setIsSubmitting(true);
     try {
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: "Hata",
-          description: "Oturum bulunamadı. Lütfen giriş yapın.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const response = await fetch("/api/exercises", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          date: data.date.toISOString(),
-          exerciseTypeId:
-            data.exerciseTypeId && data.exerciseTypeId !== "none"
-              ? parseInt(data.exerciseTypeId, 10)
-              : null,
-          description: data.description || null,
-          duration: data.duration ? parseInt(data.duration, 10) : null,
-          steps: data.steps ? parseInt(data.steps, 10) : null,
-        }),
+      await apiClient.post("/exercises", {
+        date: data.date.toISOString(),
+        exerciseTypeId:
+          data.exerciseTypeId && data.exerciseTypeId !== "none"
+            ? parseInt(data.exerciseTypeId, 10)
+            : null,
+        description: data.description || null,
+        duration: data.duration ? parseInt(data.duration, 10) : null,
+        steps: data.steps ? parseInt(data.steps, 10) : null,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Bir hata oluştu");
-      }
 
       toast({
         title: "Başarılı",

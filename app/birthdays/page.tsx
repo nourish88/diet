@@ -8,7 +8,7 @@ import { Loader2, Calendar, Gift, MessageCircle, Phone } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 interface BirthdayClient {
   id: number;
@@ -31,27 +31,7 @@ export default function BirthdaysPage() {
 
   const loadBirthdayClients = async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch("/api/birthdays/today", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load birthday clients");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{ clients: BirthdayClient[] }>("/birthdays/today");
       setClients(data.clients || []);
     } catch (error) {
       console.error("Error loading birthday clients:", error);
@@ -77,33 +57,10 @@ export default function BirthdaysPage() {
 
     setSending(client.id);
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch("/api/birthdays/whatsapp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          clientId: client.id,
-          phoneNumber: client.phoneNumber,
-        }),
+      const data = await apiClient.post<{ whatsappUrl: string }>("/birthdays/whatsapp", {
+        clientId: client.id,
+        phoneNumber: client.phoneNumber,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate WhatsApp URL");
-      }
-
-      const data = await response.json();
 
       // Open WhatsApp - try multiple methods for PWA compatibility
       // In PWA, especially iOS Safari PWA, we need to use window.location.href

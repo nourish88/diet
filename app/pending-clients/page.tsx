@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   CheckCircle,
   XCircle,
@@ -31,10 +32,6 @@ interface Client {
 }
 
 export default function PendingClientsPage() {
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -46,53 +43,111 @@ export default function PendingClientsPage() {
   const [referenceCodeInput, setReferenceCodeInput] = useState("");
   const [clientSearchQuery, setClientSearchQuery] = useState("");
 
-  // Fetch pending users and clients
-  useEffect(() => {
-    fetchPendingUsers();
-    fetchClients();
-  }, []);
+  const queryClient = useQueryClient();
 
-  // Filter clients based on search query
+  // Use React Query for pending users
+  const {
+    data: pendingUsers = [],
+    isLoading: isLoadingPending,
+    isError: isErrorPending,
+    refetch: refetchPending,
+  } = useQuery<PendingUser[]>({
+    queryKey: ["pending-clients"],
+    queryFn: async () => {
+      return apiClient.get<PendingUser[]>("/pending-clients");
+    },
+    staleTime: 30 * 1000, // 30 seconds
+  });
+
+  // Use React Query for clients
+  const {
+    data: clientsData,
+    isLoading: isLoadingClients,
+    isError: isErrorClients,
+  } = useQuery<{ clients: Client[] }>({
+    queryKey: ["clients", "all"],
+    queryFn: async () => {
+      return apiClient.get<{ clients: Client[] }>("/clients?take=1000");
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const clients = clientsData?.clients ?? [];
+  const loading = isLoadingPending || isLoadingClients;
+
+  // Handle errors with useEffect
   useEffect(() => {
-    if (clientSearchQuery.trim() === "") {
-      setFilteredClients(clients);
-    } else {
-      const query = clientSearchQuery.toLowerCase();
-      const filtered = clients.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.surname.toLowerCase().includes(query) ||
-          c.phoneNumber?.toLowerCase().includes(query)
-      );
-      setFilteredClients(filtered);
+    if (isErrorPending) {
+      console.error("Error fetching pending users");
     }
+  }, [isErrorPending]);
+
+  useEffect(() => {
+    if (isErrorClients) {
+      console.error("Error fetching clients");
+    }
+  }, [isErrorClients]);
+
+  // Filter clients based on search query using useMemo
+  const filteredClients = useMemo(() => {
+    if (clientSearchQuery.trim() === "") {
+      return clients;
+    }
+    const query = clientSearchQuery.toLowerCase();
+    return clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.surname.toLowerCase().includes(query) ||
+        c.phoneNumber?.toLowerCase().includes(query)
+    );
   }, [clientSearchQuery, clients]);
 
-  const fetchPendingUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.get<PendingUser[]>("/pending-clients");
-      setPendingUsers(data);
-    } catch (error) {
-      console.error("Error fetching pending users:", error);
-      showMessage("error", "Bekleyen kayıtlar yüklenemedi");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const data = await apiClient.get<{ clients: Client[] }>(
-        "/clients?take=1000"
+  // Use mutation for match operation
+  const matchMutation = useMutation({
+    mutationFn: async ({
+      referenceCode,
+      clientId,
+    }: {
+      referenceCode: string;
+      clientId: number;
+    }) => {
+      return apiClient.post("/pending-clients/match", {
+        referenceCode,
+        clientId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-clients"] });
+      showMessage(
+        "success",
+        `✅ ${selectedClient?.name} ${selectedClient?.surname} başarıyla eşleştirildi!`
       );
-      setClients(data.clients);
-      setFilteredClients(data.clients);
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      showMessage("error", "Danışanlar yüklenemedi");
-    }
-  };
+      setSelectedClient(null);
+      setReferenceCodeInput("");
+    },
+    onError: (error: any) => {
+      console.error("Error matching client:", error);
+      showMessage(
+        "error",
+        error.message || "Eşleştirme sırasında bir hata oluştu"
+      );
+    },
+  });
+
+  // Use mutation for reject operation
+  const rejectMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      return apiClient.delete(`/pending-clients/${userId}/reject`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-clients"] });
+      showMessage("success", "✅ Kayıt başarıyla reddedildi");
+    },
+    onError: (error: any) => {
+      console.error("Error rejecting client:", error);
+      showMessage("error", "Kayıt reddedilirken bir hata oluştu");
+    },
+  });
 
   const handleMatchClient = async () => {
     if (!selectedClient || !referenceCodeInput.trim()) {
@@ -106,33 +161,10 @@ export default function PendingClientsPage() {
     setMessage(null);
 
     try {
-      await apiClient.post("/pending-clients/match", {
+      await matchMutation.mutateAsync({
         referenceCode: referenceCodeInput.trim(),
         clientId: selectedClient.id,
       });
-
-      showMessage(
-        "success",
-        `✅ ${selectedClient.name} ${selectedClient.surname} başarıyla eşleştirildi!`
-      );
-
-      // Remove from pending list
-      setPendingUsers((prev) =>
-        prev.filter((u) => u.referenceCode !== referenceCodeInput.trim())
-      );
-
-      // Reset mapping form
-      setSelectedClient(null);
-      setReferenceCodeInput("");
-
-      // Refresh pending users
-      await fetchPendingUsers();
-    } catch (error: any) {
-      console.error("Error matching client:", error);
-      showMessage(
-        "error",
-        error.message || "Eşleştirme sırasında bir hata oluştu"
-      );
     } finally {
       setProcessingId(null);
     }
@@ -153,12 +185,7 @@ export default function PendingClientsPage() {
     setMessage(null);
 
     try {
-      await apiClient.delete(`/pending-clients/${userId}/reject`);
-      showMessage("success", "✅ Kayıt başarıyla reddedildi");
-      setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
-    } catch (error: any) {
-      console.error("Error rejecting client:", error);
-      showMessage("error", "Kayıt reddedilirken bir hata oluştu");
+      await rejectMutation.mutateAsync(userId);
     } finally {
       setProcessingId(null);
     }
@@ -214,7 +241,19 @@ export default function PendingClientsPage() {
             </h2>
           </div>
 
-          {loading ? (
+          {isErrorPending ? (
+            <div className="p-12 text-center">
+              <p className="text-red-600 mb-4">
+                Bekleyen kayıtlar yüklenirken bir hata oluştu.
+              </p>
+              <button
+                onClick={() => refetchPending()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Tekrar Dene
+              </button>
+            </div>
+          ) : loading ? (
             <div className="p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <p className="mt-4 text-gray-600">Yükleniyor...</p>
@@ -414,6 +453,7 @@ export default function PendingClientsPage() {
     </div>
   );
 }
+
 
 
 

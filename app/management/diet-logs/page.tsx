@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import {
   Card,
   CardContent,
@@ -70,19 +71,11 @@ export default function DietLogsManagementPage() {
         }
 
         // Load logging status
-        const response = await fetch("/api/system-config/diet_form_logging_enabled", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setIsLoggingEnabled(data.value === "true");
-        }
+        const data = await apiClient.get<{ value: string }>("/system-config/diet_form_logging_enabled");
+        setIsLoggingEnabled(data.value === "true");
 
         // Load logs
-        await loadLogs(session.access_token);
+        await loadLogs();
       } catch (error) {
         console.error("Error loading config:", error);
         toast({
@@ -98,20 +91,12 @@ export default function DietLogsManagementPage() {
     loadConfig();
   }, [router, supabase, toast]);
 
-  const loadLogs = async (token: string) => {
+  const loadLogs = async () => {
     try {
       setIsLoadingLogs(true);
-      const response = await fetch("/api/diet-logs?limit=100", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setLogs(data.logs || []);
-        setTotalLogs(data.total || 0);
-      }
+      const data = await apiClient.get<{ logs: DietFormLog[]; total: number }>("/diet-logs?limit=100");
+      setLogs(data.logs || []);
+      setTotalLogs(data.total || 0);
     } catch (error) {
       console.error("Error loading logs:", error);
     } finally {
@@ -136,33 +121,22 @@ export default function DietLogsManagementPage() {
       }
 
       const newValue = !isLoggingEnabled;
-      const response = await fetch("/api/system-config/diet_form_logging_enabled", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          value: newValue ? "true" : "false",
-          description: "Enable/disable diet form logging",
-        }),
+      await apiClient.put("/system-config/diet_form_logging_enabled", {
+        value: newValue ? "true" : "false",
+        description: "Enable/disable diet form logging",
       });
 
-      if (response.ok) {
-        setIsLoggingEnabled(newValue);
-        toast({
-          title: "Başarılı",
-          description: newValue
-            ? "Diyet formu loglama etkinleştirildi"
-            : "Diyet formu loglama devre dışı bırakıldı",
-        });
+      setIsLoggingEnabled(newValue);
+      toast({
+        title: "Başarılı",
+        description: newValue
+          ? "Diyet formu loglama etkinleştirildi"
+          : "Diyet formu loglama devre dışı bırakıldı",
+      });
 
-        // Reload logs if enabled
-        if (newValue) {
-          await loadLogs(session.access_token);
-        }
-      } else {
-        throw new Error("Failed to update config");
+      // Reload logs if enabled
+      if (newValue) {
+        await loadLogs();
       }
     } catch (error) {
       console.error("Error toggling logging:", error);
@@ -177,12 +151,7 @@ export default function DietLogsManagementPage() {
   };
 
   const handleRefreshLogs = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session) {
-      await loadLogs(session.access_token);
-    }
+    await loadLogs();
   };
 
   const getActionBadgeColor = (action: string) => {

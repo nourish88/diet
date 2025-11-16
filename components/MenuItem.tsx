@@ -23,6 +23,7 @@ import { SmartBesinInput } from "./SmartBesinInput";
 import { Check, ChevronsUpDown, Trash } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api-client";
 
 interface Birim {
   id: number;
@@ -83,9 +84,7 @@ const MenuItem = ({
     const fetchBirims = async () => {
       try {
         setIsLoadingBirims(true);
-        const response = await fetch("/api/birims");
-        if (!response.ok) throw new Error("Failed to fetch birims");
-        const data = await response.json();
+        const data = await apiClient.get<Birim[]>("/birims");
         setBirims(data);
       } catch (error) {
         console.error("Error fetching birims:", error);

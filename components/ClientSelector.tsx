@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 interface Client {
   id: number;
@@ -35,7 +35,6 @@ const ClientSelector = ({
   selectedClientId,
   selectedClientName,
 }: ClientSelectorProps) => {
-  const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
@@ -56,28 +55,7 @@ const ClientSelector = ({
 
     try {
       setIsSearching(true);
-      
-      // Get authentication token
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      if (!token) {
-        console.error("Authentication required");
-        return;
-      }
-      
-      const response = await fetch(`/api/clients?search=${encodeURIComponent(search)}&take=20`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to search clients");
-      }
-      
-      const data = await response.json();
+      const data = await apiClient.get<{ clients: Client[] }>(`/clients?search=${encodeURIComponent(search)}&take=20`);
       setClients(data.clients || []);
     } catch (error) {
       console.error("Error searching clients:", error);
@@ -177,4 +155,4 @@ const ClientSelector = ({
   );
 };
 
-export default ClientSelector;
+export default memo(ClientSelector);

@@ -16,7 +16,7 @@ const DefinitionService = {
   async getDefinitions(type?: DefinitionType): Promise<Definition[]> {
     try {
       const url = type ? `/definitions?type=${type}` : "/definitions";
-      const response = await apiClient.get(url);
+      const response = await apiClient.get<Definition[] | { definitions: Definition[] }>(url);
       // Handle both array and object with definitions property
       if (Array.isArray(response)) {
         return response;
@@ -38,7 +38,7 @@ const DefinitionService = {
     name: string
   ): Promise<Definition> {
     try {
-      return await apiClient.post("/definitions", { type, name });
+      return await apiClient.post<Definition>("/definitions", { type, name });
     } catch (error) {
       console.error("Error creating definition:", error);
       throw error;
@@ -51,7 +51,7 @@ const DefinitionService = {
     data: { name?: string; isActive?: boolean }
   ): Promise<Definition> {
     try {
-      return await apiClient.put(`/definitions/${id}`, data);
+      return await apiClient.put<Definition>(`/definitions/${id}`, data);
     } catch (error) {
       console.error("Error updating definition:", error);
       throw error;

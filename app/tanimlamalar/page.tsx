@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DefinitionList } from "@/components/tanimlamalar/DefinitionList";
 import { DefinitionForm } from "@/components/tanimlamalar/DefinitionForm";
 import DefinitionService, {
@@ -12,46 +12,52 @@ import { Toaster } from "@/components/ui/toaster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Droplet, Activity } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function TanimlamalarPage() {
-  const [suDefinitions, setSuDefinitions] = useState<Definition[]>([]);
-  const [fizikDefinitions, setFizikDefinitions] = useState<Definition[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DefinitionType>("su_tuketimi");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadDefinitions();
-  }, []);
+  // Use React Query for data fetching
+  const {
+    data: suDefinitionsData,
+    isLoading: isLoadingSu,
+    isError: isErrorSu,
+    error: errorSu,
+    refetch: refetchSu,
+  } = useQuery<Definition[]>({
+    queryKey: ['definitions', 'su_tuketimi'],
+    queryFn: () => DefinitionService.getDefinitions("su_tuketimi"),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  const loadDefinitions = async () => {
-    try {
-      setIsLoading(true);
-      const [suDefs, fizikDefs] = await Promise.all([
-        DefinitionService.getDefinitions("su_tuketimi"),
-        DefinitionService.getDefinitions("fiziksel_aktivite"),
-      ]);
-      setSuDefinitions(suDefs);
-      setFizikDefinitions(fizikDefs);
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Tanımlamalar yüklenirken bir hata oluştu",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    data: fizikDefinitionsData,
+    isLoading: isLoadingFizik,
+    isError: isErrorFizik,
+    error: errorFizik,
+    refetch: refetchFizik,
+  } = useQuery<Definition[]>({
+    queryKey: ['definitions', 'fiziksel_aktivite'],
+    queryFn: () => DefinitionService.getDefinitions("fiziksel_aktivite"),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const suDefinitions = suDefinitionsData ?? [];
+  const fizikDefinitions = fizikDefinitionsData ?? [];
+  const isLoading = isLoadingSu || isLoadingFizik;
 
   const handleAdd = async (type: DefinitionType, name: string) => {
     try {
       const newDef = await DefinitionService.createDefinition(type, name);
 
+      // Invalidate and refetch the specific definition type
+      queryClient.invalidateQueries({ queryKey: ['definitions', type] });
       if (type === "su_tuketimi") {
-        setSuDefinitions([newDef, ...suDefinitions]);
+        refetchSu();
       } else {
-        setFizikDefinitions([newDef, ...fizikDefinitions]);
+        refetchFizik();
       }
 
       toast({
@@ -73,16 +79,14 @@ export default function TanimlamalarPage() {
     data: { name?: string; isActive?: boolean }
   ) => {
     try {
-      const updated = await DefinitionService.updateDefinition(id, data);
+      await DefinitionService.updateDefinition(id, data);
 
+      // Invalidate and refetch the specific definition type
+      queryClient.invalidateQueries({ queryKey: ['definitions', type] });
       if (type === "su_tuketimi") {
-        setSuDefinitions(
-          suDefinitions.map((def) => (def.id === id ? updated : def))
-        );
+        refetchSu();
       } else {
-        setFizikDefinitions(
-          fizikDefinitions.map((def) => (def.id === id ? updated : def))
-        );
+        refetchFizik();
       }
 
       toast({
@@ -103,10 +107,12 @@ export default function TanimlamalarPage() {
     try {
       await DefinitionService.deleteDefinition(id);
 
+      // Invalidate and refetch the specific definition type
+      queryClient.invalidateQueries({ queryKey: ['definitions', type] });
       if (type === "su_tuketimi") {
-        setSuDefinitions(suDefinitions.filter((def) => def.id !== id));
+        refetchSu();
       } else {
-        setFizikDefinitions(fizikDefinitions.filter((def) => def.id !== id));
+        refetchFizik();
       }
 
       toast({

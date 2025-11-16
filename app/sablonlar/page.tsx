@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { TemplateCard } from "@/components/sablonlar/TemplateCard";
 import TemplateService, { DietTemplate } from "@/services/TemplateService";
 import { useToast } from "@/components/ui/use-toast";
@@ -9,36 +9,52 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 export default function SablonlarPage() {
-  const [templates, setTemplates] = useState<DietTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
-    try {
-      setIsLoading(true);
+  // Use React Query for data fetching
+  const {
+    data: templates = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<DietTemplate[]>({
+    queryKey: ["templates"],
+    queryFn: async () => {
       console.log("🔄 SablonlarPage: Loading templates...");
       const data = await TemplateService.getTemplates();
       console.log("📋 SablonlarPage: Templates loaded:", data);
-      setTemplates(data);
-    } catch (error) {
-      console.error("❌ SablonlarPage: Error loading templates:", error);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use mutation for delete operation
+  const deleteMutation = useMutation({
+    mutationFn: async (templateId: number) => {
+      await TemplateService.deleteTemplate(templateId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast({
+        title: "Başarılı",
+        description: "Şablon silindi",
+      });
+    },
+    onError: (error: any) => {
       toast({
         title: "Hata",
-        description: "Şablonlar yüklenirken bir hata oluştu",
+        description: error.message || "Şablon silinirken bir hata oluştu",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+  });
 
   const handleUse = (templateId: number) => {
     // Navigate to diet form with template parameter
@@ -54,32 +70,22 @@ export default function SablonlarPage() {
   };
 
   const handleDelete = async (templateId: number) => {
-    try {
-      await TemplateService.deleteTemplate(templateId);
-      setTemplates(templates.filter((t) => t.id !== templateId));
-      toast({
-        title: "Başarılı",
-        description: "Şablon silindi",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Hata",
-        description: error.message || "Şablon silinirken bir hata oluştu",
-        variant: "destructive",
-      });
-    }
+    deleteMutation.mutate(templateId);
   };
 
   // Get categories
-  const categories = [
-    "all",
-    ...new Set(templates.map((t) => t.category || "Diğer")),
-  ];
+  const categories = useMemo(
+    () => ["all", ...new Set(templates.map((t) => t.category || "Diğer"))],
+    [templates]
+  );
 
-  const filteredTemplates =
-    selectedCategory === "all"
-      ? templates
-      : templates.filter((t) => (t.category || "Diğer") === selectedCategory);
+  const filteredTemplates = useMemo(
+    () =>
+      selectedCategory === "all"
+        ? templates
+        : templates.filter((t) => (t.category || "Diğer") === selectedCategory),
+    [templates, selectedCategory]
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -115,7 +121,16 @@ export default function SablonlarPage() {
           ))}
         </TabsList>
 
-        {isLoading ? (
+        {isError ? (
+          <div className="text-center py-16 bg-red-50 rounded-lg border-2 border-red-200">
+            <p className="text-red-600 mb-4">
+              Şablonlar yüklenirken bir hata oluştu.
+            </p>
+            <Button onClick={() => refetch()} variant="outline">
+              Tekrar Dene
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="flex justify-center items-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
             <span className="ml-2 text-gray-600">Şablonlar yükleniyor...</span>

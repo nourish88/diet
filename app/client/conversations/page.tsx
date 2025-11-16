@@ -10,8 +10,8 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-browser";
 import { Card, CardContent } from "@/components/ui/card";
+import { apiClient } from "@/lib/api-client";
 
 interface Conversation {
   dietId: number;
@@ -46,27 +46,7 @@ export default function ClientConversationsPage() {
 
   const loadConversations = async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch("/api/client/portal/conversations", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load conversations");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{ conversations: Conversation[] }>("/client/portal/conversations");
       setConversations(data.conversations || []);
     } catch (error) {
       console.error("Error loading conversations:", error);

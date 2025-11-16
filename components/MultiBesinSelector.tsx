@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { apiClient } from "@/lib/api-client";
 
 interface Besin {
   id: number;
@@ -37,9 +39,6 @@ const MultiBesinSelector = ({
   onChange,
 }: MultiBesinSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const [besins, setBesins] = useState<Besin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Ensure selectedBesins is always a valid array
@@ -51,7 +50,6 @@ const MultiBesinSelector = ({
         (item) => item && typeof item === "object" && "besinId" in item
       );
     } catch (error) {
-      // Avoid using console.error with the error object directly
       console.error(
         "Error processing selectedBesins: " +
           ((error as any).message || "Unknown error")
@@ -60,73 +58,29 @@ const MultiBesinSelector = ({
     }
   }, [selectedBesins]);
 
-  useEffect(() => {
-    let isMounted = true;
+  // Use React Query for data fetching
+  const {
+    data: besinsData,
+    isLoading: loading,
+    isError,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["besinler", "multiselect"],
+    queryFn: async () => {
+      const data = await apiClient.get<Besin[] | { items: Besin[] }>("/besinler?pageSize=200");
+      // Handle the response data
+      const items = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.items)
+        ? data.items
+        : [];
+      return items;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    const fetchBesins = async () => {
-      if (!isMounted) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log("Fetching besinler...");
-        const response = await fetch("/api/besinler?pageSize=200");
-        console.log("Response received:", response.status);
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch besinler: ${response.status} ${response.statusText}`
-          );
-        }
-
-        let data: any;
-        try {
-          data = await response.json();
-          console.log("Data received:", data ? "Data exists" : "No data");
-        } catch (jsonError) {
-          // Avoid using console.error with the error object directly
-          console.error(
-            "Error parsing JSON: " +
-              ((jsonError as any).message || "Unknown error")
-          );
-          throw new Error("Invalid response format");
-        }
-
-        if (!isMounted) return;
-
-        // Handle the response data
-        const items = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.items)
-          ? data.items
-          : [];
-        console.log(`Setting ${items.length} besins`);
-        setBesins(items);
-      } catch (error) {
-        // Avoid using console.error with the error object directly
-        console.error(
-          "Error fetching besinler: " +
-            ((error as any).message || "Unknown error")
-        );
-        if (!isMounted) return;
-        setError("Besinler yüklenirken bir hata oluştu");
-        // Set empty array to prevent infinite loading
-        setBesins([]);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchBesins();
-
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const besins = besinsData || [];
+  const error = isError ? "Besinler yüklenirken bir hata oluştu" : null;
 
   const toggleBesin = (besinId: number) => {
     try {
@@ -294,4 +248,4 @@ const MultiBesinSelector = ({
   );
 };
 
-export default MultiBesinSelector;
+export default memo(MultiBesinSelector);

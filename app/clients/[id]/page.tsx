@@ -24,15 +24,37 @@ import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { useClient } from "@/hooks/useApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase-browser";
-import ProgressChart from "@/components/progress/ProgressChart";
-import ProgressSummary from "@/components/progress/ProgressSummary";
-import ExerciseChart from "@/components/exercises/ExerciseChart";
+import { apiClient } from "@/lib/api-client";
+import dynamic from "next/dynamic";
 import DateRangePicker from "@/components/progress/DateRangePicker";
+
+const ProgressChart = dynamic(() => import("@/components/progress/ProgressChart"), {
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+  ),
+});
+
+const ProgressSummary = dynamic(() => import("@/components/progress/ProgressSummary"), {
+  loading: () => (
+    <div className="flex items-center justify-center h-32">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+    </div>
+  ),
+});
+
+const ExerciseChart = dynamic(() => import("@/components/exercises/ExerciseChart"), {
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+  ),
+});
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -65,35 +87,17 @@ export default function ClientDetailPage() {
   const { data: client, isLoading, error } = useClient(clientId);
 
   // Fetch unread message counts
-  const { data: unreadData } = useQuery({
+  interface UnreadMessagesData { totalUnread: number; unreadByDiet: Record<number, number> }
+  const { data: unreadData } = useQuery<UnreadMessagesData | null>({
     queryKey: ["unreadMessages", clientId],
     queryFn: async () => {
       if (!clientId) return null;
-      
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.log("⚠️ No session found");
+      try {
+        return await apiClient.get<UnreadMessagesData>(`/clients/${clientId}/unread-messages`);
+      } catch (error) {
+        console.log("❌ Unread messages API error:", error);
         return null;
       }
-
-      const response = await fetch(`/api/clients/${clientId}/unread-messages`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`, // ← SORUN BURADA EKSİKTİ!
-        },
-      });
-      
-      if (!response.ok) {
-        console.log("❌ Unread messages API error:", response.status);
-        return null;
-      }
-      
-      const data = await response.json();
-      return data;
     },
     enabled: !!clientId,
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -113,15 +117,7 @@ export default function ClientDetailPage() {
         params.append("dateTo", progressDateTo.toISOString());
       }
 
-      const response = await fetch(`/api/progress?${params.toString()}`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Progress data could not be fetched");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{ entries: ProgressEntry[] }>(`/progress?${params.toString()}`);
       return data.entries || [];
     },
     enabled: !!clientId,
@@ -141,50 +137,78 @@ export default function ClientDetailPage() {
         params.append("dateTo", exerciseDateTo.toISOString());
       }
 
-      const response = await fetch(`/api/exercises?${params.toString()}`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Exercise data could not be fetched");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{ logs: ExerciseLog[] }>(`/exercises?${params.toString()}`);
       return data.logs || [];
     },
     enabled: !!clientId,
   });
 
+  // Memoize progress calculations
+  const progressSummary = useMemo(() => {
+    if (!progressData || progressData.length === 0) return null;
+    return calculateProgressSummary(
+      progressData,
+      progressDateFrom || undefined,
+      progressDateTo || undefined
+    );
+  }, [progressData, progressDateFrom, progressDateTo]);
+
+  const progressChartData = useMemo(() => {
+    if (!progressData || progressData.length === 0) return null;
+    return getChartData(
+      progressData,
+      progressDateFrom || undefined,
+      progressDateTo || undefined
+    );
+  }, [progressData, progressDateFrom, progressDateTo]);
+
+  const progressFlags = useMemo(() => {
+    if (!progressData) return { hasWeight: false, hasWaist: false, hasHip: false, hasBodyFat: false };
+    return {
+      hasWeight: progressData.some((e: ProgressEntry) => e.weight !== null),
+      hasWaist: progressData.some((e: ProgressEntry) => e.waist !== null),
+      hasHip: progressData.some((e: ProgressEntry) => e.hip !== null),
+      hasBodyFat: progressData.some((e: ProgressEntry) => e.bodyFat !== null),
+    };
+  }, [progressData]);
+
+  // Memoize exercise calculations
+  const exerciseStats = useMemo(() => {
+    if (!exerciseData || exerciseData.length === 0) return null;
+    return getExerciseStats(
+      exerciseData,
+      exerciseDateFrom || undefined,
+      exerciseDateTo || undefined
+    );
+  }, [exerciseData, exerciseDateFrom, exerciseDateTo]);
+
+  const exerciseChartData = useMemo(() => {
+    if (!exerciseData || exerciseData.length === 0) return null;
+    return groupByExerciseType(
+      exerciseData,
+      exerciseDateFrom || undefined,
+      exerciseDateTo || undefined
+    );
+  }, [exerciseData, exerciseDateFrom, exerciseDateTo]);
+
+  // Memoize date change handlers
+  const handleProgressDateChange = useCallback((from: Date | null, to: Date | null) => {
+    setProgressDateFrom(from);
+    setProgressDateTo(to);
+  }, []);
+
+  const handleExerciseDateChange = useCallback((from: Date | null, to: Date | null) => {
+    setExerciseDateFrom(from);
+    setExerciseDateTo(to);
+  }, []);
+
   // Handle unlink client from user account
-  const handleUnlink = async () => {
+  const handleUnlink = useCallback(async () => {
     if (!clientId) return;
 
     setIsUnlinking(true);
     try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        toast({
-          title: "Hata",
-          description: "Oturum bulunamadı. Lütfen tekrar giriş yapın.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const response = await fetch(`/api/clients/${clientId}/unlink`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "İlişki kaldırılamadı");
-      }
+      await apiClient.post(`/clients/${clientId}/unlink`);
 
       toast({
         title: "Başarılı",
@@ -205,7 +229,7 @@ export default function ClientDetailPage() {
     } finally {
       setIsUnlinking(false);
     }
-  };
+  }, [clientId, toast, queryClient, router]);
 
   // Update the formatDate function to properly handle the date format
   const formatDate = (dateString: string | null | undefined) => {
@@ -494,9 +518,9 @@ export default function ClientDetailPage() {
                         >
                           <MessageCircle className="h-4 w-4" />
                           Mesajlaşma
-                          {unreadData?.unreadByDiet?.[diet.id] > 0 && (
+                          {unreadData && unreadData.unreadByDiet && unreadData.unreadByDiet[diet.id] > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                              {unreadData.unreadByDiet[diet.id]}
+                              {unreadData?.unreadByDiet?.[diet.id] ?? 0}
                             </span>
                           )}
                         </Button>
@@ -523,10 +547,7 @@ export default function ClientDetailPage() {
             <DateRangePicker
               dateFrom={progressDateFrom}
               dateTo={progressDateTo}
-              onDateChange={(from, to) => {
-                setProgressDateFrom(from);
-                setProgressDateTo(to);
-              }}
+              onDateChange={handleProgressDateChange}
             />
           </div>
           <CardDescription>
@@ -540,39 +561,20 @@ export default function ClientDetailPage() {
             </div>
           ) : progressData && progressData.length > 0 ? (
             <>
-              {(() => {
-                const summary = calculateProgressSummary(
-                  progressData,
-                  progressDateFrom || undefined,
-                  progressDateTo || undefined
-                );
-                const chartData = getChartData(
-                  progressData,
-                  progressDateFrom || undefined,
-                  progressDateTo || undefined
-                );
-                const hasWeight = progressData.some((e: ProgressEntry) => e.weight !== null);
-                const hasWaist = progressData.some((e: ProgressEntry) => e.waist !== null);
-                const hasHip = progressData.some((e: ProgressEntry) => e.hip !== null);
-                const hasBodyFat = progressData.some((e: ProgressEntry) => e.bodyFat !== null);
-
-                return (
-                  <>
-                    {summary && (
-                      <div className="mb-6">
-                        <ProgressSummary summary={summary} />
-                      </div>
-                    )}
-                    <ProgressChart
-                      data={chartData}
-                      showWeight={hasWeight}
-                      showWaist={hasWaist}
-                      showHip={hasHip}
-                      showBodyFat={hasBodyFat}
-                    />
-                  </>
-                );
-              })()}
+              {progressSummary && (
+                <div className="mb-6">
+                  <ProgressSummary summary={progressSummary} />
+                </div>
+              )}
+              {progressChartData && (
+                <ProgressChart
+                  data={progressChartData}
+                  showWeight={progressFlags.hasWeight}
+                  showWaist={progressFlags.hasWaist}
+                  showHip={progressFlags.hasHip}
+                  showBodyFat={progressFlags.hasBodyFat}
+                />
+              )}
             </>
           ) : (
             <div className="flex items-center justify-center h-64">
@@ -593,10 +595,7 @@ export default function ClientDetailPage() {
             <DateRangePicker
               dateFrom={exerciseDateFrom}
               dateTo={exerciseDateTo}
-              onDateChange={(from, to) => {
-                setExerciseDateFrom(from);
-                setExerciseDateTo(to);
-              }}
+              onDateChange={handleExerciseDateChange}
             />
           </div>
           <CardDescription>
@@ -610,40 +609,25 @@ export default function ClientDetailPage() {
             </div>
           ) : exerciseData && exerciseData.length > 0 ? (
             <>
-              {(() => {
-                const stats = getExerciseStats(
-                  exerciseData,
-                  exerciseDateFrom || undefined,
-                  exerciseDateTo || undefined
-                );
-                const chartData = groupByExerciseType(
-                  exerciseData,
-                  exerciseDateFrom || undefined,
-                  exerciseDateTo || undefined
-                );
-
-                return (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-500 mb-1">Toplam Egzersiz</p>
-                        <p className="text-2xl font-bold">{stats.totalExercises}</p>
-                      </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
-                        <p className="text-2xl font-bold">{stats.totalDuration} dk</p>
-                      </div>
-                      <div className="bg-orange-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
-                        <p className="text-2xl font-bold">
-                          {stats.totalSteps.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                    <ExerciseChart data={chartData} />
-                  </>
-                );
-              })()}
+              {exerciseStats && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Toplam Egzersiz</p>
+                    <p className="text-2xl font-bold">{exerciseStats.totalExercises}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
+                    <p className="text-2xl font-bold">{exerciseStats.totalDuration} dk</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
+                    <p className="text-2xl font-bold">
+                      {exerciseStats.totalSteps.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {exerciseChartData && <ExerciseChart data={exerciseChartData} />}
             </>
           ) : (
             <div className="flex items-center justify-center h-64">

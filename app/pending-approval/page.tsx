@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, CheckCircle, Mail, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 export default function PendingApprovalPage() {
   const router = useRouter();
@@ -25,27 +26,19 @@ export default function PendingApprovalPage() {
         return;
       }
 
-      const response = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // If approved, redirect to appropriate page
-        if (data.user.isApproved) {
-          if (data.user.role === "client") {
-            router.push("/client");
-          } else {
-            router.push("/");
-          }
-          return;
+      const data = await apiClient.get<{ user: { isApproved: boolean; role: string; email?: string; referenceCode?: string } }>("/auth/sync");
+      
+      // If approved, redirect to appropriate page
+      if (data.user.isApproved) {
+        if (data.user.role === "client") {
+          router.push("/client");
+        } else {
+          router.push("/");
         }
-
-        setUser(data.user);
+        return;
       }
+
+      setUser(data.user);
     } catch (error) {
       console.error("Error checking status:", error);
     } finally {

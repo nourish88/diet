@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 interface UnreadData {
   totalUnread: number;
@@ -49,11 +50,7 @@ export default function ClientDashboard() {
         }
 
         // Check for reminders (silently, don't show errors to user)
-        await fetch("/api/notifications/check-meal-reminders", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }).catch(() => {
+        await apiClient.post("/notifications/check-meal-reminders").catch(() => {
           // Silently fail - reminders are also handled by cron job
         });
       } catch (error) {
@@ -80,21 +77,13 @@ export default function ClientDashboard() {
       }
 
       // Get user info
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const userData = await apiClient.get<{ user: { client?: { id?: number; name?: string } } }>("/auth/sync");
+      const clientName = userData.user.client?.name || "Danışan";
+      setUserName(clientName);
 
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        const clientName = userData.user.client?.name || "Danışan";
-        setUserName(clientName);
-
-        // Load unread messages
-        if (userData.user.client?.id) {
-          loadUnreadMessages(userData.user.client.id, session.access_token);
-        }
+      // Load unread messages
+      if (userData.user.client?.id) {
+        loadUnreadMessages(userData.user.client.id);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -103,44 +92,21 @@ export default function ClientDashboard() {
     }
   };
 
-  const loadUnreadMessages = async (clientId?: number, token?: string) => {
+  const loadUnreadMessages = async (clientId?: number) => {
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) return;
-
       // Get client ID if not provided
       if (!clientId) {
-        const userResponse = await fetch("/api/auth/sync", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          clientId = userData.user.client?.id;
-        }
+        const userData = await apiClient.get<{ user: { client?: { id?: number } } }>("/auth/sync");
+        clientId = userData.user.client?.id;
       }
 
       if (!clientId) return;
 
-      const authToken = token || session.access_token;
-      const response = await fetch(`/api/clients/${clientId}/unread-messages`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
+      const data = await apiClient.get<{ totalUnread: number; unreadByDiet: Record<number, number> }>(`/clients/${clientId}/unread-messages`);
+      setUnreadData({
+        totalUnread: data.totalUnread || 0,
+        unreadByDiet: data.unreadByDiet || {},
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadData({
-          totalUnread: data.totalUnread || 0,
-          unreadByDiet: data.unreadByDiet || {},
-        });
-      }
     } catch (error) {
       console.error("Error loading unread messages:", error);
     }

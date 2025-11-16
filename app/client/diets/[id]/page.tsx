@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import DatabasePDFButton from "@/components/DatabasePDFButton";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -57,7 +57,6 @@ export default function ClientDietDetailPage() {
   const [expandedOguns, setExpandedOguns] = useState<Record<number, boolean>>({});
   const [highlightedOgunId, setHighlightedOgunId] = useState<number | null>(null);
   const ogunRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const supabase = useMemo(() => createClient(), []);
 
   const {
     data,
@@ -70,32 +69,17 @@ export default function ClientDietDetailPage() {
     queryFn: async () => {
       if (!dietId) throw new Error("Diet ID missing");
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        throw new Error("Session not found");
-      }
-
-      const response = await fetch(`/api/client/portal/diets/${dietId}`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
+      try {
+        return await apiClient.get<{
+          success: boolean;
+          diet: DietDetail & { unreadCount: number; clientId: number };
+        }>(`/client/portal/diets/${dietId}`);
+      } catch (error: any) {
+        if (error?.status === 404) {
           router.push("/client/diets");
         }
-        throw new Error("Failed to load diet");
+        throw error;
       }
-
-      return response.json() as Promise<{
-        success: boolean;
-        diet: DietDetail & { unreadCount: number; clientId: number };
-      }>;
     },
   });
 

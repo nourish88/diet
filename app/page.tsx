@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Users,
   ClipboardList,
@@ -16,7 +16,8 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 
 interface UnreadConversation {
   clientId: number;
@@ -58,163 +59,49 @@ interface UnreadMessagesByDiet {
 
 export default function Home() {
   const router = useRouter();
+  const { user, databaseUser, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<UnreadConversation[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Mobile dashboard stats
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [recentDiets, setRecentDiets] = useState<RecentDiet[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [unreadByDiet, setUnreadByDiet] = useState<UnreadMessagesByDiet>({});
+  
+  // Get user role from databaseUser
+  const userRole = databaseUser?.role || null;
 
-  useEffect(() => {
-    checkAuthAndLoadData();
-  }, []);
-
-  useEffect(() => {
-    if (userRole === "dietitian") {
-      const interval = setInterval(() => {
-        loadUnreadMessages();
-        loadDashboardData();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [userRole]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.log("⚠️ No session found, skipping dashboard data");
-        return;
-      }
 
       // Load dashboard stats
-      const statsResponse = await fetch("/api/analytics/stats", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+      const statsData = await apiClient.get<DashboardStats>("/analytics/stats");
+      setDashboardStats({
+        totalClients: statsData.totalClients || 0,
+        totalDiets: statsData.totalDiets || 0,
+        thisMonthDiets: statsData.thisMonthDiets || 0,
+        pendingApprovals: statsData.pendingApprovals || 0,
       });
-
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setDashboardStats({
-          totalClients: statsData.totalClients || 0,
-          totalDiets: statsData.totalDiets || 0,
-          thisMonthDiets: statsData.thisMonthDiets || 0,
-          pendingApprovals: statsData.pendingApprovals || 0,
-        });
-      }
 
       // Load recent diets
-      const dietsResponse = await fetch("/api/diets?skip=0&take=5", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (dietsResponse.ok) {
-        const dietsData = await dietsResponse.json();
-        setRecentDiets(dietsData.diets || []);
-      }
+      const dietsData = await apiClient.get<{ diets: RecentDiet[] }>("/diets?skip=0&take=5");
+      setRecentDiets(dietsData.diets || []);
     } catch (error) {
       console.error("❌ Error loading dashboard data:", error);
     } finally {
       setStatsLoading(false);
     }
-  };
+  }, []);
 
-  const checkAuthAndLoadData = async () => {
+  const loadUnreadMessages = useCallback(async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.log("⚠️ No session found, redirecting to login");
-        router.push("/login");
-        return;
-      }
-
-      // Get user role
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        const role = userData.user.role;
-
-        console.log("🔍 User role detected:", role);
-
-        // Set role and load data based on role
-        if (role === "client") {
-          // Client should not see this page - redirect from client layout handles this
-          console.log("⚠️ Client on dietitian page, should not happen");
-          // Don't redirect here to avoid loop - let client layout handle it
-          setUserRole(role);
-          setLoading(false);
-        } else if (role === "dietitian") {
-          console.log("👨‍⚕️ Dietitian detected, loading dashboard");
-          setUserRole(role);
-          setLoading(false); // Stop loading for dietitian
-          // Load dashboard data
-          loadDashboardData();
-          loadUnreadMessages();
-        } else {
-          // Unknown role
-          setUserRole(role);
-          setLoading(false);
-        }
-      } else {
-        // Auth failed, redirect to login
-        setLoading(false);
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("❌ Error checking auth:", error);
-      setLoading(false);
-      router.push("/login");
-    }
-  };
-
-  const loadUnreadMessages = async () => {
-    try {
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.log("⚠️ No session found, skipping unread messages");
-        return;
-      }
-
-      const response = await fetch("/api/unread-messages/list", {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`, // ← SORUN BURADA EKSİKTİ!
-        },
-      });
-
-      if (!response.ok) {
-        console.log("❌ API Error:", response.status);
-        return;
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{
+        success: boolean;
+        conversations: UnreadConversation[];
+        totalUnread: number;
+      }>("/unread-messages/list");
 
       if (data.success) {
         setConversations(data.conversations || []);
@@ -232,10 +119,35 @@ export default function Home() {
       }
     } catch (error) {
       console.error("❌ Error loading unread messages:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
+
+  // Load data when auth is ready and user is dietitian
+  useEffect(() => {
+    if (!authLoading && user && databaseUser) {
+      if (databaseUser.role === "dietitian") {
+        loadDashboardData();
+        loadUnreadMessages();
+      } else if (databaseUser.role === "client") {
+        // Client should not see this page - redirect to client page
+        router.push("/client");
+      }
+    } else if (!authLoading && !user) {
+      // No user, redirect to login
+      router.push("/login");
+    }
+  }, [authLoading, user, databaseUser, router, loadDashboardData, loadUnreadMessages]);
+
+  // Set up polling for dietitian dashboard
+  useEffect(() => {
+    if (userRole === "dietitian") {
+      const interval = setInterval(() => {
+        loadUnreadMessages();
+        loadDashboardData();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole, loadUnreadMessages, loadDashboardData]);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString("tr-TR", {
@@ -244,8 +156,8 @@ export default function Home() {
     });
   };
 
-  // If loading, show minimal loading screen
-  if (loading) {
+  // If auth is loading, show minimal loading screen
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
@@ -456,7 +368,7 @@ export default function Home() {
       </div>
 
       {/* Okunmamış Mesajlar Section */}
-      {!loading && conversations.length > 0 && (
+      {!authLoading && conversations.length > 0 && (
         <div className="mb-16">
           <div className="bg-white rounded-lg shadow-md border-2 border-purple-700 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">

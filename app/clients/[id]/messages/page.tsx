@@ -16,6 +16,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -62,24 +63,7 @@ export default function ClientMessagesPage() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
-  const authHeadersRef = useRef<Record<string, string>>({});
   const latestMessageIdRef = useRef<number | null>(null);
-
-  // Helper function to get auth headers
-  const getAuthHeaders = async () => {
-    const supabase = supabaseClientRef.current;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(session && { Authorization: `Bearer ${session.access_token}` }),
-    };
-
-    authHeadersRef.current = headers;
-    return headers;
-  };
 
   useEffect(() => {
     if (clientId && dietId) {
@@ -175,13 +159,12 @@ export default function ClientMessagesPage() {
       setLoading(true);
       }
 
-      const headers = await getAuthHeaders();
       const query = options.afterId ? `?afterId=${options.afterId}` : "";
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages${query}`,
-        { headers }
-      );
-      const data = await response.json();
+      const data = await apiClient.get<{
+        success: boolean;
+        messages: Message[];
+        error?: string;
+      }>(`/clients/${clientId}/diets/${dietId}/messages${query}`);
 
       if (!data.success) {
         console.error("Failed to load messages:", data.error);
@@ -222,9 +205,7 @@ export default function ClientMessagesPage() {
         return;
       }
 
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/clients/${clientId}`, { headers });
-      const data = await response.json();
+      const data = await apiClient.get<{ success: boolean; client: { name: string; surname: string } }>(`/clients/${clientId}`);
       if (data.success) {
         setClientName(`${data.client.name} ${data.client.surname}`);
       }
@@ -235,15 +216,9 @@ export default function ClientMessagesPage() {
 
   const fetchMessageById = async (messageId: number): Promise<Message | null> => {
     try {
-      const headers =
-        Object.keys(authHeadersRef.current).length > 0
-          ? authHeadersRef.current
-          : await getAuthHeaders();
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`,
-        { headers }
+      const data = await apiClient.get<{ success: boolean; message?: Message }>(
+        `/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`
       );
-      const data = await response.json();
       if (data.success && data.message) {
         return data.message as Message;
       }
@@ -260,19 +235,13 @@ export default function ClientMessagesPage() {
     if (!dietId) return;
 
     try {
-      const headers =
-        Object.keys(authHeadersRef.current).length > 0
-          ? authHeadersRef.current
-          : await getAuthHeaders();
-      await fetch("/api/conversations/presence", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          dietId: Number(dietId),
-          isActive,
-          source: "web",
-        }),
-        keepalive: options.keepalive ?? false,
+      await apiClient.post("/conversations/presence", {
+        dietId: Number(dietId),
+        isActive,
+        source: "web",
+      }, {
+        // Note: keepalive is not directly supported by apiClient, but it's a browser API optimization
+        // The apiClient will handle the request normally
       });
     } catch (error) {
       console.error("❌ Presence update error:", error);
@@ -418,17 +387,11 @@ export default function ClientMessagesPage() {
         return;
       }
 
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages`,
-        {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({ messageIds }),
-        }
-      );
-
-      const data = await response.json();
+      const data = await apiClient.patch<{
+        success: boolean;
+        markedCount?: number;
+        error?: string;
+      }>(`/clients/${clientId}/diets/${dietId}/messages`, { messageIds });
 
       if (data.success) {
         console.log(`✅ Marked ${data.markedCount} messages as read`);
@@ -459,23 +422,17 @@ export default function ClientMessagesPage() {
 
     try {
       setSending(true);
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            content: messageText.trim(),
-            ogunId: null,
-            photos: [],
-          }),
-        }
-      );
+      const data = await apiClient.post<{
+        success: boolean;
+        message?: Message;
+        error?: string;
+      }>(`/clients/${clientId}/diets/${dietId}/messages`, {
+        content: messageText.trim(),
+        ogunId: null,
+        photos: [],
+      });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data.success && data.message) {
         const newMessage: Message = data.message;
         setMessages((prev) => [...prev, newMessage]);
         messagesRef.current = [...messagesRef.current, newMessage];
@@ -483,7 +440,7 @@ export default function ClientMessagesPage() {
         setMessageText("");
       } else {
         console.error("Failed to send message:", data.error);
-        alert("Mesaj gönderilemedi: " + data.error);
+        alert("Mesaj gönderilemedi: " + (data.error || "Bilinmeyen hata"));
       }
     } catch (error) {
       console.error("Error sending message:", error);

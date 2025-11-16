@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { apiClient } from "@/lib/api-client";
 
 interface SmartBesinInputProps {
   value: string;
@@ -80,11 +81,8 @@ export const SmartBesinInput = ({
 
   const fetchBesinGroups = async () => {
     try {
-      const response = await fetch("/api/besin-gruplari");
-      if (response.ok) {
-        const data = await response.json();
-        setBesinGroups(data);
-      }
+      const data = await apiClient.get<Array<{ id: number; name: string; description: string }>>("/besin-gruplari");
+      setBesinGroups(data);
     } catch (error) {
       console.error("Error fetching besin groups:", error);
     }
@@ -102,23 +100,11 @@ export const SmartBesinInput = ({
 
     setIsAddingBesin(true);
     try {
-      const response = await fetch("/api/besinler", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: inputValue.trim(),
-          priority: 0,
-          groupId: selectedGroupId ? parseInt(selectedGroupId) : null,
-        }),
+      const newBesin = await apiClient.post<{ id: number; name: string; priority?: number }>("/besinler", {
+        name: inputValue.trim(),
+        priority: 0,
+        groupId: selectedGroupId ? parseInt(selectedGroupId) : null,
       });
-
-      if (!response.ok) {
-        throw new Error("Besin eklenirken bir hata oluştu");
-      }
-
-      const newBesin = await response.json();
 
       toast({
         title: "Başarılı",

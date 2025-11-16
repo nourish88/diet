@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/lib/api-client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Loader2,
@@ -36,144 +36,94 @@ interface Diet {
 const ITEMS_PER_PAGE = 20;
 
 export default function DietsPage() {
-  const [diets, setDiets] = useState<Diet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [hasMore, setHasMore] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Cache first page load with React Query
-  const { data: cachedFirstPage } = useQuery({
-    queryKey: ['diets-list-first-page'],
-    queryFn: async () => {
-      console.log("🔄 FETCHING first page of diets from API");
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Use infinite query for pagination
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['diets', debouncedSearchTerm],
+    queryFn: ({ pageParam = 0 }) => {
       const queryParams = new URLSearchParams();
-      queryParams.append("skip", "0");
+      queryParams.append("skip", pageParam.toString());
       queryParams.append("take", ITEMS_PER_PAGE.toString());
+      if (debouncedSearchTerm) {
+        queryParams.append("search", debouncedSearchTerm);
+      }
       const url = `/diets?${queryParams.toString()}`;
-      return apiClient.get(url);
+      return apiClient.get<{ diets: Diet[]; total: number; hasMore: boolean }>(url);
     },
+    getNextPageParam: (lastPage, pages) => {
+      return lastPage.hasMore ? pages.length * ITEMS_PER_PAGE : undefined;
+    },
+    initialPageParam: 0,
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 
-  // Fetch diets with pagination
-  const loadDiets = useCallback(
-    async (pageNum: number, search: string, append: boolean = false) => {
-      try {
-        // Use cached first page if available (page 0, no search)
-        if (pageNum === 0 && !search && cachedFirstPage && !append) {
-          console.log("💾 USING CACHED first page of diets");
-          setDiets(cachedFirstPage.diets);
-          setHasMore(cachedFirstPage.hasMore);
-          setTotal(cachedFirstPage.total);
-          setIsLoading(false);
-          return;
-        }
-
-        if (append) {
-          setIsLoadingMore(true);
-        } else {
-          setIsLoading(true);
-        }
-
-        const skip = pageNum * ITEMS_PER_PAGE;
-        const queryParams = new URLSearchParams();
-        queryParams.append("skip", skip.toString());
-        queryParams.append("take", ITEMS_PER_PAGE.toString());
-        if (search) {
-          queryParams.append("search", search);
-        }
-
-        const url = `/diets?${queryParams.toString()}`;
-        console.log("🔄 DietsPage: Fetching diets from:", url);
-        const data = await apiClient.get(url);
-        console.log("📋 DietsPage: Received data:", data);
-
-        if (append) {
-          setDiets((prev) => [...prev, ...data.diets]);
-        } else {
-          setDiets(data.diets);
-        }
-
-        setHasMore(data.hasMore);
-        setTotal(data.total);
-      } catch (error) {
-        console.error("❌ DietsPage: Error fetching diets:", error);
-        toast({
-          title: "Hata",
-          description: "Beslenme programları yüklenirken bir hata oluştu.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      }
-    },
-    [toast, cachedFirstPage]
-  );
-
-  // Initial load
-  useEffect(() => {
-    loadDiets(0, searchTerm, false);
-    setPage(0);
-  }, []);
-
-  // Search effect - reset and load from beginning
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(0);
-      loadDiets(0, searchTerm, false);
-    }, 300); // Debounce search
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, loadDiets]);
-
-  // Load more when scrolling
-  const loadMore = useCallback(() => {
-    if (!isLoadingMore && !isLoading && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      loadDiets(nextPage, searchTerm, true);
-    }
-  }, [page, searchTerm, hasMore, isLoading, isLoadingMore, loadDiets]);
+  // Flatten pages to single array
+  const diets = data?.pages.flatMap((page) => page.diets) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
+  const hasMore = hasNextPage ?? false;
 
   // Setup intersection observer for infinite scroll
   useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
+    if (!sentinelRef.current) return;
 
-    observerRef.current = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
         if (
           entries[0].isIntersecting &&
           hasMore &&
-          !isLoading &&
-          !isLoadingMore
+          !isFetchingNextPage &&
+          !isLoading
         ) {
-          loadMore();
+          fetchNextPage();
         }
       },
       { threshold: 0.1 }
     );
 
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
-    }
+    observer.observe(sentinelRef.current);
 
     return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
+      observer.disconnect();
     };
-  }, [hasMore, isLoading, isLoadingMore, loadMore]);
+  }, [hasMore, isFetchingNextPage, isLoading, fetchNextPage]);
+
+  // Handle error state
+  if (isError) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="text-center py-16">
+          <p className="text-red-600 mb-4">
+            Beslenme programları yüklenirken bir hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
+          </p>
+          <Button onClick={() => refetch()}>Tekrar Dene</Button>
+        </div>
+      </div>
+    );
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Tarih Belirtilmemiş";
@@ -372,7 +322,7 @@ export default function DietsPage() {
           <div ref={sentinelRef} className="h-10" />
 
           {/* Loading more indicator */}
-          {isLoadingMore && (
+          {isFetchingNextPage && (
             <div className="flex justify-center items-center py-4 border-t">
               <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
               <span className="ml-2 text-gray-600">

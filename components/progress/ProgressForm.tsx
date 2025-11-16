@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import DatePicker from "@/components/CustomUI/Datepicker";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 const progressSchema = z.object({
   date: z.date({
@@ -18,24 +18,21 @@ const progressSchema = z.object({
   weight: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0),
-      { message: "Geçerli bir kilo giriniz" }
-    ),
+    .refine((val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0), {
+      message: "Geçerli bir kilo giriniz",
+    }),
   waist: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0),
-      { message: "Geçerli bir bel çevresi giriniz" }
-    ),
+    .refine((val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0), {
+      message: "Geçerli bir bel çevresi giriniz",
+    }),
   hip: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0),
-      { message: "Geçerli bir kalça çevresi giriniz" }
-    ),
+    .refine((val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0), {
+      message: "Geçerli bir kalça çevresi giriniz",
+    }),
   bodyFat: z
     .string()
     .optional()
@@ -82,40 +79,13 @@ export default function ProgressForm({ onSuccess }: ProgressFormProps) {
   const onSubmit = async (data: ProgressFormData) => {
     setIsSubmitting(true);
     try {
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: "Hata",
-          description: "Oturum bulunamadı. Lütfen giriş yapın.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const response = await fetch("/api/progress", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          date: data.date.toISOString(),
-          weight: data.weight ? parseFloat(data.weight) : null,
-          waist: data.waist ? parseFloat(data.waist) : null,
-          hip: data.hip ? parseFloat(data.hip) : null,
-          bodyFat: data.bodyFat ? parseFloat(data.bodyFat) : null,
-        }),
+      await apiClient.post("/progress", {
+        date: data.date.toISOString(),
+        weight: data.weight ? parseFloat(data.weight) : null,
+        waist: data.waist ? parseFloat(data.waist) : null,
+        hip: data.hip ? parseFloat(data.hip) : null,
+        bodyFat: data.bodyFat ? parseFloat(data.bodyFat) : null,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Bir hata oluştu");
-      }
 
       toast({
         title: "Başarılı",
@@ -229,4 +199,3 @@ export default function ProgressForm({ onSuccess }: ProgressFormProps) {
     </form>
   );
 }
-

@@ -43,7 +43,7 @@ const TemplateService = {
         : "/templates";
 
       console.log("🔍 TemplateService: Fetching templates from:", url);
-      const data = await apiClient.get(url);
+      const data = await apiClient.get<DietTemplate[]>(url);
       console.log("📋 TemplateService: Received data:", data);
       return data;
     } catch (error) {
@@ -55,7 +55,7 @@ const TemplateService = {
   // Get template by ID
   async getTemplate(id: number): Promise<DietTemplate> {
     try {
-      return await apiClient.get(`/templates/${id}`);
+      return await apiClient.get<DietTemplate>(`/templates/${id}`);
     } catch (error) {
       console.error("Error fetching template:", error);
       throw error;
@@ -74,7 +74,7 @@ const TemplateService = {
     oguns: any[];
   }): Promise<DietTemplate> {
     try {
-      return await apiClient.post("/templates", data);
+      return await apiClient.post<DietTemplate>("/templates", data);
     } catch (error) {
       console.error("Error creating template:", error);
       throw error;
@@ -87,7 +87,7 @@ const TemplateService = {
     data: Partial<DietTemplate>
   ): Promise<DietTemplate> {
     try {
-      return await apiClient.put(`/templates/${id}`, data);
+      return await apiClient.put<DietTemplate>(`/templates/${id}`, data);
     } catch (error) {
       console.error("Error updating template:", error);
       throw error;

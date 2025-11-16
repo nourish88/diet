@@ -11,7 +11,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 interface Diet {
   id: number;
@@ -30,7 +30,6 @@ interface Diet {
 
 export default function ClientDietsPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
   const {
     data,
@@ -40,31 +39,12 @@ export default function ClientDietsPage() {
   } = useQuery({
     queryKey: ["client-portal-overview"],
     queryFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        throw new Error("Session not found");
-      }
-
-      const response = await fetch("/api/client/portal/overview", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load overview");
-      }
-
-      return response.json() as Promise<{
+      return apiClient.get<{
         success: boolean;
         client: { id: number; name: string; surname: string };
         diets: Diet[];
         unreadByDiet: Record<number, number>;
-      }>;
+      }>("/client/portal/overview");
     },
   });
 

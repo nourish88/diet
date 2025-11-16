@@ -12,6 +12,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
 
 interface Message {
@@ -267,33 +268,17 @@ export default function ClientMessagesPage() {
   const fetchMessages = async (
     afterId?: number | null
   ): Promise<MessagesResponse> => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      router.push("/login");
-      throw new Error("Session not found");
-    }
-
-    const query = afterId ? `?afterId=${afterId}` : "";
-    const response = await fetch(
-      `/api/client/portal/diets/${dietId}/messages${query}`,
-      {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) {
+    try {
+      const query = afterId ? `?afterId=${afterId}` : "";
+      return await apiClient.get<MessagesResponse>(
+        `/client/portal/diets/${dietId}/messages${query}`
+      );
+    } catch (error: any) {
+      if (error?.status === 404) {
         router.push("/client/diets");
       }
-      throw new Error("Failed to load messages");
+      throw error;
     }
-
-    return response.json();
   };
 
   const handleMessagesResponse = (
@@ -356,27 +341,11 @@ export default function ClientMessagesPage() {
 
   const markMessagesAsRead = async (messageIds: number[]) => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      if (!clientId) return;
 
-      if (!session || !clientId) return;
-
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ messageIds }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to mark messages as read");
-      }
+      await apiClient.patch(`/clients/${clientId}/diets/${dietId}/messages`, {
+        messageIds,
+      });
 
       setMessages((prev) =>
         prev.map((msg) =>
@@ -454,36 +423,19 @@ export default function ClientMessagesPage() {
 
     try {
       setSending(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      if (!clientId) return;
 
-      if (!session || !clientId) return;
+      const payload = await apiClient.post<{
+        success: boolean;
+        message: Message;
+      }>(`/clients/${clientId}/diets/${dietId}/messages`, {
+        content: trimmed,
+        ogunId: selectedOgun?.id || null,
+        photos: pendingPhotosRef.current.map((photo) => ({
+          imageData: photo.dataUrl,
+        })),
+      });
 
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            content: trimmed,
-            ogunId: selectedOgun?.id || null,
-            photos: pendingPhotosRef.current.map((photo) => ({
-              imageData: photo.dataUrl,
-            })),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(errorPayload?.error || "Mesaj gönderilemedi");
-      }
-
-      const payload = await response.json();
       if (payload?.success && payload.message) {
         appendMessages([payload.message]);
         setMessageText("");
@@ -507,28 +459,14 @@ export default function ClientMessagesPage() {
     messageId: number
   ): Promise<Message | null> => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session || !clientId) {
+      if (!clientId) {
         return null;
       }
 
-      const response = await fetch(
-        `/api/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
+      const data = await apiClient.get<{ success: boolean; message: Message }>(
+        `/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`
       );
 
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
       if (data?.success && data.message) {
         return data.message as Message;
       }

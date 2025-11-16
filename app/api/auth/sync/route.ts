@@ -179,6 +179,8 @@ export async function POST(request: NextRequest) {
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  console.log("🔵 [Auth Sync GET] Request received");
+  
   // Handle CORS preflight
   const corsResponse = handleCors(request);
   if (corsResponse) return corsResponse;
@@ -186,37 +188,64 @@ export async function GET(request: NextRequest) {
   try {
     // Get supabaseId from query params OR from Authorization header
     let supabaseId = request.nextUrl.searchParams.get("supabaseId");
+    console.log("🔵 [Auth Sync GET] Query param supabaseId:", supabaseId ? "present" : "missing");
 
     // If supabaseId not in query params, try to get it from Authorization header
     if (!supabaseId) {
       const authHeader = request.headers.get("authorization");
+      console.log("🔵 [Auth Sync GET] Authorization header:", authHeader ? "present" : "missing");
+      
       if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.substring(7);
+        console.log("🔵 [Auth Sync GET] Token extracted, length:", token.length);
         
-        // Verify token with Supabase
-        const { createClient } = await import("@supabase/supabase-js");
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-        
-        if (error || !user) {
-          console.log("❌ Invalid or expired token");
+        try {
+          // Verify token with Supabase
+          const { createClient } = await import("@supabase/supabase-js");
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          );
+          
+          console.log("🔵 [Auth Sync GET] Calling supabase.auth.getUser...");
+          const startTime = Date.now();
+          const { data: { user }, error } = await supabase.auth.getUser(token);
+          const duration = Date.now() - startTime;
+          console.log(`🔵 [Auth Sync GET] supabase.auth.getUser completed in ${duration}ms`);
+          
+          if (error) {
+            console.error("❌ [Auth Sync GET] Supabase auth error:", error.message);
+            const response = NextResponse.json(
+              { error: "Unauthorized", details: error.message },
+              { status: 401 }
+            );
+            return addCorsHeaders(response);
+          }
+          
+          if (!user) {
+            console.error("❌ [Auth Sync GET] No user returned from Supabase");
+            const response = NextResponse.json(
+              { error: "Unauthorized" },
+              { status: 401 }
+            );
+            return addCorsHeaders(response);
+          }
+          
+          supabaseId = user.id;
+          console.log("✅ [Auth Sync GET] Extracted supabaseId from token:", supabaseId);
+        } catch (supabaseError: any) {
+          console.error("❌ [Auth Sync GET] Error calling Supabase:", supabaseError);
           const response = NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 401 }
+            { error: "Failed to verify token", details: supabaseError.message },
+            { status: 500 }
           );
           return addCorsHeaders(response);
         }
-        
-        supabaseId = user.id;
-        console.log("✅ Extracted supabaseId from token:", supabaseId);
       }
     }
 
     if (!supabaseId) {
+      console.error("❌ [Auth Sync GET] No supabaseId found");
       const response = NextResponse.json(
         { error: "supabaseId is required (via query param or Authorization header)" },
         { status: 400 }
@@ -224,6 +253,8 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
+    console.log("🔵 [Auth Sync GET] Querying database for user:", supabaseId);
+    const dbStartTime = Date.now();
     const user = await prisma.user.findUnique({
       where: { supabaseId },
       include: {
@@ -231,8 +262,11 @@ export async function GET(request: NextRequest) {
         notificationPreference: true,
       },
     });
+    const dbDuration = Date.now() - dbStartTime;
+    console.log(`🔵 [Auth Sync GET] Database query completed in ${dbDuration}ms`);
 
     if (!user) {
+      console.log("⚠️ [Auth Sync GET] User not found in database");
       const response = NextResponse.json(
         { error: "User not found" },
         { status: 404 }
@@ -240,13 +274,15 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
+    console.log("✅ [Auth Sync GET] User found, returning response");
     const response = NextResponse.json({
       success: true,
       user,
     });
     return addCorsHeaders(response);
   } catch (error: any) {
-    console.error("Error fetching user:", error);
+    console.error("❌ [Auth Sync GET] Error fetching user:", error);
+    console.error("❌ [Auth Sync GET] Error stack:", error.stack);
     const response = NextResponse.json(
       {
         success: false,

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MessageCircle, Calendar, Clock, ChevronRight, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 
 interface UnreadConversation {
   clientId: number;
@@ -44,16 +45,8 @@ export default function ClientUnreadMessagesPage() {
 
       if (!session) return;
 
-      const response = await fetch("/api/unread-messages/list", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data.conversations || []);
-      }
+      const data = await apiClient.get<{ conversations: any[] }>("/unread-messages/list");
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error("Error loading unread messages:", error);
     } finally {

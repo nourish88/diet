@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import {
 
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { apiClient } from "@/lib/api-client";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 interface BesinGroup {
   id: number;
@@ -25,63 +27,54 @@ interface BesinGroup {
 }
 
 export default function BesinGruplariPage() {
-  const [groups, setGroups] = useState<BesinGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const { toast, toasts, dismiss } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchGroups();
-  }, []);
+  // Use React Query for data fetching
+  const {
+    data: groups = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<BesinGroup[]>({
+    queryKey: ["besin-gruplari"],
+    queryFn: async () => {
+      return apiClient.get<BesinGroup[]>("/besin-gruplari");
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  const fetchGroups = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/besin-gruplari");
-      if (!response.ok) {
-        throw new Error("Besin grupları yüklenirken bir hata oluştu");
-      }
-      const data = await response.json();
-      setGroups(data);
-    } catch (error) {
-      console.error("Error fetching besin groups:", error);
+  // Use mutation for delete operation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/besin-gruplari/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["besin-gruplari"] });
+      toast({
+        title: "Başarılı",
+        description: "Besin grubu başarıyla silindi.",
+        variant: "default",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error deleting besin group:", error);
       toast({
         title: "Hata",
-        description: "Besin grupları yüklenirken bir hata oluştu.",
+        description: "Besin grubu silinirken bir hata oluştu.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+  });
 
   const handleDeleteGroup = async (id: number) => {
     if (confirm("Bu besin grubunu silmek istediğinize emin misiniz?")) {
       setIsDeleting(id);
       try {
-        const response = await fetch(`/api/besin-gruplari/${id}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          throw new Error("Besin grubu silinirken bir hata oluştu");
-        }
-
-        toast({
-          title: "Başarılı",
-          description: "Besin grubu başarıyla silindi.",
-          variant: "default",
-        });
-
-        fetchGroups();
-      } catch (error) {
-        console.error("Error deleting besin group:", error);
-        toast({
-          title: "Hata",
-          description: "Besin grubu silinirken bir hata oluştu.",
-          variant: "destructive",
-        });
+        await deleteMutation.mutateAsync(id);
       } finally {
         setIsDeleting(null);
       }
@@ -111,7 +104,16 @@ export default function BesinGruplariPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="text-center py-16 bg-red-50 rounded-lg border-2 border-red-200">
+          <p className="text-red-600 mb-4">
+            Besin grupları yüklenirken bir hata oluştu.
+          </p>
+          <Button onClick={() => refetch()} variant="outline">
+            Tekrar Dene
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
           <span className="ml-2 text-gray-600">

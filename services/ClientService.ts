@@ -196,7 +196,7 @@ export const fetchClients = async (params?: {
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
 
-    const data = await apiClient.get(url);
+    const data = await apiClient.get<{ clients: Client[]; total: number; hasMore: boolean }>(url);
 
     if (!data.clients || !Array.isArray(data.clients)) {
       throw new Error("Invalid data format received from server");

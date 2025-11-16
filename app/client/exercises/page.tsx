@@ -7,7 +7,7 @@ import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
 import { Activity, Clock, Footprints, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -29,14 +29,6 @@ export default function ExercisesPage() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      
-      // Get Supabase session for auth token
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
-      }
 
       const params = new URLSearchParams();
       if (dateFrom) {
@@ -46,19 +38,7 @@ export default function ExercisesPage() {
         params.append("dateTo", dateTo.toISOString());
       }
 
-      const response = await fetch(`/api/exercises?${params.toString()}`, {
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Veriler yüklenirken bir hata oluştu");
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<{ logs: ExerciseLog[] }>(`/exercises?${params.toString()}`);
       setLogs(data.logs || []);
     } catch (error: any) {
       toast({

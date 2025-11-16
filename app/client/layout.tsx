@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import ClientTopNav from "@/components/client/ClientTopNav";
 
 interface ClientLayoutProps {
@@ -29,28 +30,18 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       }
 
       // Fetch user details from our backend
-      const response = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const data = await apiClient.get<{ success?: boolean; user: { role: string; isApproved: boolean } }>("/auth/sync");
+      
+      // Check if user is a client
+      if (data.user.role !== "client") {
+        router.push("/");
+        return;
+      }
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Check if user is a client
-        if (data.user.role !== "client") {
-          router.push("/");
-          return;
-        }
-
-        // Check if client is approved
-        if (!data.user.isApproved) {
-          router.push("/pending-approval");
-          return;
-        }
-      } else {
-        router.push("/login");
+      // Check if client is approved
+      if (!data.user.isApproved) {
+        router.push("/pending-approval");
+        return;
       }
     } catch (error) {
       console.error("Auth error:", error);

@@ -96,11 +96,16 @@ export function useDiets(skip = 0, take = 20, searchTerm = '') {
   });
 }
 
+interface DietInput {
+  id?: number;
+  [key: string]: unknown;
+}
+
 export function useSaveDiet() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (diet: any) => {
+    mutationFn: (diet: DietInput) => {
       if (diet.id) {
         return apiClient.put(`/diets/${diet.id}`, diet);
       }
@@ -151,11 +156,16 @@ export function useClients(skip = 0, take = 20, searchTerm = '') {
   });
 }
 
+interface ClientInput {
+  id?: number;
+  [key: string]: unknown;
+}
+
 export function useSaveClient() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (client: any) => {
+    mutationFn: (client: ClientInput) => {
       if (client.id) {
         return apiClient.put(`/clients/${client.id}`, client);
       }

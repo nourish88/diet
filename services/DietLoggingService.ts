@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client";
+
 /**
  * Diet Form Logging Service
  * 
@@ -87,31 +89,12 @@ export class DietLoggingService implements IDietLoggingService {
         return;
       }
 
-      // Get auth token for API call
-      const supabase = (await import("@/lib/supabase-browser")).createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.warn("No session found for diet logging");
-        return;
-      }
-
       // Send to API
-      const response = await fetch(this.apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(entry),
-      });
-
-      if (!response.ok) {
-        console.error("Failed to log diet form action:", response.statusText);
-      } else {
+      try {
+        await apiClient.post(this.apiEndpoint.replace("/api", ""), entry);
         console.log("✅ Diet log created:", entry.action);
+      } catch (error: any) {
+        console.error("Failed to log diet form action:", error?.message || error);
       }
     } catch (error) {
       // Fail silently - logging should not break the application
@@ -141,25 +124,7 @@ export class LoggingConfigService implements ILoggingConfigService {
 
   async isEnabled(): Promise<boolean> {
     try {
-      // Get auth token
-      const supabase = (await import("@/lib/supabase-browser")).createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        return false;
-      }
-
-      const response = await fetch(`/api/system-config/${this.configKey}`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-      if (!response.ok) {
-        return false; // Default to disabled
-      }
-      const data = await response.json();
+      const data = await apiClient.get<{ value: string }>(`/system-config/${this.configKey}`);
       return data.value === "true";
     } catch (error) {
       console.error("Error fetching logging config:", error);
@@ -169,28 +134,9 @@ export class LoggingConfigService implements ILoggingConfigService {
 
   async setEnabled(enabled: boolean): Promise<void> {
     try {
-      // Get auth token
-      const supabase = (await import("@/lib/supabase-browser")).createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error("No session found");
-      }
-
-      const response = await fetch(`/api/system-config/${this.configKey}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ value: enabled ? "true" : "false" }),
+      await apiClient.put(`/system-config/${this.configKey}`, {
+        value: enabled ? "true" : "false",
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update logging config");
-      }
     } catch (error) {
       console.error("Error updating logging config:", error);
       throw error;

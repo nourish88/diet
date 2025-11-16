@@ -38,7 +38,7 @@ export default function ImportantDatesManager() {
   const fetchImportantDates = async () => {
     try {
       console.log("🔄 ImportantDatesManager: Fetching important dates...");
-      const data = await apiClient.get("/important-dates");
+      const data = await apiClient.get<ImportantDate[]>("/important-dates");
       console.log("📅 ImportantDatesManager: Received data:", data);
       setImportantDates(data);
     } catch (error) {

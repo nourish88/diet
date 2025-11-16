@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { apiClient } from "@/lib/api-client";
 
 interface BesinGroup {
   id: number;
@@ -76,24 +77,7 @@ export default function BesinlerPage() {
       params.set("q", debouncedSearch);
     }
 
-    const response = await fetch(`/api/besinler?${params.toString()}`, {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      let message = "Besinler yüklenirken bir hata oluştu.";
-      try {
-        const errorData = await response.json();
-        if (errorData?.error) {
-          message = errorData.error;
-        }
-      } catch (error) {
-        // JSON parse hatasını önemseme
-      }
-      throw new Error(message);
-    }
-
-    const data = await response.json();
+    const data = await apiClient.get<BesinApiResponse>(`/besinler?${params.toString()}`);
     if (!data || !Array.isArray(data.items)) {
       throw new Error("Beklenmeyen cevap formatı alındı.");
     }
@@ -168,22 +152,7 @@ export default function BesinlerPage() {
     }
 
     try {
-      const response = await fetch(`/api/besinler/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        let message = "Besin silinirken bir hata oluştu.";
-        try {
-          const errorData = await response.json();
-          if (errorData?.error) {
-            message = errorData.error;
-          }
-        } catch (error) {
-          // JSON parse hatasını önemseme
-        }
-        throw new Error(message);
-      }
+      await apiClient.delete(`/besinler/${id}`);
 
       toast({
         title: "Başarılı",

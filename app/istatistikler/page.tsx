@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { BarChart3, TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PresetService from "@/services/PresetService";
 import { apiClient } from "@/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
 
 interface BesinStat {
   id: number;
@@ -35,35 +36,24 @@ interface AnalyticsData {
 }
 
 export default function IstatistiklerPage() {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPresets, setIsGeneratingPresets] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
-
-  const loadAnalytics = async () => {
-    try {
-      setIsLoading(true);
-      console.log("🔄 IstatistiklerPage: Loading analytics...");
-      const data = await apiClient.get("/analytics/stats");
-      console.log("📊 IstatistiklerPage: Analytics loaded:", data);
-      setAnalyticsData(data);
-    } catch (error) {
-      console.error("❌ IstatistiklerPage: Error loading analytics:", error);
-      toast({
-        title: "Hata",
-        description: "İstatistikler yüklenirken bir hata oluştu",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Use React Query for data fetching
+  const {
+    data: analyticsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<AnalyticsData>({
+    queryKey: ['analytics', 'stats'],
+    queryFn: async () => {
+      return apiClient.get<AnalyticsData>("/analytics/stats");
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
   const handleAutoGeneratePresets = async () => {
     try {
@@ -74,6 +64,9 @@ export default function IstatistiklerPage() {
         title: "Başarılı",
         description: result.message,
       });
+      
+      // Refetch analytics after generating presets
+      refetch();
     } catch (error: any) {
       toast({
         title: "Hata",
@@ -84,6 +77,20 @@ export default function IstatistiklerPage() {
       setIsGeneratingPresets(false);
     }
   };
+
+  // Handle error state
+  if (isError) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="text-center py-16">
+          <p className="text-red-600 mb-4">
+            İstatistikler yüklenirken bir hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
+          </p>
+          <Button onClick={() => refetch()}>Tekrar Dene</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">

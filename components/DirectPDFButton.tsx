@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
 import { Diet } from "@/types/types";
+import { apiClient } from "@/lib/api-client";
 import {
   Check,
   FileText,
@@ -185,19 +186,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         return;
       }
       try {
-        const response = await fetch(
-          `/api/important-dates/${importantDateId}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await apiClient.get<{ message?: string }>(`/important-dates/${importantDateId}`);
         console.log("Fetched important date data:", data);
         if (data.message) {
           setImportantDateMessage(data.message);

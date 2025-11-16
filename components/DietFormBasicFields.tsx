@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase-browser";
 import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
+import { apiClient } from "@/lib/api-client";
 
 interface ImportantDate {
   id: number;
@@ -163,23 +164,7 @@ const DietFormBasicFields = ({
       const dietDate = new Date(diet.Tarih);
 
       try {
-        // Get authentication token
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        
-        if (!token) return;
-        
-        const response = await fetch("/api/important-dates", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (!response.ok) throw new Error("Failed to fetch important dates");
-
-        const importantDates: ImportantDate[] = await response.json();
+        const importantDates = await apiClient.get<ImportantDate[]>("/important-dates");
 
         const matchingDate = importantDates.find((date) =>
           isWithinImportantDateRange(date, dietDate)
@@ -196,34 +181,15 @@ const DietFormBasicFields = ({
       if (!selectedClientId) return;
       
       try {
-        // Get authentication token
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        
-        if (!token) return;
-        
-        const response = await fetch(`/api/clients/${selectedClientId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await response.json();
-        
-        // Here, data is the unwrapped client object
-        console.log(data, "data");
-
-        // Access the client object directly
-        const client = data;
+        interface ClientMinimal { birthdate?: string | null }
+        const client = await apiClient.get<ClientMinimal>(`/clients/${selectedClientId}`);
         console.log(client, "client");
 
         // Now you can correctly access the birthdate
         console.log(client.birthdate, "client.birthdate");
         console.log(diet.Tarih, "diet.Tarih");
 
-        const birthdate = new Date(client.birthdate);
+        const birthdate = client.birthdate ? new Date(client.birthdate) : null;
         console.log(birthdate, "birthdate");
         const dietDate = diet.Tarih ? new Date(diet.Tarih) : null;
 

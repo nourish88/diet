@@ -112,7 +112,7 @@ export default function DietDetailPage() {
         dietId: dietId,
       });
 
-      const data = await apiClient.post("/whatsapp/send-diet", {
+      const data = await apiClient.post<{ whatsappURL?: string }>("/whatsapp/send-diet", {
         clientId: diet.client.id,
         dietId: dietId,
       });

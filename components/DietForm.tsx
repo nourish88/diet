@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form } from "./ui/form";
 import DietHeader from "./DietHeader";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -31,6 +31,24 @@ import { createClient } from "@/lib/supabase-browser";
 import { useDietLogging } from "@/hooks/useDietLogging";
 import { sortMealsByTime, stripEmojis } from "@/lib/diet-utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import {
+  convertDbDietToUiDiet as convertDbDietToUiDietUtil,
+  getClientFullName as getClientFullNameUtil,
+  convertTemplateToDiet,
+  prepareDietDataForPDF,
+  createNewOgun,
+} from "./diet/utils/dietFormUtils";
+import { useDietFormHandlers } from "./diet/hooks/useDietFormHandlers";
+
+interface ClientResp {
+  id: number;
+  name: string;
+  surname: string;
+  illness?: string | null;
+  bannedFoods?: any[];
+  phoneNumber?: string | null;
+}
 
 interface DietFormProps {
   initialClientId?: number;
@@ -117,6 +135,163 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   }, [dietLogging.isReady]);
 
   // Separate effect for initial client fetch if initialClientId is provided
+  // This must be after loadLatestDiet is defined
+
+  // Load templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        setIsLoadingTemplates(true);
+        const data = await TemplateService.getTemplates();
+        setTemplates(data);
+      } catch (error) {
+        console.error("Error loading templates:", error);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  // Add this to your state
+  const [clientPhoneNumber, setClientPhoneNumber] = useState<
+    string | undefined
+  >(undefined);
+
+  // Wrapper for getClientFullName utility that has access to component state
+  const getClientFullName = useCallback(
+    (clientId: number | null) => {
+      return getClientFullNameUtil(clientId, selectedClientName);
+    },
+    [selectedClientName]
+  );
+
+  // Wrapper for convertDbDietToUiDiet utility that has access to component state
+  const convertDbDietToUiDiet = useCallback(
+    (dbDiet: any, clientId?: number): Diet => {
+      return convertDbDietToUiDietUtil(
+        dbDiet,
+        clientId || selectedClientId,
+        getClientFullName
+      );
+    },
+    [selectedClientId, getClientFullName]
+  );
+
+  // Function to load the latest diet for a selected client
+  const loadLatestDiet = useCallback(
+    async (clientId?: number) => {
+      const targetClientId = clientId || selectedClientId;
+      if (!targetClientId) return;
+
+      try {
+        setIsLoading(true);
+        interface LatestDietResponse {
+          id: number;
+          su?: string | null;
+          fizik?: string | null;
+          sonuc?: string | null;
+          hedef?: string | null;
+          dietitianNote?: string | null;
+          createdAt?: string;
+          tarih?: string | null;
+        }
+        const data = await apiClient.get<LatestDietResponse>(`/diets/latest/${targetClientId}`);
+
+        if (data && data.id) {
+          // Create the UI diet with correct field mapping from API response
+          // NOTE: In new diet mode (loadLatestDiet), we keep the ID for logging/reference but won't update
+          // IMPORTANT: Set date to today - old diet date should not be used for new diet
+          const uiDiet = {
+            ...convertDbDietToUiDiet(data, targetClientId),
+            // Use the correct field names from API response
+            Su: data.su || "",
+            Fizik: data.fizik || "",
+            Sonuc: data.sonuc || "",
+            Hedef: data.hedef || "",
+            dietitianNote: data.dietitianNote || "",
+            Tarih: new Date().toISOString(), // Always use today's date for new diet
+          };
+
+          console.log(
+            `📋 Loaded latest diet (ID: ${data.id}) for display/reference only`
+          );
+          setDiet({
+            ...uiDiet,
+            Oguns: sortMealsByTime(uiDiet.Oguns),
+          });
+
+          // Log diet loaded (for reference/tracking)
+          if (dietLogging.isReady) {
+            dietLogging.logDietLoaded(data.id);
+          }
+        }
+      } catch (error: any) {
+        // Handle 404 (no previous diet found)
+        if (error?.status === 404 || error?.message?.includes("404")) {
+          console.log("No previous diet found for client - starting fresh");
+          // Initialize with empty diet when no previous diet exists
+          setDiet((prev) => ({
+            ...prev,
+            id: undefined, // Ensure no ID for new diet
+            Oguns: sortMealsByTime(
+              OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
+            ),
+            Su: "",
+            Fizik: "",
+            Sonuc: "",
+            Hedef: "",
+            dietitianNote: "",
+          }));
+          setIsLoading(false);
+          return;
+        }
+        console.error("Error loading latest diet:", error);
+        // Initialize with empty diet on error (no ID, fresh start)
+        setDiet((prev) => ({
+          ...prev,
+          id: undefined, // Ensure no ID for new diet
+          Oguns: sortMealsByTime(
+            OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
+          ),
+          Su: "",
+          Fizik: "",
+          Sonuc: "",
+          Hedef: "",
+          dietitianNote: "",
+        }));
+
+        // Check if it's a network error
+        if (error instanceof TypeError && error.message === "Failed to fetch") {
+          toast({
+            title: "Bağlantı Hatası",
+            description:
+              "Sunucuya bağlanırken bir hata oluştu. Lütfen internet bağlantınızı kontrol edin.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: "Hata",
+          description:
+            "Son diyet yüklenirken bir hata oluştu. Yeni bir diyet oluşturabilirsiniz.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      } finally {
+        // Ensure loading is set to false even if there was an early return
+        setIsLoading((prev) => {
+          if (prev) return false;
+          return prev;
+        });
+      }
+    },
+    [selectedClientId, convertDbDietToUiDiet, dietLogging, toast, setDiet]
+  );
+
+  // Separate effect for initial client fetch if initialClientId is provided
   useEffect(() => {
     const fetchInitialClient = async () => {
       if (!initialClientId) return;
@@ -125,26 +300,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         setIsLoading(true);
 
         // Get authentication token
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          throw new Error("Authentication required");
-        }
-
-        const response = await fetch(`/api/clients/${initialClientId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch client");
-        }
+        const data = await apiClient.get<ClientResp>(`/clients/${initialClientId}`);
 
         if (data && data.id) {
           const oldClientId = selectedClientId;
@@ -162,7 +318,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
           // Set client data here instead of in a separate effect
           setClientData({
-            illness: data.illness,
+            illness: data.illness ?? null,
             bannedFoods: data.bannedFoods || [],
           });
           const phone = data.phoneNumber ? "+90" + data.phoneNumber : undefined;
@@ -184,23 +340,75 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     };
 
     fetchInitialClient();
-  }, [initialClientId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialClientId]); // Only run when initialClientId changes
 
-  // Load templates on mount
   useEffect(() => {
-    const loadTemplates = async () => {
-      try {
-        setIsLoadingTemplates(true);
-        const data = await TemplateService.getTemplates();
-        setTemplates(data);
-      } catch (error) {
-        console.error("Error loading templates:", error);
-      } finally {
-        setIsLoadingTemplates(false);
+    const fetchClientData = async () => {
+      // Skip if this is the initial client fetch (it's handled separately)
+      if (initialClientId && selectedClientId === initialClientId) {
+        return;
+      }
+
+      if (selectedClientId) {
+        // Validate client ID first
+        if (isNaN(selectedClientId)) {
+          toast({
+            title: "Hata",
+            description: "Geçersiz danışan ID'si",
+            variant: "destructive",
+          });
+          setSelectedClientId(null);
+          return;
+        }
+
+        try {
+          // Fetch client details
+          const client = await apiClient.get<ClientResp>(`/clients/${selectedClientId}`);
+
+          if (!client || !client.id) return;
+
+          // Set client name for display
+          setSelectedClientName(`${client.name} ${client.surname}`);
+
+          // Set client data
+          setClientData({
+            illness: client.illness ?? null,
+            bannedFoods: client.bannedFoods || [],
+          });
+
+          const phone = client.phoneNumber
+            ? "+90" + client.phoneNumber
+            : undefined;
+          setClientPhoneNumber(phone);
+
+          // Update diet with client name
+          setDiet((prev) => ({
+            ...prev,
+            AdSoyad: `${client.name} ${client.surname}`,
+          }));
+
+          // Log client selection
+          if (dietLogging.isReady) {
+            dietLogging.logClientSelected(client.id);
+          }
+
+          // Load latest diet for this client
+          await loadLatestDiet();
+        } catch (error) {
+          console.error("Error fetching client data:", error);
+        }
+      } else {
+        console.log("selected client id is null");
+        setClientPhoneNumber(undefined);
+        setClientData({ illness: null, bannedFoods: [] });
+        setSelectedClientName("");
       }
     };
-    loadTemplates();
-  }, []);
+
+    fetchClientData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId]); // Only depend on selectedClientId, not loadLatestDiet
 
   // Load initial template if provided
   useEffect(() => {
@@ -211,38 +419,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         setIsLoading(true);
         const template = await TemplateService.getTemplate(initialTemplateId);
 
-        // Convert template to diet format
-        const templateDiet: Diet = {
-          id: 0,
-          AdSoyad: "",
-          Tarih: new Date().toISOString(),
-          Su: template.su || "",
-          Fizik: template.fizik || "",
-          Hedef: template.hedef || "",
-          Sonuc: template.sonuc || "",
-          dietitianNote: "",
-          isBirthdayCelebration: false,
-          isImportantDateCelebrated: false,
-          importantDateId: null,
-          importantDateName: null,
-          Oguns: template.oguns.map((ogun) => ({
-            name: ogun.name,
-            time: ogun.time,
-            detail: ogun.detail || "",
-            order: ogun.order,
-            items: ogun.items.map((item) => ({
-              miktar: item.miktar,
-              birim: item.birim,
-              besin: item.besinName,
-              besinPriority:
-                typeof item.besinPriority === "number"
-                  ? item.besinPriority
-                  : typeof item.priority === "number"
-                  ? item.priority
-                  : null,
-            })),
-          })),
-        };
+        // Convert template to diet format using utility
+        const templateDiet = convertTemplateToDiet(
+          template,
+          selectedClientId,
+          getClientFullName
+        );
 
         setDiet({
           ...templateDiet,
@@ -271,187 +453,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     };
 
     loadInitialTemplate();
-  }, [initialTemplateId, dietLogging.isReady]);
-
-  // Add this to your state
-  const [clientPhoneNumber, setClientPhoneNumber] = useState<
-    string | undefined
-  >(undefined);
-
-  useEffect(() => {
-    const fetchClientData = async () => {
-      if (selectedClientId) {
-        // Validate client ID first
-        if (isNaN(selectedClientId)) {
-          toast({
-            title: "Hata",
-            description: "Geçersiz danışan ID'si",
-            variant: "destructive",
-          });
-          setSelectedClientId(null);
-          return;
-        }
-
-        try {
-          // Fetch client details
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          const token = session?.access_token;
-
-          if (!token) return;
-
-          const response = await fetch(`/api/clients/${selectedClientId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) return;
-
-          const data = await response.json();
-          const client = data;
-
-          if (!client || !client.id) return;
-
-          // Set client name for display
-          setSelectedClientName(`${client.name} ${client.surname}`);
-
-          // Set client data
-          setClientData({
-            illness: client.illness,
-            bannedFoods: client.bannedFoods || [],
-          });
-
-          const phone = client.phoneNumber
-            ? "+90" + client.phoneNumber
-            : undefined;
-          setClientPhoneNumber(phone);
-
-          // Update diet with client name
-          setDiet((prev) => ({
-            ...prev,
-            AdSoyad: `${client.name} ${client.surname}`,
-          }));
-
-          // Log client selection
-          if (dietLogging.isReady) {
-            dietLogging.logClientSelected(client.id);
-          }
-
-          // Load latest diet for this client
-          loadLatestDiet();
-        } catch (error) {
-          console.error("Error fetching client data:", error);
-        }
-      } else {
-        console.log("selected client id is null");
-        setClientPhoneNumber(undefined);
-        setClientData({ illness: null, bannedFoods: [] });
-        setSelectedClientName("");
-      }
-    };
-
-    fetchClientData();
-  }, [selectedClientId]);
-
-  // Function to load the latest diet for a selected client
-  const loadLatestDiet = async (clientId?: number) => {
-    const targetClientId = clientId || selectedClientId;
-    if (!targetClientId) return;
-
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/diets/latest/${targetClientId}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log("No previous diet found for client - starting fresh");
-          // Initialize with empty diet when no previous diet exists
-          setDiet((prev) => ({
-            ...prev,
-            id: undefined, // Ensure no ID for new diet
-            Oguns: sortMealsByTime(
-              OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
-            ),
-            Su: "",
-            Fizik: "",
-            Sonuc: "",
-            Hedef: "",
-            dietitianNote: "",
-          }));
-          return;
-        }
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-      }
-
-      if (data && data.id) {
-        // Create the UI diet with correct field mapping from API response
-        // NOTE: In new diet mode (loadLatestDiet), we keep the ID for logging/reference but won't update
-        // IMPORTANT: Set date to today - old diet date should not be used for new diet
-        const uiDiet = {
-          ...convertDbDietToUiDiet(data, targetClientId),
-          // Use the correct field names from API response
-          Su: data.su || "",
-          Fizik: data.fizik || "",
-          Sonuc: data.sonuc || "",
-          Hedef: data.hedef || "",
-          dietitianNote: data.dietitianNote || "",
-          Tarih: new Date().toISOString(), // Always use today's date for new diet
-        };
-
-        console.log(
-          `📋 Loaded latest diet (ID: ${data.id}) for display/reference only`
-        );
-        setDiet({
-          ...uiDiet,
-          Oguns: sortMealsByTime(uiDiet.Oguns),
-        });
-
-        // Log diet loaded (for reference/tracking)
-        if (dietLogging.isReady) {
-          dietLogging.logDietLoaded(data.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading latest diet:", error);
-      // Initialize with empty diet on error (no ID, fresh start)
-      setDiet((prev) => ({
-        ...prev,
-        id: undefined, // Ensure no ID for new diet
-        Oguns: sortMealsByTime(
-          OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
-        ),
-        Su: "",
-        Fizik: "",
-        Sonuc: "",
-        Hedef: "",
-        dietitianNote: "",
-      }));
-
-      // Check if it's a network error
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        toast({
-          title: "Bağlantı Hatası",
-          description:
-            "Sunucuya bağlanırken bir hata oluştu. Lütfen internet bağlantınızı kontrol edin.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Hata",
-        description:
-          "Son diyet yüklenirken bir hata oluştu. Yeni bir diyet oluşturabilirsiniz.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [initialTemplateId, selectedClientId, getClientFullName, dietLogging, toast]);
 
   // Function to load a specific diet by ID for editing
   const loadDietById = async (dietId: number) => {
@@ -459,42 +461,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
     try {
       setIsLoading(true);
-      
-      // Get authentication token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast({
-          title: "Hata",
-          description: "Oturum açmanız gerekli",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const response = await fetch(`/api/diets/${dietId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          toast({
-            title: "Hata",
-            description: "Diyet bulunamadı",
-            variant: "destructive",
-          });
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get<any>(`/diets/${dietId}`);
 
       if (data && data.id) {
         // Set update mode flags
@@ -531,7 +498,16 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           dietLogging.logDietLoaded(dietId);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.status === 404 || error?.message?.includes("404")) {
+        toast({
+          title: "Hata",
+          description: "Diyet bulunamadı",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
       console.error("Error loading diet by ID:", error);
       toast({
         title: "Hata",
@@ -546,7 +522,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Check for updateDietId query parameter on mount (after loadDietById is defined)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     // Use URLSearchParams to get query parameters from window.location
     const searchParams = new URLSearchParams(window.location.search);
     const updateDietIdParam = searchParams.get("updateDietId");
@@ -561,279 +537,29 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
-  // Function to convert database diet format to UI diet format
-  const convertDbDietToUiDiet = (dbDiet: any, clientId?: number): Diet => {
-    try {
-      const mappedOguns =
-          dbDiet.oguns?.map((dbOgun: any) => ({
-            name: dbOgun.name || "",
-            time: dbOgun.time || "",
-          detail: stripEmojis(dbOgun.detail || ""),
-            order: dbOgun.order || 0,
-            items:
-              dbOgun.items?.map((dbItem: any) => {
-                const miktarValue = dbItem.miktar || "";
-                const birimValue =
-                  typeof dbItem.birim === "object" && dbItem.birim
-                    ? dbItem.birim.name || ""
-                    : dbItem.birim || "";
-                const besinValue =
-                  typeof dbItem.besin === "object" && dbItem.besin
-                    ? dbItem.besin.name || ""
-                    : dbItem.besin || "";
-                const priorityValue =
-                  typeof dbItem.besin === "object" && dbItem.besin
-                    ? dbItem.besin.priority ?? null
-                    : typeof dbItem.besinPriority === "number"
-                    ? dbItem.besinPriority
-                    : typeof dbItem.priority === "number"
-                    ? dbItem.priority
-                    : null;
-
-                return {
-                  miktar: miktarValue,
-                  birim: birimValue,
-                  besin: besinValue,
-                  besinPriority: priorityValue,
-                };
-              }) || [],
-        })) || OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }));
-
-      return {
-        id: dbDiet.id,
-        AdSoyad: getClientFullName(clientId || selectedClientId),
-        Tarih: dbDiet.tarih || dbDiet.createdAt || new Date().toISOString(),
-        Hedef: dbDiet.hedef || "",
-        Sonuc: dbDiet.sonuc || "",
-        Su: dbDiet.su || "",
-        Fizik: dbDiet.fizik || "",
-        dietitianNote: dbDiet.dietitianNote || "",
-        isBirthdayCelebration: dbDiet.isBirthdayCelebration || false,
-        isImportantDateCelebrated: dbDiet.isImportantDateCelebrated || false,
-        importantDateId: dbDiet.importantDateId || null,
-        importantDateName: dbDiet.importantDateName || null,
-        Oguns: sortMealsByTime(mappedOguns),
-      };
-    } catch (error) {
-      console.error("Error converting DB diet to UI diet:", error);
-      return {
-        id: 0,
-        AdSoyad: getClientFullName(selectedClientId),
-        Tarih: new Date().toISOString(),
-        Hedef: "",
-        Sonuc: "",
-        Su: "",
-        Fizik: "",
-        dietitianNote: "",
-        isBirthdayCelebration: false,
-        isImportantDateCelebrated: false,
-        importantDateId: null,
-        importantDateName: null,
-        Oguns: sortMealsByTime(
-          OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
-        ),
-      };
-    }
-  };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values);
   }
 
-  const handleAddOgun = () => {
-    const newOgun: Ogun = {
-      name: "",
-      time: "",
-      items: [],
-      detail: "", // Now matches the interface
-      order: diet.Oguns.length + 1,
-    };
-    const ogunIndex = diet.Oguns.length;
-    setDiet((prev) => {
-      const updatedOguns = [...prev.Oguns, newOgun];
-      return {
-      ...prev,
-        Oguns: sortMealsByTime(updatedOguns),
-      };
-    });
-
-    // Log ogun added
-    if (dietLogging.isReady) {
-      dietLogging.logOgunAdded(ogunIndex);
-    }
-  };
-
-  const handleRemoveOgun = (index: number) => {
-    const ogunToRemove = diet.Oguns[index];
-    setDiet((prev) => {
-      const remaining = prev.Oguns.filter((_, idx) => idx !== index);
-      return {
-      ...prev,
-        Oguns: sortMealsByTime(remaining),
-      };
-    });
-
-    // Log ogun removed
-    if (dietLogging.isReady) {
-      dietLogging.logOgunRemoved(index, ogunToRemove?.name);
-    }
-  };
-
-  const handleOgunChange = (
-    index: number,
-    field: keyof Ogun,
-    value: string
-  ) => {
-    const sanitizedValue =
-      field === "detail" ? stripEmojis(value || "") : value;
-
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: prev.Oguns.map((ogun, idx) =>
-        idx === index ? { ...ogun, [field]: sanitizedValue } : ogun
-      ),
-    }));
-
-    if (dietLogging.isReady) {
-      dietLogging.logOgunUpdated(index, field as string, sanitizedValue);
-    }
-  };
-
-  const handleMealTimeBlur = (index: number) => {
-    const currentOgun = diet.Oguns[index];
-    if (!currentOgun || !currentOgun.time) {
-      return;
-    }
-
-    const mealLabel = currentOgun.name || "Öğün";
-    const sorted = sortMealsByTime([...diet.Oguns]);
-    const newIndex = sorted.indexOf(currentOgun);
-
-    setIsSortingMeals(true);
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: sorted,
-    }));
-
-    if (newIndex !== -1 && newIndex !== index) {
-      setRecentlyMovedOgunIndex(newIndex);
-      toast({
-        title: "Öğün sırası güncellendi",
-        description: `${mealLabel} saat bilgisine göre yeniden konumlandı.`,
-        duration: 2500,
-      });
-    } else {
-      setRecentlyMovedOgunIndex(null);
-    }
-
-    setTimeout(() => setIsSortingMeals(false), 250);
-  };
-
-  // Check how menu items are being added
-  const handleAddMenuItem = (ogunIndex: number) => {
-    const itemIndex = diet.Oguns[ogunIndex]?.items.length || 0;
-    setDiet((prev) => ({
-      ...prev,
-      Oguns: prev.Oguns.map((ogun, idx) =>
-        idx === ogunIndex
-          ? {
-              ...ogun,
-              items: [
-                ...ogun.items,
-                {
-                  birim: {} as Birim,
-                  miktar: "", // Allow empty miktar for cases like "sınırsız salata"
-                  besin: {} as Besin,
-                  besinPriority: null,
-                },
-              ],
-            }
-          : ogun
-      ),
-    }));
-
-    // Log item added
-    if (dietLogging.isReady) {
-      dietLogging.logItemAdded(ogunIndex, itemIndex);
-    }
-  };
-
-  const handleMenuItemChange = (
-    ogunIndex: number,
-    itemIndex: number,
-    field: string,
-    value: string
-  ) => {
-    if (field === "besin" && selectedClientId) {
-      // Type the banned foods properly
-      interface BannedFood {
-        besin: {
-          name: string;
-          [key: string]: any;
-        };
-      }
-
-      // Check if the selected food is banned for this client
-      const isBanned = clientData.bannedFoods.some(
-        (banned: BannedFood) => banned.besin.name === value
-      );
-      if (isBanned) {
-        toast({
-          title: "Uyarı",
-          description: "Bu besin danışan için yasaklı listesinde!",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    const previousValue =
-      diet.Oguns[ogunIndex]?.items[itemIndex]?.[
-        field as keyof (typeof diet.Oguns)[0]["items"][0]
-      ];
-    setDiet((prev) => {
-      const normalizedValue =
-        field === "besinPriority"
-          ? value === "" || value === null
-            ? null
-            : Number(value)
-          : value;
-
-      const newDiet = {
-        ...prev,
-        Oguns: prev.Oguns.map((ogun, idx) =>
-          idx === ogunIndex
-            ? {
-                ...ogun,
-                items: ogun.items.map((item, itemIdx) =>
-                  itemIdx === itemIndex
-                    ? field === "besinPriority"
-                      ? {
-                          ...item,
-                          besinPriority: normalizedValue as number | null,
-                        }
-                      : { ...item, [field]: normalizedValue }
-                    : item
-                ),
-              }
-            : ogun
-        ),
-      };
-
-      return newDiet;
-    });
-
-    // Log item updated
-    if (dietLogging.isReady) {
-      const logValue =
-        field === "besinPriority"
-          ? value === "" || value === null
-            ? ""
-            : String(Number(value))
-          : value;
-      dietLogging.logItemUpdated(ogunIndex, itemIndex, field, logValue);
-    }
-  };
+  // Use custom hook for form handlers
+  const {
+    handleAddOgun,
+    handleRemoveOgun,
+    handleOgunChange,
+    handleMealTimeBlur,
+    handleAddMenuItem,
+    handleMenuItemChange,
+  } = useDietFormHandlers({
+    diet,
+    setDiet,
+    selectedClientId,
+    clientData,
+    setIsSortingMeals,
+    setRecentlyMovedOgunIndex,
+    dietLogging,
+    toast,
+  });
 
   useEffect(() => {
     if (recentlyMovedOgunIndex !== null) {
@@ -902,27 +628,30 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     try {
       // CRITICAL: If in update mode, keep the ID to update existing diet
       // Otherwise, clear ID to create a new diet (even if loadLatestDiet loaded an existing one)
-      const dietToSave: Diet = isUpdateMode && diet.id
-        ? {
-            ...diet,
-            Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
-            clientId: selectedClientId,
-            isBirthdayCelebration: diet.isBirthdayCelebration || false,
-            isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-            importantDateId: diet.importantDateId || null,
-            importantDateName: diet.importantDateName || null,
-          }
-        : {
-            ...diet,
-            id: undefined, // Explicitly ensure no ID is sent for new diet
-            Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
-            clientId: selectedClientId,
-            isBirthdayCelebration: diet.isBirthdayCelebration || false,
-            isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-            importantDateId: diet.importantDateId || null,
-            importantDateName: diet.importantDateName || null,
-          };
-      
+      const dietToSave: Diet =
+        isUpdateMode && diet.id
+          ? {
+              ...diet,
+              Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
+              clientId: selectedClientId,
+              isBirthdayCelebration: diet.isBirthdayCelebration || false,
+              isImportantDateCelebrated:
+                diet.isImportantDateCelebrated || false,
+              importantDateId: diet.importantDateId || null,
+              importantDateName: diet.importantDateName || null,
+            }
+          : {
+              ...diet,
+              id: undefined, // Explicitly ensure no ID is sent for new diet
+              Tarih: diet.Tarih ? new Date(diet.Tarih).toISOString() : null,
+              clientId: selectedClientId,
+              isBirthdayCelebration: diet.isBirthdayCelebration || false,
+              isImportantDateCelebrated:
+                diet.isImportantDateCelebrated || false,
+              importantDateId: diet.importantDateId || null,
+              importantDateName: diet.importantDateName || null,
+            };
+
       console.log(`💾 ${isUpdateMode ? "Updating" : "Saving new"} diet:`, {
         ...dietToSave,
         id: isUpdateMode ? dietToSave.id : undefined,
@@ -961,10 +690,13 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             variant: "default",
           });
 
-          // Invalidate React Query cache after successful update
-          if (isUpdateMode && dietId) {
-            queryClient.invalidateQueries({ queryKey: ['diet', dietId] });
-            queryClient.invalidateQueries({ queryKey: ['diets'] });
+          // Invalidate React Query cache
+          if (dietId) {
+            // Always invalidate specific diet and diets list
+            queryClient.invalidateQueries({ queryKey: ["diet", dietId] });
+            queryClient.invalidateQueries({ queryKey: ["diets"] });
+            // Also refresh dashboard stats if used
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           }
 
           // Redirect to diet detail page after successful save (only for new diets)
@@ -1028,11 +760,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
   };
 
-  // Create a function to get client name
-  const getClientFullName = (clientId: number | null) => {
-    if (!clientId) return "İsimsiz Danışan";
-    return selectedClientName || "İsimsiz Danışan";
-  };
 
   // Add this helper function to check if form should be disabled
   const isFormDisabled = !selectedClientId;
@@ -1079,38 +806,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
               isLoading={isLoadingTemplates}
               onSelect={async (template) => {
                 try {
-                  // Convert template to diet format
-                  const templateDiet: Diet = {
-                    id: 0,
-                    AdSoyad: getClientFullName(selectedClientId),
-                    Tarih: new Date().toISOString(),
-                    Su: template.su || "",
-                    Fizik: template.fizik || "",
-                    Hedef: template.hedef || "",
-                    Sonuc: template.sonuc || "",
-                    dietitianNote: "",
-                    isBirthdayCelebration: false,
-                    isImportantDateCelebrated: false,
-                    importantDateId: null,
-                    importantDateName: null,
-                    Oguns: template.oguns.map((ogun) => ({
-                      name: ogun.name,
-                      time: ogun.time,
-                      detail: ogun.detail || "",
-                      order: ogun.order,
-                      items: ogun.items.map((item) => ({
-                        miktar: item.miktar,
-                        birim: item.birim,
-                        besin: item.besinName,
-                        besinPriority:
-                          typeof item.besinPriority === "number"
-                            ? item.besinPriority
-                            : typeof item.priority === "number"
-                            ? item.priority
-                            : null,
-                      })),
-                    })),
-                  };
+                  // Convert template to diet format using utility
+                  const templateDiet = convertTemplateToDiet(
+                    template,
+                    selectedClientId,
+                    getClientFullName
+                  );
 
                   setDiet({
                     ...templateDiet,
@@ -1277,33 +978,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   onAddOgun={handleAddOgun}
                   importantDateId={diet.importantDateId}
                   onGeneratePDF={generatePDF}
-                  dietData={{
-                    fullName: getClientFullName(selectedClientId),
-                    dietDate: diet.Tarih ? diet.Tarih.toString() : "",
-                    weeklyResult: diet.Sonuc,
-                    isBirthdayCelebration: diet.isBirthdayCelebration,
-                    isImportantDateCelebrated: diet.isImportantDateCelebrated,
-                    target: diet.Hedef,
-                    id: diet.id,
-                    ogunler: (diet.Oguns || []).map((ogun) => ({
-                      name: ogun.name,
-                      time: ogun.time,
-                      notes: ogun.detail,
-                      menuItems: ogun.items.filter((item) => {
-                        if (typeof item.besin === "string") {
-                          return item.besin && item.besin !== "";
-                        } else if (
-                          typeof item.besin === "object" &&
-                          item.besin
-                        ) {
-                          return (
-                            item.besin.name && item.besin.name.trim() !== ""
-                          );
-                        }
-                        return false;
-                      }),
-                    })),
-                  }}
+                  dietData={prepareDietDataForPDF(
+                    diet,
+                    getClientFullName(selectedClientId),
+                    diet.Tarih || new Date()
+                  )}
                   diet={diet}
                   clientId={selectedClientId || undefined}
                   onSaveToDatabase={handleSaveToDB}

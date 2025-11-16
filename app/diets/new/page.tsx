@@ -1,9 +1,18 @@
 "use client";
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import DietForm from "@/components/DietForm";
 import { ChevronLeft } from "lucide-react";
+
+const DietForm = dynamic(() => import("@/components/DietForm"), {
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <span className="ml-2 text-gray-600">Form yükleniyor...</span>
+    </div>
+  ),
+});
 
 function DietPageContent() {
   const searchParams = useSearchParams();

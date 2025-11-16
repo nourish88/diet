@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tag, X } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 interface BannedBesinManagerProps {
   clientId: number;
@@ -26,12 +27,9 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
   useEffect(() => {
     const fetchBesins = async () => {
       try {
-        const response = await fetch('/api/besinler?pageSize=200');
-        if (response.ok) {
-          const data = await response.json();
-          const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-          setAvailableBesins(items);
-        }
+        const data = await apiClient.get<{ items?: Array<{ id: number; name: string }> } | Array<{ id: number; name: string }>>('/besinler?pageSize=200');
+        const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        setAvailableBesins(items);
       } catch (error) {
         console.error('Error fetching besins:', error);
       }
@@ -43,16 +41,10 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
   const handleAdd = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/clients/${clientId}/banned-besins`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          besinId: parseInt(selectedBesin),
-          reason
-        })
+      await apiClient.post(`/clients/${clientId}/banned-besins`, {
+        besinId: parseInt(selectedBesin),
+        reason
       });
-
-      if (!response.ok) throw new Error('Failed to add banned besin');
       onUpdate();
       setSelectedBesin('');
       setReason('');
@@ -66,11 +58,7 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
   const handleRemove = async (besinId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/clients/${clientId}/banned-besins?besinId=${besinId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) throw new Error('Failed to remove banned besin');
+      await apiClient.delete(`/clients/${clientId}/banned-besins?besinId=${besinId}`);
       onUpdate();
     } catch (error) {
       console.error('Error removing banned besin:', error);

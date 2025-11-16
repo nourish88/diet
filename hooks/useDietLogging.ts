@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import {
   IDietLoggingService,
   DietLoggingServiceFactory,
@@ -41,20 +42,12 @@ export function useDietLogging(options: UseDietLoggingOptions = {}) {
         }
 
         // Get user info
-        const response = await fetch("/api/auth/sync", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user && data.user.role === "dietitian") {
-            setDietitianId(data.user.id);
-            // Create logging service with auth token
-            loggingServiceRef.current = DietLoggingServiceFactory.create();
-            setIsReady(true);
-          }
+        const data = await apiClient.get<{ user: { role: string; id: number } }>("/auth/sync");
+        if (data.user && data.user.role === "dietitian") {
+          setDietitianId(data.user.id);
+          // Create logging service with auth token
+          loggingServiceRef.current = DietLoggingServiceFactory.create();
+          setIsReady(true);
         }
       } catch (error) {
         console.error("Error initializing diet logging:", error);

@@ -3,7 +3,7 @@ const fontkitIncludes = ["./node_modules/@foliojs-fork/fontkit/*.trie"];
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for pdfmake and some Supabase operations
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net",
   "font-src 'self' https://fonts.gstatic.com data:",

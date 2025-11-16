@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { apiClient } from "@/lib/api-client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -44,20 +45,12 @@ export default function SettingsPage() {
       }
 
       // Get user info
-      const userResponse = await fetch("/api/auth/sync", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const userData = await apiClient.get<{ user: { id: number } }>("/auth/sync");
+      const userIdNum = userData.user.id;
+      setUserId(userIdNum);
 
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        const userIdNum = userData.user.id;
-        setUserId(userIdNum);
-
-        // Load notification preferences
-        await loadPreferences(userIdNum);
-      }
+      // Load notification preferences
+      await loadPreferences(userIdNum);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -72,12 +65,9 @@ export default function SettingsPage() {
 
   const loadPreferences = async (userId: number) => {
     try {
-      const response = await fetch(`/api/notifications/preferences?userId=${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.preferences) {
-          setPreferences(data.preferences);
-        }
+      const data = await apiClient.get<{ success: boolean; preferences: NotificationPreference }>(`/notifications/preferences?userId=${userId}`);
+      if (data.success && data.preferences) {
+        setPreferences(data.preferences);
       }
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -119,30 +109,19 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const response = await fetch("/api/notifications/preferences", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          mealReminders: enabled,
-        }),
+      const data = await apiClient.put<{ success: boolean; preferences: NotificationPreference }>("/notifications/preferences", {
+        userId,
+        mealReminders: enabled,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.preferences) {
-          setPreferences(data.preferences);
-          toast({
-            title: enabled ? "Öğün hatırlatıcıları açıldı" : "Öğün hatırlatıcıları kapatıldı",
-            description: enabled
-              ? "Artık öğün saatlerinden 30 dakika önce bildirim alacaksınız."
-              : "Öğün hatırlatıcıları devre dışı bırakıldı.",
-          });
-        }
-      } else {
-        throw new Error("Failed to update preferences");
+      if (data.success && data.preferences) {
+        setPreferences(data.preferences);
+        toast({
+          title: enabled ? "Öğün hatırlatıcıları açıldı" : "Öğün hatırlatıcıları kapatıldı",
+          description: enabled
+            ? "Artık öğün saatlerinden 30 dakika önce bildirim alacaksınız."
+            : "Öğün hatırlatıcıları devre dışı bırakıldı.",
+        });
       }
     } catch (error) {
       console.error("Error updating preferences:", error);
@@ -159,33 +138,14 @@ export default function SettingsPage() {
   const handleCheckReminders = async () => {
     setCheckingReminders(true);
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        return;
-      }
-
-      const response = await fetch("/api/notifications/check-meal-reminders", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          toast({
-            title: "Kontrol tamamlandı",
-            description: data.reminders.length > 0
-              ? `${data.reminders.length} hatırlatıcı bulundu ve bildirimler gönderildi.`
-              : "Şu anda gönderilecek hatırlatıcı bulunmuyor.",
-          });
-        }
-      } else {
-        throw new Error("Failed to check reminders");
+      const data = await apiClient.post<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders");
+      if (data.success) {
+        toast({
+          title: "Kontrol tamamlandı",
+          description: data.reminders.length > 0
+            ? `${data.reminders.length} hatırlatıcı bulundu ve bildirimler gönderildi.`
+            : "Şu anda gönderilecek hatırlatıcı bulunmuyor.",
+        });
       }
     } catch (error) {
       console.error("Error checking reminders:", error);
