@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ interface NotificationPreference {
 export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { databaseUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checkingReminders, setCheckingReminders] = useState(false);
@@ -43,14 +45,11 @@ export default function SettingsPage() {
         router.push("/login");
         return;
       }
-
-      // Get user info
-      const userData = await apiClient.get<{ user: { id: number } }>("/auth/sync");
-      const userIdNum = userData.user.id;
-      setUserId(userIdNum);
+      const userIdNum = (databaseUser as any)?.id as number | undefined;
+      setUserId(userIdNum ?? null);
 
       // Load notification preferences
-      await loadPreferences(userIdNum);
+      if (userIdNum) await loadPreferences(userIdNum);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -138,6 +137,24 @@ export default function SettingsPage() {
   const handleCheckReminders = async () => {
     setCheckingReminders(true);
     try {
+      // Only check if notifications are permitted and a push subscription exists
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission !== "granted") {
+          toast({ title: "Bildirim izni gerekli", description: "Lütfen bildirim izni verin.", variant: "destructive" });
+          setCheckingReminders(false);
+          return;
+        }
+      }
+      try {
+        const reg = await (navigator.serviceWorker?.ready ?? Promise.resolve(undefined));
+        const sub = await reg?.pushManager.getSubscription();
+        if (!sub) {
+          toast({ title: "Abonelik bulunamadı", description: "Bildirim alabilmek için push aboneliği gerekli.", variant: "destructive" });
+          setCheckingReminders(false);
+          return;
+        }
+      } catch {}
+
       const data = await apiClient.get<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders");
       if (data.success) {
         toast({

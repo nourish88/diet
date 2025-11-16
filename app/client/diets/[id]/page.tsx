@@ -66,6 +66,7 @@ export default function ClientDietDetailPage() {
   } = useQuery({
     queryKey: ["client-diet-detail", dietId],
     enabled: Boolean(dietId),
+    staleTime: 60_000,
     queryFn: async () => {
       if (!dietId) throw new Error("Diet ID missing");
 

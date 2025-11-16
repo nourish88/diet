@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 
 interface UnreadData {
   totalUnread: number;
@@ -18,6 +19,7 @@ interface UnreadData {
 
 export default function ClientDashboard() {
   const router = useRouter();
+  const { databaseUser } = useAuth();
   const [userName, setUserName] = useState<string>("");
   const [unreadData, setUnreadData] = useState<UnreadData>({
     totalUnread: 0,
@@ -49,10 +51,24 @@ export default function ClientDashboard() {
           return;
         }
 
-        // Check for reminders (silently, don't show errors to user)
-        await apiClient.get<{ success: boolean; reminders: any[] }>("/notifications/check-meal-reminders").catch(() => {
-          // Silently fail - reminders are also handled by cron job
-        });
+        // Only check if notifications are permitted and a push subscription exists
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "granted") {
+            try {
+              const reg = await (navigator.serviceWorker?.ready ?? Promise.resolve(undefined));
+              const sub = await reg?.pushManager.getSubscription();
+              if (sub) {
+                await apiClient
+                  .get<{ success: boolean; reminders: any[] }>(
+                    "/notifications/check-meal-reminders"
+                  )
+                  .catch(() => {});
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
       } catch (error) {
         // Silently fail - reminders are also handled by cron job
         console.debug("Meal reminder check failed:", error);
@@ -76,14 +92,12 @@ export default function ClientDashboard() {
         return;
       }
 
-      // Get user info
-      const userData = await apiClient.get<{ user: { client?: { id?: number; name?: string } } }>("/auth/sync");
-      const clientName = userData.user.client?.name || "Danışan";
-      setUserName(clientName);
+      // Use already-synced auth context to avoid extra roundtrip
+      const client = (databaseUser as any)?.client;
+      setUserName((client?.name as string) || "Danışan");
 
-      // Load unread messages
-      if (userData.user.client?.id) {
-        loadUnreadMessages(userData.user.client.id);
+      if (client?.id) {
+        loadUnreadMessages(client.id as number);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -96,8 +110,8 @@ export default function ClientDashboard() {
     try {
       // Get client ID if not provided
       if (!clientId) {
-        const userData = await apiClient.get<{ user: { client?: { id?: number } } }>("/auth/sync");
-        clientId = userData.user.client?.id;
+        const client = (databaseUser as any)?.client;
+        clientId = client?.id as number | undefined;
       }
 
       if (!clientId) return;
