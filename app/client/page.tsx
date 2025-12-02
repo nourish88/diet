@@ -29,12 +29,12 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     loadData();
-    
+
     // Refresh unread messages every 30 seconds
     const interval = setInterval(() => {
       loadUnreadMessages();
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -55,7 +55,8 @@ export default function ClientDashboard() {
         if (typeof window !== "undefined" && "Notification" in window) {
           if (Notification.permission === "granted") {
             try {
-              const reg = await (navigator.serviceWorker?.ready ?? Promise.resolve(undefined));
+              const reg = await (navigator.serviceWorker?.ready ??
+                Promise.resolve(undefined));
               const sub = await reg?.pushManager.getSubscription();
               if (sub) {
                 await apiClient
@@ -116,7 +117,10 @@ export default function ClientDashboard() {
 
       if (!clientId) return;
 
-      const data = await apiClient.get<{ totalUnread: number; unreadByDiet: Record<number, number> }>(`/clients/${clientId}/unread-messages`);
+      const data = await apiClient.get<{
+        totalUnread: number;
+        unreadByDiet: Record<number, number>;
+      }>(`/clients/${clientId}/unread-messages`);
       setUnreadData({
         totalUnread: data.totalUnread || 0,
         unreadByDiet: data.unreadByDiet || {},
@@ -161,7 +165,8 @@ export default function ClientDashboard() {
             Hoş Geldiniz, {userName}! 👋
           </h1>
           <p className="text-lg text-gray-600">
-            Beslenme programlarınıza göz atın ve diyetisyeninizle iletişime geçin
+            Beslenme programlarınıza göz atın ve diyetisyeninizle iletişime
+            geçin
           </p>
         </div>
 
@@ -237,7 +242,9 @@ export default function ClientDashboard() {
         {/* Help Section */}
         <div className="mt-12 bg-white/50 backdrop-blur-sm rounded-2xl border border-blue-200 p-6 text-center">
           <p className="text-sm text-gray-700">
-            <span className="font-semibold">💡 Yardıma mı ihtiyacınız var?</span>
+            <span className="font-semibold">
+              💡 Yardıma mı ihtiyacınız var?
+            </span>
             <br />
             Diyetisyeninizle sohbet bölümünden iletişime geçebilirsiniz
           </p>
@@ -246,4 +253,3 @@ export default function ClientDashboard() {
     </div>
   );
 }
-
