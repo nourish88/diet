@@ -34,6 +34,10 @@ model Client {
   mealPhotos      MealPhoto[]
   progressEntries ProgressEntry[]
   exerciseLogs    ExerciseLog[]
+
+  // Tanita mapping (opsiyonel)
+  tanitaMemberId Int?        @unique // Tanita users.id (mapping için)
+  tanitaUser     TanitaUser?
 }
 
 model Diet {
@@ -442,7 +446,7 @@ model PushSubscription {
 // Progress Tracking
 model ProgressEntry {
   id        Int      @id @default(autoincrement())
-  userId    Int // Client user ID
+  userId    Int? // Client user ID (opsiyonel - Tanita'dan gelen ölçümler için olmayabilir)
   clientId  Int // Client ID
   date      DateTime // Measurement date (required)
   weight    Float? // Weight in kg
@@ -452,8 +456,11 @@ model ProgressEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // Tanita ilişkisi (opsiyonel - aktarıldıysa)
+  tanitaMeasurement TanitaMeasurement?
 
   @@index([userId, date])
   @@index([clientId, date])
@@ -481,4 +488,73 @@ model ExerciseLog {
   @@index([clientId, date])
   @@index([date])
   @@index([exerciseTypeId])
+}
+
+// Tanita Integration Models
+model TanitaUser {
+  id             Int     @id @default(autoincrement())
+  tanitaMemberId Int     @unique // Tanita users.id (original ID)
+  name           String
+  surname        String
+  email          String?
+  phone          String?
+  dob            String? // Date of birth (string format from Tanita)
+  gender         String? // "ERKEK" or "KADIN"
+  bodyType       String?
+  height         String?
+  identityNumber String?
+  notes          String?
+
+  // Mapping bilgisi
+  clientId Int?    @unique // Mevcut Client ile mapping
+  client   Client? @relation(fields: [clientId], references: [id])
+
+  // Sync bilgisi
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  measurements TanitaMeasurement[]
+
+  @@index([tanitaMemberId])
+  @@index([clientId])
+  @@index([email])
+  @@index([phone])
+}
+
+model TanitaMeasurement {
+  id                  Int @id @default(autoincrement())
+  tanitaMeasurementId Int @unique // Tanita measurements.ID (original ID)
+  tanitaMemberId      Int // Tanita users.id
+
+  // Temel ölçümler
+  measureDate     DateTime
+  weight          Float?
+  fatRate         Float?
+  fatMass         Float?
+  muscleMass      Float?
+  boneMass        Float?
+  totalBodyWater  Float?
+  bodyWaterRate   Float?
+  bmi             Float?
+  visceralFatRate Int?
+  basalMetabolism Int?
+  bmr             Int?
+
+  // Detaylı ölçümler (JSON olarak saklanabilir)
+  detailedData Json? // Tüm Tanita alanları (100+ alan)
+
+  // Mapping
+  tanitaUser TanitaUser? @relation(fields: [tanitaMemberId], references: [tanitaMemberId])
+
+  // ProgressEntry ile ilişki (opsiyonel - aktarıldıysa)
+  progressEntryId Int?           @unique
+  progressEntry   ProgressEntry? @relation(fields: [progressEntryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tanitaMemberId, measureDate])
+  @@index([tanitaMeasurementId])
 }

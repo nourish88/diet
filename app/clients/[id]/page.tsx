@@ -28,32 +28,66 @@ import { apiClient } from "@/lib/api-client";
 import dynamic from "next/dynamic";
 import DateRangePicker from "@/components/progress/DateRangePicker";
 
-const ProgressChart = dynamic(() => import("@/components/progress/ProgressChart"), {
-  loading: () => (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-    </div>
-  ),
-});
+const ProgressChart = dynamic(
+  () => import("@/components/progress/ProgressChart"),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    ),
+  }
+);
 
-const ProgressSummary = dynamic(() => import("@/components/progress/ProgressSummary"), {
-  loading: () => (
-    <div className="flex items-center justify-center h-32">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-    </div>
-  ),
-});
+const ProgressSummary = dynamic(
+  () => import("@/components/progress/ProgressSummary"),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-32">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+      </div>
+    ),
+  }
+);
 
-const ExerciseChart = dynamic(() => import("@/components/exercises/ExerciseChart"), {
-  loading: () => (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-    </div>
-  ),
-});
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
-import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
+const ExerciseChart = dynamic(
+  () => import("@/components/exercises/ExerciseChart"),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    ),
+  }
+);
+
+const TanitaProgressChart = dynamic(
+  () => import("@/components/progress/TanitaProgressChart"),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    ),
+  }
+);
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ProgressEntry,
+  calculateProgressSummary,
+  getChartData,
+} from "@/services/ProgressService";
+import {
+  ExerciseLog,
+  groupByExerciseType,
+  getExerciseStats,
+} from "@/services/ExerciseService";
 import { useState, useMemo, useCallback } from "react";
 import {
   Dialog,
@@ -70,13 +104,13 @@ export default function ClientDetailPage() {
   const router = useRouter();
 
   const clientId = params?.id ? Number(params.id) : undefined;
-  
+
   // Date range for progress and exercise filtering
   const [progressDateFrom, setProgressDateFrom] = useState<Date | null>(null);
   const [progressDateTo, setProgressDateTo] = useState<Date | null>(null);
   const [exerciseDateFrom, setExerciseDateFrom] = useState<Date | null>(null);
   const [exerciseDateTo, setExerciseDateTo] = useState<Date | null>(null);
-  
+
   // Unlink dialog state
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
@@ -87,13 +121,18 @@ export default function ClientDetailPage() {
   const { data: client, isLoading, error } = useClient(clientId);
 
   // Fetch unread message counts
-  interface UnreadMessagesData { totalUnread: number; unreadByDiet: Record<number, number> }
+  interface UnreadMessagesData {
+    totalUnread: number;
+    unreadByDiet: Record<number, number>;
+  }
   const { data: unreadData } = useQuery<UnreadMessagesData | null>({
     queryKey: ["unreadMessages", clientId],
     queryFn: async () => {
       if (!clientId) return null;
       try {
-        return await apiClient.get<UnreadMessagesData>(`/clients/${clientId}/unread-messages`);
+        return await apiClient.get<UnreadMessagesData>(
+          `/clients/${clientId}/unread-messages`
+        );
       } catch (error) {
         console.log("❌ Unread messages API error:", error);
         return null;
@@ -117,7 +156,9 @@ export default function ClientDetailPage() {
         params.append("dateTo", progressDateTo.toISOString());
       }
 
-      const data = await apiClient.get<{ entries: ProgressEntry[] }>(`/progress?${params.toString()}`);
+      const data = await apiClient.get<{ entries: ProgressEntry[] }>(
+        `/progress?${params.toString()}`
+      );
       return data.entries || [];
     },
     enabled: !!clientId,
@@ -137,8 +178,32 @@ export default function ClientDetailPage() {
         params.append("dateTo", exerciseDateTo.toISOString());
       }
 
-      const data = await apiClient.get<{ logs: ExerciseLog[] }>(`/exercises?${params.toString()}`);
+      const data = await apiClient.get<{ logs: ExerciseLog[] }>(
+        `/exercises?${params.toString()}`
+      );
       return data.logs || [];
+    },
+    enabled: !!clientId,
+  });
+
+  // Fetch Tanita measurements
+  const { data: tanitaMeasurements, isLoading: tanitaLoading } = useQuery({
+    queryKey: ["tanita-measurements", clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      try {
+        const data = await apiClient.get<{
+          success: boolean;
+          measurements: any[];
+        }>(`/tanita/measurements?clientId=${clientId}`);
+        return data.measurements || [];
+      } catch (error: any) {
+        // If client is not mapped to Tanita, return empty array
+        if (error?.status === 400 || error?.status === 404) {
+          return [];
+        }
+        throw error;
+      }
     },
     enabled: !!clientId,
   });
@@ -163,7 +228,13 @@ export default function ClientDetailPage() {
   }, [progressData, progressDateFrom, progressDateTo]);
 
   const progressFlags = useMemo(() => {
-    if (!progressData) return { hasWeight: false, hasWaist: false, hasHip: false, hasBodyFat: false };
+    if (!progressData)
+      return {
+        hasWeight: false,
+        hasWaist: false,
+        hasHip: false,
+        hasBodyFat: false,
+      };
     return {
       hasWeight: progressData.some((e: ProgressEntry) => e.weight !== null),
       hasWaist: progressData.some((e: ProgressEntry) => e.waist !== null),
@@ -192,15 +263,21 @@ export default function ClientDetailPage() {
   }, [exerciseData, exerciseDateFrom, exerciseDateTo]);
 
   // Memoize date change handlers
-  const handleProgressDateChange = useCallback((from: Date | null, to: Date | null) => {
-    setProgressDateFrom(from);
-    setProgressDateTo(to);
-  }, []);
+  const handleProgressDateChange = useCallback(
+    (from: Date | null, to: Date | null) => {
+      setProgressDateFrom(from);
+      setProgressDateTo(to);
+    },
+    []
+  );
 
-  const handleExerciseDateChange = useCallback((from: Date | null, to: Date | null) => {
-    setExerciseDateFrom(from);
-    setExerciseDateTo(to);
-  }, []);
+  const handleExerciseDateChange = useCallback(
+    (from: Date | null, to: Date | null) => {
+      setExerciseDateFrom(from);
+      setExerciseDateTo(to);
+    },
+    []
+  );
 
   // Handle unlink client from user account
   const handleUnlink = useCallback(async () => {
@@ -212,7 +289,8 @@ export default function ClientDetailPage() {
 
       toast({
         title: "Başarılı",
-        description: "Danışan hesabı ile ilişki kaldırıldı. Tekrar eşleştirme yapılabilir.",
+        description:
+          "Danışan hesabı ile ilişki kaldırıldı. Tekrar eşleştirme yapılabilir.",
         variant: "default",
       });
 
@@ -415,7 +493,8 @@ export default function ClientDetailPage() {
                     İlişki Kaldır
                   </Button>
                   <p className="text-xs text-gray-500 mt-2">
-                    İlişki kaldırıldıktan sonra danışan tekrar e-posta ve şifre ile eşleştirilebilir.
+                    İlişki kaldırıldıktan sonra danışan tekrar e-posta ve şifre
+                    ile eşleştirilebilir.
                   </p>
                 </div>
               )}
@@ -518,11 +597,13 @@ export default function ClientDetailPage() {
                         >
                           <MessageCircle className="h-4 w-4" />
                           Mesajlaşma
-                          {unreadData && unreadData.unreadByDiet && unreadData.unreadByDiet[diet.id] > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                              {unreadData?.unreadByDiet?.[diet.id] ?? 0}
-                            </span>
-                          )}
+                          {unreadData &&
+                            unreadData.unreadByDiet &&
+                            unreadData.unreadByDiet[diet.id] > 0 && (
+                              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                {unreadData?.unreadByDiet?.[diet.id] ?? 0}
+                              </span>
+                            )}
                         </Button>
                       </div>
                     </div>
@@ -536,7 +617,38 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      {/* Progress Tracking Section */}
+      {/* 1. Tanita Progress Charts Section - EN ÜSTTE */}
+      {client.tanitaMemberId && (
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <CardTitle>Kilo ve Vücut Kompozisyonu (Tanita)</CardTitle>
+            </div>
+            <CardDescription>
+              Tanita ölçüm cihazından gelen detaylı vücut kompozisyonu analizi
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tanitaLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+              </div>
+            ) : tanitaMeasurements && tanitaMeasurements.length > 0 ? (
+              <TanitaProgressChart data={tanitaMeasurements} />
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">
+                  Henüz Tanita ölçüm verisi bulunmuyor. Ölçümleri çekmek için
+                  "Ölçümleri Çek" butonunu kullanın.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 2. Progress Tracking Section - ORTADA */}
       <Card className="mb-8">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -612,12 +724,18 @@ export default function ClientDetailPage() {
               {exerciseStats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Toplam Egzersiz</p>
-                    <p className="text-2xl font-bold">{exerciseStats.totalExercises}</p>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Toplam Egzersiz
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {exerciseStats.totalExercises}
+                    </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
-                    <p className="text-2xl font-bold">{exerciseStats.totalDuration} dk</p>
+                    <p className="text-2xl font-bold">
+                      {exerciseStats.totalDuration} dk
+                    </p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
@@ -643,9 +761,9 @@ export default function ClientDetailPage() {
           <DialogHeader>
             <DialogTitle>İlişkiyi Kaldır</DialogTitle>
             <DialogDescription>
-              Bu işlem danışan hesabı ile ilişkiyi kaldıracak. Danışan daha sonra
-              tekrar e-posta ve şifre ile eşleştirilebilir. Devam etmek istediğinize
-              emin misiniz?
+              Bu işlem danışan hesabı ile ilişkiyi kaldıracak. Danışan daha
+              sonra tekrar e-posta ve şifre ile eşleştirilebilir. Devam etmek
+              istediğinize emin misiniz?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -1,7 +1,6 @@
 {
   "cli": {
-    "version": ">= 9.0.0",
-    "appVersionSource": "remote"
+    "version": ">= 6.0.0"
   },
   "build": {
     "development": {
@@ -19,17 +18,14 @@
     },
     "simulator": {
       "ios": {
-        "simulator": true
+        "workflow": "managed",
+        "buildType": "simulator"
       }
     },
     "production": {
-      "developmentClient": false,
-      "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://diet-six.vercel.app"
-      },
       "ios": {
-        "simulator": false
+        "workflow": "managed",
+        "buildType": "app-store"
       }
     }
   },
@@ -37,3 +33,4 @@
     "production": {}
   }
 }
+

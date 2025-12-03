@@ -132,3 +132,4 @@ Projede **79 yerde** direkt `fetch` kullanımı bulundu. En kritik dosyalar `api
 2. Client sayfalarını migrate et
 3. Diğer sayfaları migrate et
 4. Test et ve doğrula
+

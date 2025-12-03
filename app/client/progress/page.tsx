@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ProgressForm from "@/components/progress/ProgressForm";
 import ProgressChart from "@/components/progress/ProgressChart";
@@ -18,6 +20,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
+const TanitaProgressChart = dynamic(() => import("@/components/progress/TanitaProgressChart"), {
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+  ),
+  ssr: false,
+});
 
 export default function ProgressPage() {
   const { toast } = useToast();
@@ -60,6 +71,27 @@ export default function ProgressPage() {
     fetchEntries();
     setDialogOpen(false);
   };
+
+  // Fetch Tanita measurements
+  const { data: tanitaMeasurements, isLoading: tanitaLoading } = useQuery({
+    queryKey: ["tanita-measurements-client"],
+    queryFn: async () => {
+      try {
+        const data = await apiClient.get<{
+          success: boolean;
+          measurements: any[];
+        }>(`/tanita/measurements`);
+        return data.measurements || [];
+      } catch (error: any) {
+        // If client is not mapped to Tanita, return empty array
+        if (error?.status === 400 || error?.status === 404) {
+          return [];
+        }
+        throw error;
+      }
+    },
+    enabled: true,
+  });
 
   const summary = calculateProgressSummary(entries, dateFrom || undefined, dateTo || undefined);
   const chartData = getChartData(entries, dateFrom || undefined, dateTo || undefined);
@@ -197,6 +229,27 @@ export default function ProgressPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Tanita Measurements */}
+      {tanitaMeasurements && tanitaMeasurements.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Kilo ve Vücut Kompozisyonu (Tanita)</CardTitle>
+            <CardDescription>
+              Tanita cihazından alınan detaylı ölçümleriniz
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {tanitaLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">Tanita ölçümleri yükleniyor...</p>
+              </div>
+            ) : (
+              <TanitaProgressChart data={tanitaMeasurements} />
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

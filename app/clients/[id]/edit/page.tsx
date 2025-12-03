@@ -7,8 +7,10 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import TanitaSearchModal from "@/components/tanita/TanitaSearchModal";
 
 const ClientForm = dynamic(() => import("@/components/ClientForm"), {
   loading: () => (
@@ -26,6 +28,7 @@ export default function EditClientPage() {
   const router = useRouter();
 
   const clientId = params?.id ? Number(params.id) : null;
+  const [showTanitaModal, setShowTanitaModal] = useState(false);
 
   // Define expected client shape for this page
   interface EditClientData {
@@ -37,6 +40,7 @@ export default function EditClientPage() {
     notes?: string | null;
     gender?: string | number | null;
     illness?: string | null;
+    tanitaMemberId?: number | null;
     bannedFoods?: Array<{
       besin: { id: number; name: string };
       reason?: string | null;
@@ -86,6 +90,85 @@ export default function EditClientPage() {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
     }
     router.push(`/clients/${clientId}`);
+  };
+
+  // Tanita mapping mutation
+  const mapTanitaMutation = useMutation({
+    mutationFn: async (data: { tanitaMemberId: number; syncMeasurements: boolean }) => {
+      return await apiClient.post("/tanita/map", {
+        clientId: clientId!,
+        ...data,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Başarılı",
+        description: "Client Tanita ile eşleştirildi",
+      });
+      queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+      setShowTanitaModal(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Eşleştirme başarısız",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Sync measurements mutation
+  const syncMeasurementsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiClient.post("/tanita/sync-measurements", {
+        clientId: clientId!,
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Başarılı",
+        description: `${data.syncResult.created} ölçüm aktarıldı`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Ölçüm sync başarısız",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Unmap mutation
+  const unmapMutation = useMutation({
+    mutationFn: async () => {
+      return await apiClient.post("/tanita/unmap", {
+        clientId: clientId!,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Başarılı",
+        description: "Tanita eşleşmesi kaldırıldı",
+      });
+      queryClient.invalidateQueries({ queryKey: ["client", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Eşleşme kaldırma başarısız",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTanitaUserSelect = (user: any) => {
+    mapTanitaMutation.mutate({
+      tanitaMemberId: user.id,
+      syncMeasurements: false,
+    });
   };
 
   if (isError) {
@@ -143,6 +226,57 @@ export default function EditClientPage() {
         </Link>
       </div>
 
+      {/* Tanita Integration Section */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 className="text-lg font-semibold mb-3">Tanita Entegrasyonu</h3>
+        {!client.tanitaMemberId ? (
+          <div>
+            <p className="text-sm text-gray-600 mb-3">
+              Bu danışanı Tanita veritabanı ile eşleştirin
+            </p>
+            <Button
+              onClick={() => setShowTanitaModal(true)}
+              variant="outline"
+              disabled={mapTanitaMutation.isPending}
+            >
+              {mapTanitaMutation.isPending
+                ? "Eşleştiriliyor..."
+                : "Tanita ile Eşleştir"}
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-gray-600 mb-3">
+              Bu danışan Tanita ile eşleştirilmiş (ID: {client.tanitaMemberId})
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => syncMeasurementsMutation.mutate()}
+                variant="outline"
+                disabled={syncMeasurementsMutation.isPending || unmapMutation.isPending}
+              >
+                {syncMeasurementsMutation.isPending
+                  ? "Ölçümler Çekiliyor..."
+                  : "Ölçümleri Çek"}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (confirm("Tanita eşleşmesini kaldırmak istediğinize emin misiniz?")) {
+                    unmapMutation.mutate();
+                  }
+                }}
+                variant="destructive"
+                disabled={syncMeasurementsMutation.isPending || unmapMutation.isPending}
+              >
+                {unmapMutation.isPending
+                  ? "Kaldırılıyor..."
+                  : "Eşleşmeyi Kaldır"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <ClientForm
         initialData={{
           id: client.id,
@@ -158,6 +292,14 @@ export default function EditClientPage() {
         onSuccess={handleSuccess}
         isEdit={true}
       />
+
+      {/* Tanita Search Modal */}
+      <TanitaSearchModal
+        open={showTanitaModal}
+        onClose={() => setShowTanitaModal(false)}
+        onSelect={handleTanitaUserSelect}
+      />
+
       <Toaster />
     </div>
   );

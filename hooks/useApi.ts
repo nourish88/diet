@@ -51,6 +51,7 @@ export interface Client {
   createdAt?: string;
   updatedAt?: string;
   userId?: number | null;
+  tanitaMemberId?: number | null;
   user?: {
     id: number;
     email: string;

@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 
 export interface ProgressEntry {
   id: number;
-  userId: number;
+  userId: number | null; // Opsiyonel - Tanita'dan gelen ölçümler için olmayabilir
   clientId: number;
   date: Date;
   weight: number | null;
@@ -66,7 +66,6 @@ export async function getProgressEntries(
  * Create progress entry
  */
 export async function createProgressEntry(
-  userId: number,
   clientId: number,
   data: {
     date: Date;
@@ -74,11 +73,12 @@ export async function createProgressEntry(
     waist?: number | null;
     hip?: number | null;
     bodyFat?: number | null;
-  }
+  },
+  userId?: number | null
 ): Promise<ProgressEntry> {
   const entry = await prisma.progressEntry.create({
     data: {
-      userId,
+      userId: userId ?? null,
       clientId,
       date: data.date,
       weight: data.weight ?? null,

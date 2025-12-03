@@ -206,10 +206,13 @@ class ApiClient {
 
     // Step 4: Make the request with timeout
     const controller = new AbortController();
+    // Sync operations (like tanita/sync-measurements) need more time
+    const isSyncOperation = endpoint.includes('/sync-measurements') || endpoint.includes('/sync');
+    const timeoutDuration = isSyncOperation ? 60000 : 8000; // 60s for sync, 8s for others
     const timeoutId = setTimeout(() => {
       console.error(`⏰ [API Client] Request timeout for ${endpoint}`);
       controller.abort();
-    }, 8000); // 8 second timeout (shorter than auth-context timeout)
+    }, timeoutDuration);
     
     try {
       const url = `${this.baseURL}${endpoint}`;

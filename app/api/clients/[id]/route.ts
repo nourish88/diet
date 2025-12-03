@@ -115,6 +115,16 @@ export async function PUT(
     // Extract bannedBesins from the data
     const { bannedBesins, ...clientData } = data;
 
+    // Parse gender if it's a string
+    let gender: number | null = null;
+    if (clientData.gender !== null && clientData.gender !== undefined) {
+      if (typeof clientData.gender === "string") {
+        gender = clientData.gender === "" ? null : parseInt(clientData.gender);
+      } else if (typeof clientData.gender === "number") {
+        gender = clientData.gender;
+      }
+    }
+
     // First, update the client's basic information
     const updatedClient = await prisma.client.update({
       where: {
@@ -122,6 +132,7 @@ export async function PUT(
       },
       data: {
         ...clientData,
+        gender: gender,
         birthdate: clientData.birthdate ? new Date(clientData.birthdate) : null,
         // First, delete all existing banned foods
         bannedFoods: {

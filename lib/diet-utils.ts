@@ -57,27 +57,32 @@ const flattenValue = (value: unknown, visited = new WeakSet<object>()): string =
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
 
+    // Check if object is empty or has no useful properties
+    if (Object.keys(obj).length === 0) {
+      return "";
+    }
+
     if (visited.has(obj)) {
       return "";
     }
     visited.add(obj);
 
-    if (typeof obj.name === "string") {
-      return obj.name;
+    // Check for name, label, or value properties first (most common case)
+    if (typeof obj.name === "string" && obj.name.trim()) {
+      return obj.name.trim();
     }
 
-    if (typeof obj.label === "string") {
-      return obj.label;
+    if (typeof obj.label === "string" && obj.label.trim()) {
+      return obj.label.trim();
     }
 
-    if (typeof obj.value === "string") {
-      return obj.value;
+    if (typeof obj.value === "string" && obj.value.trim()) {
+      return obj.value.trim();
     }
 
-    return Object.values(obj)
-      .map((item) => flattenValue(item, visited))
-      .filter(Boolean)
-      .join(" ");
+    // If object doesn't have name, label, or value, return empty string
+    // to avoid "[object Object]" - don't try to stringify the object
+    return "";
   }
 
   return "";
@@ -183,12 +188,46 @@ export const formatMenuItemText = (item: unknown): string => {
     obj.type === "menuItem"
   ) {
     const miktarValue = flattenValue(obj.miktar);
-    const birimValue = flattenValue(obj.birim);
+    // Special handling for birim to avoid "[object Object]"
+    let birimValue = "";
+    if (obj.birim != null && obj.birim !== undefined) {
+      if (typeof obj.birim === "string") {
+        birimValue = obj.birim.trim();
+      } else if (typeof obj.birim === "object" && !Array.isArray(obj.birim)) {
+        const birimObj = obj.birim as Record<string, unknown>;
+        // Check if object is empty or null
+        if (!birimObj || Object.keys(birimObj).length === 0) {
+          birimValue = "";
+        } else if (typeof birimObj.name === "string" && birimObj.name.trim()) {
+          birimValue = birimObj.name.trim();
+        } else if (typeof birimObj.label === "string" && birimObj.label.trim()) {
+          birimValue = birimObj.label.trim();
+        } else if (typeof birimObj.value === "string" && birimObj.value.trim()) {
+          birimValue = birimObj.value.trim();
+        } else {
+          // Skip if birim is an object without name/label/value to avoid "[object Object]"
+          birimValue = "";
+        }
+      } else {
+        // For non-object, non-string values (number, boolean, etc.), use flattenValue
+        const flattened = flattenValue(obj.birim);
+        // Double-check to avoid "[object Object]" string
+        if (flattened && !flattened.includes("[object Object]")) {
+          birimValue = flattened;
+        } else {
+          birimValue = "";
+        }
+      }
+    }
     const besinValue = flattenValue(obj.besin);
     const detailValue = flattenValue(obj.detail ?? obj.notes);
 
     const parts = [miktarValue, birimValue, besinValue]
-      .map((part) => part.replace(/\s+/g, " ").trim())
+      .map((part) => {
+        const cleaned = String(part || "").replace(/\s+/g, " ").trim();
+        // Remove "[object Object]" if it appears
+        return cleaned.includes("[object Object]") ? "" : cleaned;
+      })
       .filter(Boolean);
 
     const mainText = parts.join(" ").trim();
@@ -207,14 +246,53 @@ export const formatMenuItemText = (item: unknown): string => {
     }
   }
 
+  // Special handling for birim to avoid "[object Object]"
+  let birimValue = "";
+  if (obj.birim != null && obj.birim !== undefined) {
+    if (typeof obj.birim === "string") {
+      birimValue = obj.birim.trim();
+    } else if (typeof obj.birim === "object" && !Array.isArray(obj.birim)) {
+      const birimObj = obj.birim as Record<string, unknown>;
+      // Check if object is empty or null
+      if (!birimObj || Object.keys(birimObj).length === 0) {
+        birimValue = "";
+      } else if (typeof birimObj.name === "string" && birimObj.name.trim()) {
+        birimValue = birimObj.name.trim();
+      } else if (typeof birimObj.label === "string" && birimObj.label.trim()) {
+        birimValue = birimObj.label.trim();
+      } else if (typeof birimObj.value === "string" && birimObj.value.trim()) {
+        birimValue = birimObj.value.trim();
+      } else {
+        // Skip if birim is an object without name/label/value to avoid "[object Object]"
+        birimValue = "";
+      }
+    } else {
+      // For non-object, non-string values (number, boolean, etc.), use flattenValue
+      const flattened = flattenValue(obj.birim);
+      // Double-check to avoid "[object Object]" string
+      if (flattened && !flattened.includes("[object Object]")) {
+        birimValue = flattened;
+      } else {
+        birimValue = "";
+      }
+    }
+  }
+
   const parts = [
     flattenValue(obj.miktar),
-    flattenValue(obj.birim),
+    birimValue,
     flattenValue(obj.besin),
-  ].filter(Boolean);
+  ]
+    .map((part) => {
+      const cleaned = String(part || "").replace(/\s+/g, " ").trim();
+      // Remove "[object Object]" if it appears
+      return cleaned.includes("[object Object]") ? "" : cleaned;
+    })
+    .filter(Boolean);
 
   if (parts.length === 0) {
-    return flattenValue(item).replace(/\s+/g, " ").trim();
+    const fallback = flattenValue(item).replace(/\s+/g, " ").trim();
+    return fallback.includes("[object Object]") ? "" : fallback;
   }
 
   const detail = flattenValue(obj.detail ?? obj.notes);
@@ -271,7 +349,15 @@ export const sanitizeMenuItems = (items: unknown[]): string[] => {
 
   return items
     .map((item) => formatMenuItemText(item))
-    .map((text) => text.replace(/\s+/g, " ").trim())
+    .map((text) => {
+      // Clean up the text
+      let cleaned = text.replace(/\s+/g, " ").trim();
+      // Remove any "[object Object]" strings that might have slipped through
+      cleaned = cleaned.replace(/\[object Object\]/gi, "").trim();
+      // Clean up multiple spaces again after removal
+      cleaned = cleaned.replace(/\s+/g, " ").trim();
+      return cleaned;
+    })
     .filter(Boolean)
     .map((text) => insertSoftBreaks(text));
 };

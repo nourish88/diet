@@ -829,21 +829,30 @@ const DatabasePDFButton = ({
         pdfData.dietitianNote
       );
       console.log("[EMOJI DEBUG DB] Dietitian note parts:", dietitianNoteParts);
-      const combinedParts = [...dietitianNoteLabelParts, ...dietitianNoteParts];
-      console.log(
-        "[EMOJI DEBUG DB] Combined parts for dietitian note:",
-        combinedParts
-      );
-      const dietitianNoteColumns = buildInlineColumns(dietitianNoteLabelParts, {
-        textStyle: "dietitianNoteLabel",
-      }).columns.concat(
-        buildInlineColumns(dietitianNoteParts, {
-          textStyle: "dietitianNoteText",
-        }).columns
-      );
+      
+      // Combine label and text parts into a single text element
+      const labelText = dietitianNoteLabelParts
+        .map((part) => (part.text ? part.text : ""))
+        .join("")
+        .trim();
+      
+      const noteText = dietitianNoteParts
+        .map((part) => (part.text ? part.text : ""))
+        .join("")
+        .trim();
+      
+      // Create a single text element with both label and content
       content.push({
-        columns: dietitianNoteColumns,
-        columnGap: 3,
+        text: [
+          {
+            text: labelText,
+            style: "dietitianNoteLabel",
+          },
+          {
+            text: noteText,
+            style: "dietitianNoteText",
+          },
+        ],
         margin: [0, 8, 0, 8],
       } as any);
     }

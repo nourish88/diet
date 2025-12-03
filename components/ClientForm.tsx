@@ -3,11 +3,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/use-toast";
 import MultiBesinSelector from "./MultiBesinSelector";
+import TanitaSearchModal from "./tanita/TanitaSearchModal";
 
 const clientSchema = z.object({
   name: z.string().min(1, "İsim zorunludur"),
@@ -39,6 +42,11 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
       reason: ban.reason,
     })) || []
   );
+  const [addMode, setAddMode] = useState<"manual" | "tanita" | null>(
+    isEdit ? null : "manual"
+  );
+  const [showTanitaModal, setShowTanitaModal] = useState(false);
+  const [selectedTanitaUser, setSelectedTanitaUser] = useState<any>(null);
 
   const form = useForm<z.infer<typeof clientSchema>>({
     resolver: zodResolver(clientSchema),
@@ -54,6 +62,56 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
       illness: initialData?.illness || "",
     },
   });
+
+  // Tanita'dan client oluşturma mutation
+  const createFromTanitaMutation = useMutation({
+    mutationFn: async (data: { tanitaMemberId: number; syncMeasurements: boolean }) => {
+      return await apiClient.post("/tanita/create-client", data);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Başarılı",
+        description: "Tanita'dan danışan oluşturuldu",
+      });
+      onSuccess(data.client.id);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Hata",
+        description: error.message || "Tanita'dan danışan oluşturulamadı",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Tanita user seçildiğinde form'u doldur
+  const handleTanitaUserSelect = (user: any) => {
+    setSelectedTanitaUser(user);
+    
+    // Form alanlarını doldur
+    const dob = user.dob ? new Date(user.dob).toISOString().split("T")[0] : null;
+    const gender = user.gender === "ERKEK" ? "1" : user.gender === "KADIN" ? "2" : null;
+    
+    form.setValue("name", user.name);
+    form.setValue("surname", user.surname);
+    form.setValue("phoneNumber", user.phone || "");
+    form.setValue("birthdate", dob);
+    form.setValue("gender", gender as any); // Form schema accepts string, will be transformed
+    form.setValue("notes", user.notes || "");
+    
+    // Tanita'dan oluştur butonunu göster
+    setAddMode("tanita");
+  };
+
+  // Tanita'dan client oluştur
+  const handleCreateFromTanita = async () => {
+    if (!selectedTanitaUser) return;
+    
+    createFromTanitaMutation.mutate({
+      tanitaMemberId: selectedTanitaUser.id,
+      syncMeasurements: false, // İsteğe bağlı olarak true yapılabilir
+    });
+  };
 
   const handleSelectedBesinsChange = (
     newSelectedBesins: Array<{ besinId: number; reason?: string }>
@@ -159,6 +217,72 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
       <h2 className="text-xl font-semibold mb-6">
         {isEdit ? "Danışan Düzenle" : "Yeni Danışan Ekle"}
       </h2>
+
+      {/* Add Mode Selection (only for new clients) */}
+      {!isEdit && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ekleme Yöntemi
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                value="manual"
+                checked={addMode === "manual"}
+                onChange={() => {
+                  setAddMode("manual");
+                  setSelectedTanitaUser(null);
+                  form.reset();
+                }}
+                className="h-4 w-4 text-blue-600"
+              />
+              <span>Manuel Ekle</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                value="tanita"
+                checked={addMode === "tanita"}
+                onChange={() => {
+                  setAddMode("tanita");
+                  setShowTanitaModal(true);
+                }}
+                className="h-4 w-4 text-blue-600"
+              />
+              <span>Tanita'dan Ekle</span>
+            </label>
+          </div>
+          
+          {addMode === "tanita" && (
+            <div className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowTanitaModal(true)}
+                className="mb-2"
+              >
+                {selectedTanitaUser
+                  ? `${selectedTanitaUser.name} ${selectedTanitaUser.surname} (Değiştir)`
+                  : "Tanita'dan Danışan Seç"}
+              </Button>
+              {selectedTanitaUser && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md text-sm">
+                  <div className="font-medium">
+                    {selectedTanitaUser.name} {selectedTanitaUser.surname}
+                  </div>
+                  {selectedTanitaUser.phone && (
+                    <div className="text-gray-600">📞 {selectedTanitaUser.phone}</div>
+                  )}
+                  {selectedTanitaUser.email && (
+                    <div className="text-gray-600">✉️ {selectedTanitaUser.email}</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,13 +429,35 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
           />
         </div>
 
-        <Button
-          type="submit"
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-        >
-          {isEdit ? "Güncelle" : "Kaydet"}
-        </Button>
+        {addMode === "tanita" && selectedTanitaUser ? (
+          <Button
+            type="button"
+            onClick={handleCreateFromTanita}
+            disabled={createFromTanitaMutation.isPending}
+            className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+          >
+            {createFromTanitaMutation.isPending
+              ? "Oluşturuluyor..."
+              : "Tanita'dan Oluştur"}
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+          >
+            {isEdit ? "Güncelle" : "Kaydet"}
+          </Button>
+        )}
       </form>
+
+      {/* Tanita Search Modal */}
+      {!isEdit && (
+        <TanitaSearchModal
+          open={showTanitaModal}
+          onClose={() => setShowTanitaModal(false)}
+          onSelect={handleTanitaUserSelect}
+        />
+      )}
     </div>
   );
 };

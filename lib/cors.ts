@@ -18,7 +18,7 @@ const getAllowedOrigins = () => {
   return baseOrigins;
 };
 
-export function addCorsHeaders(response: NextResponse, origin?: string) {
+export function addCorsHeaders(response: NextResponse, origin?: string): NextResponse {
   const allowedOrigins = getAllowedOrigins();
 
   // If origin is provided, check if it's allowed
