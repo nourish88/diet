@@ -38,6 +38,7 @@
     "@types/react-resizable": "^3.0.8",
     "@types/twemoji": "^13.1.2",
     "@vercel/blob": "^0.27.3",
+    "better-sqlite3": "^12.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -72,6 +73,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.19.24",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",

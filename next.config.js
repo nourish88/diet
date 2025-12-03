@@ -67,6 +67,9 @@ const nextConfig = {
         // "@foliojs-fork/pdfkit",
       ];
 
+      // better-sqlite3 is a native module, needs to be bundled for Vercel
+      // Don't externalize it - let it be bundled
+
       // Fix for pdfkit in Next.js
       config.resolve.alias = {
         ...config.resolve.alias,
@@ -78,8 +81,9 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       crypto: false,
-      fs: false,
-      path: false,
+      // Don't fallback fs and path for better-sqlite3
+      // fs: false,
+      // path: false,
     };
 
     // Ignore pdfkit warnings
