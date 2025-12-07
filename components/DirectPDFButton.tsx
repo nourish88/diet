@@ -883,19 +883,19 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
 
     const content: PDFContentItem[] = [
-      // Title at the very top - moved down by 10px
+      // Title at the very top
       {
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 20, 0, 12], // Increased top margin to 20px
+        margin: [0, 10, 0, 8],
       },
-      // Client info - redesigned to be centered with bold text
+      // Client info
       {
-        text: `${pdfData.fullName} / ${formattedDietDate}`,
+        text: `${pdfData.fullName} • ${formattedDietDate}`,
         style: "clientInfoCentered",
         alignment: "center",
-        margin: [0, 0, 0, 12],
+        margin: [0, 0, 0, 15],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
       // Only add if weekly result exists and is not empty
@@ -1147,9 +1147,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           alignment: "center",
         },
         clientInfoCentered: {
-          fontSize: 16, // Larger font size
-          color: "#374151",
-          bold: true,
+          fontSize: 15, // Reduced from 16
+          color: "#555", // Updated to soft gray
+          bold: false, // Made less bold
           lineHeight: 1.2,
         },
         dietitianNote: {
@@ -1173,25 +1173,25 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: "#ffffff",
         },
         titleStyle: {
-          fontSize: 20,
+          fontSize: 21,
           bold: true,
-          color: "#d32d7e", // Changed to pink
+          color: "#c2185b", // Updated to more professional pink
         },
       },
       header: {
         columns: [
           {
             image: backgroundDataUrl,
-            width: 127, // Increased from 120 to 180 (1.5x larger)
+            width: 115, // Increased logo size
             margin: [30, 15, 0, 0],
           },
           {
-            text: "", // Removed the header text since it's now in the content
+            text: "",
             alignment: "center",
             fontSize: 16,
             bold: true,
             margin: [0, 25, 0, -25],
-            color: "#d32d7e",
+            color: "#c2185b",
           },
         ],
       },

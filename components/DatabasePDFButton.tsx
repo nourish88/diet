@@ -729,14 +729,14 @@ const DatabasePDFButton = ({
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 0, 0, 8],
+        margin: [0, 10, 0, 8],
       },
-      // Reformatted client info - name and date on one line, bold and centered
+      // Client info
       {
-        text: `${pdfData.fullName} / ${formattedDietDate}`,
+        text: `${pdfData.fullName} • ${formattedDietDate}`,
         style: "clientInfoBold",
         alignment: "center",
-        margin: [0, 0, 0, 12],
+        margin: [0, 0, 0, 15],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
       // Only add if weekly result exists and is not empty
@@ -886,16 +886,16 @@ const DatabasePDFButton = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 127, // Increased from 120 to 180 (1.5x)
-            margin: [30, 10, 0, 0],
+            width: 115, // Increased logo size
+            margin: [30, 15, 0, 0],
           },
           {
-            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            text: "",
             alignment: "center",
             fontSize: 16,
             bold: true,
-            margin: [0, 45, 0, -25], // Moved down by 10px (from 35 to 45)
-            color: primaryColor,
+            margin: [0, 25, 0, -25],
+            color: "#c2185b",
           },
         ],
       },
@@ -916,19 +916,19 @@ const DatabasePDFButton = ({
       },
       styles: {
         titleStyle: {
-          fontSize: 20,
+          fontSize: 21,
           bold: true,
-          color: primaryColor,
+          color: "#c2185b", // Updated to more professional pink
         },
         clientInfo: {
           fontSize: 11,
           color: "#374151",
         },
-        // New style for bold client info
+        // New style for client info
         clientInfoBold: {
-          fontSize: 14, // Increased font size
-          bold: true,
-          color: "#374151",
+          fontSize: 15, // Reduced from 14
+          bold: false, // Made less bold
+          color: "#555", // Updated to soft gray
         },
         tableHeader: {
           fontSize: 12,
