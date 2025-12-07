@@ -827,8 +827,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       isImportantDateCelebrated: pdfData.isImportantDateCelebrated,
       importantDate: pdfData.importantDate,
     });
-    // Color scheme - changed to pink color
-    const primaryColor = "#d32d7e"; // Changed to pink color
+    // Color scheme - changed to pink color (lighter for printing)
+    const primaryColor = "#e991ba"; // Lighter pink for printing
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
     const formattedDietDate = formatDateTR(pdfData.dietDate);
@@ -883,18 +883,29 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
 
     const content: PDFContentItem[] = [
-      // Title at the very top - küçültüldü
+      // Title centered
       {
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 10, 0, 5],
+        margin: [0, 10, 0, 10],
       },
-      // Client info - küçültüldü
+      // Client info - two columns (name left, date right)
       {
-        text: `${pdfData.fullName} • ${formattedDietDate}`,
-        style: "clientInfoCentered",
-        alignment: "center",
+        columns: [
+          {
+            text: `İSİM SOYİSİM: ${pdfData.fullName}`,
+            style: "clientInfoLeft",
+            alignment: "left",
+            width: "*",
+          },
+          {
+            text: `Tarih: ${formattedDietDate}`,
+            style: "clientInfoRight",
+            alignment: "right",
+            width: "auto",
+          },
+        ],
         margin: [0, 0, 0, 12],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
@@ -936,9 +947,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineColor: () => borderColor,
           fillColor: function (rowIndex) {
             if (rowIndex === 0) {
-              return "#d32d7e"; // Header background color (pink)
+              return "#e991ba"; // Lighter header background for printing
             }
-            return rowIndex % 2 === 1 ? "#fce7f3" : null; // Light pink for alternating rows
+            return rowIndex % 2 === 1 ? "#fef3f8" : null; // Very light pink for alternating rows
           },
           paddingTop: (i) => (i === 0 ? 6 : 4), // Reduced padding
           paddingBottom: (i) => (i === 0 ? 6 : 4), // Reduced padding
@@ -1048,7 +1059,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineWidth: () => 1,
           hLineColor: () => borderColor,
           vLineColor: () => "#fbcfe8",
-          fillColor: () => "#d32d7e",
+          fillColor: () => "#e991ba",
           paddingTop: () => 6,
           paddingBottom: () => 6,
           paddingLeft: () => 8,
@@ -1146,10 +1157,16 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: secondaryColor,
           alignment: "center",
         },
-        clientInfoCentered: {
-          fontSize: 13, // 15'ten 13'e küçültüldü
-          color: "#555", // Updated to soft gray
-          bold: false, // Made less bold
+        clientInfoLeft: {
+          fontSize: 13,
+          color: "#555",
+          bold: true,
+          lineHeight: 1.2,
+        },
+        clientInfoRight: {
+          fontSize: 13,
+          color: "#555",
+          bold: false,
           lineHeight: 1.2,
         },
         dietitianNote: {
@@ -1179,21 +1196,10 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         },
       },
       header: {
-        columns: [
-          {
-            image: backgroundDataUrl,
-            width: 140, // Logo boyutu büyütüldü
-            margin: [30, 15, 0, 0],
-          },
-          {
-            text: "",
-            alignment: "center",
-            fontSize: 16,
-            bold: true,
-            margin: [0, 25, 0, -25],
-            color: "#c2185b",
-          },
-        ],
+        image: backgroundDataUrl,
+        width: 140,
+        alignment: "center",
+        margin: [0, 15, 0, 0],
       },
       footer: function () {
         return {

@@ -706,11 +706,11 @@ const DatabasePDFButton = ({
     backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {
-    // Color scheme - Updated to use #d32d7e
-    const primaryColor = "#d32d7e"; // Changed from "#8B5CF6" to "#d32d7e"
+    // Color scheme - Updated to lighter colors for printing
+    const primaryColor = "#e991ba"; // Lighter pink for printing
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
-    const stripedRowColor = "#fce7f3"; // Light pink background for striped rows
+    const stripedRowColor = "#fef3f8"; // Very light pink background for striped rows
 
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
@@ -724,18 +724,29 @@ const DatabasePDFButton = ({
         margin: [0, 20, 0, -25],
         absolutePosition: { x: 50, y: 300 },
       },
-      // Title at the very top - küçültüldü
+      // Title centered
       {
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 10, 0, 5],
+        margin: [0, 10, 0, 10],
       },
-      // Client info - küçültüldü
+      // Client info - two columns (name left, date right)
       {
-        text: `${pdfData.fullName} • ${formattedDietDate}`,
-        style: "clientInfoBold",
-        alignment: "center",
+        columns: [
+          {
+            text: `İSİM SOYİSİM: ${pdfData.fullName}`,
+            style: "clientInfoLeft",
+            alignment: "left",
+            width: "*",
+          },
+          {
+            text: `Tarih: ${formattedDietDate}`,
+            style: "clientInfoRight",
+            alignment: "right",
+            width: "auto",
+          },
+        ],
         margin: [0, 0, 0, 12],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
@@ -883,21 +894,10 @@ const DatabasePDFButton = ({
       pageSize: "A4",
       pageMargins: [30, 30, 30, 50],
       header: {
-        columns: [
-          {
-            image: backgroundDataUrl,
-            width: 140, // Logo boyutu büyütüldü
-            margin: [30, 15, 0, 0],
-          },
-          {
-            text: "",
-            alignment: "center",
-            fontSize: 16,
-            bold: true,
-            margin: [0, 25, 0, -25],
-            color: "#c2185b",
-          },
-        ],
+        image: backgroundDataUrl,
+        width: 140,
+        alignment: "center",
+        margin: [0, 15, 0, 0],
       },
       footer: function () {
         return {
@@ -924,11 +924,18 @@ const DatabasePDFButton = ({
           fontSize: 11,
           color: "#374151",
         },
-        // New style for client info
-        clientInfoBold: {
-          fontSize: 13, // 15'ten 13'e küçültüldü
-          bold: false, // Made less bold
-          color: "#555", // Updated to soft gray
+        // New styles for client info
+        clientInfoLeft: {
+          fontSize: 13,
+          color: "#555",
+          bold: true,
+          lineHeight: 1.2,
+        },
+        clientInfoRight: {
+          fontSize: 13,
+          color: "#555",
+          bold: false,
+          lineHeight: 1.2,
         },
         tableHeader: {
           fontSize: 12,
