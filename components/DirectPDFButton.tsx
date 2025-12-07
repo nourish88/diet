@@ -1092,8 +1092,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
 
     return {
       content,
-      pageSize: "A4",
-      pageMargins: [30, 30, 30, 50], // Reduced margins
       styles: {
         sectionHeader: {
           fontSize: 14, // Reduced from 16
@@ -1195,11 +1193,13 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: "#c2185b", // Updated to more professional pink
         },
       },
+      pageSize: "A4",
+      pageMargins: [30, 110, 30, 50], // Increased top margin for header logo
       header: {
         image: backgroundDataUrl,
-        width: 165,
+        width: 180, // Logo büyütüldü
         alignment: "center",
-        margin: [0, 15, 0, 10],
+        margin: [0, 20, 0, 15], // Increased margins
       },
       footer: function () {
         return {
