@@ -724,19 +724,19 @@ const DatabasePDFButton = ({
         margin: [0, 20, 0, -25],
         absolutePosition: { x: 50, y: 300 },
       },
-      // Title at the very top
+      // Title at the very top - küçültüldü
       {
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 10, 0, 8],
+        margin: [0, 10, 0, 5],
       },
-      // Client info
+      // Client info - küçültüldü
       {
         text: `${pdfData.fullName} • ${formattedDietDate}`,
         style: "clientInfoBold",
         alignment: "center",
-        margin: [0, 0, 0, 15],
+        margin: [0, 0, 0, 12],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
       // Only add if weekly result exists and is not empty
@@ -886,7 +886,7 @@ const DatabasePDFButton = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 115, // Increased logo size
+            width: 140, // Logo boyutu büyütüldü
             margin: [30, 15, 0, 0],
           },
           {
@@ -916,7 +916,7 @@ const DatabasePDFButton = ({
       },
       styles: {
         titleStyle: {
-          fontSize: 21,
+          fontSize: 17, // 21'den 17'ye küçültüldü
           bold: true,
           color: "#c2185b", // Updated to more professional pink
         },
@@ -926,7 +926,7 @@ const DatabasePDFButton = ({
         },
         // New style for client info
         clientInfoBold: {
-          fontSize: 15, // Reduced from 14
+          fontSize: 13, // 15'ten 13'e küçültüldü
           bold: false, // Made less bold
           color: "#555", // Updated to soft gray
         },

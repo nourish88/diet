@@ -883,19 +883,19 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
 
     const content: PDFContentItem[] = [
-      // Title at the very top
+      // Title at the very top - küçültüldü
       {
         text: "KİŞİYE ÖZEL BESLENME PLANI",
         alignment: "center",
         style: "titleStyle",
-        margin: [0, 10, 0, 8],
+        margin: [0, 10, 0, 5],
       },
-      // Client info
+      // Client info - küçültüldü
       {
         text: `${pdfData.fullName} • ${formattedDietDate}`,
         style: "clientInfoCentered",
         alignment: "center",
-        margin: [0, 0, 0, 15],
+        margin: [0, 0, 0, 12],
       },
       // Weekly Result Badge - Top Right Corner with circular design and nazar boncuğu
       // Only add if weekly result exists and is not empty
@@ -1147,7 +1147,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           alignment: "center",
         },
         clientInfoCentered: {
-          fontSize: 15, // Reduced from 16
+          fontSize: 13, // 15'ten 13'e küçültüldü
           color: "#555", // Updated to soft gray
           bold: false, // Made less bold
           lineHeight: 1.2,
@@ -1173,7 +1173,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: "#ffffff",
         },
         titleStyle: {
-          fontSize: 21,
+          fontSize: 17, // 21'den 17'ye küçültüldü
           bold: true,
           color: "#c2185b", // Updated to more professional pink
         },
@@ -1182,7 +1182,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         columns: [
           {
             image: backgroundDataUrl,
-            width: 115, // Increased logo size
+            width: 140, // Logo boyutu büyütüldü
             margin: [30, 15, 0, 0],
           },
           {
