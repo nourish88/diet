@@ -137,10 +137,9 @@ export async function GET(
       .fontSize(8)
       .fillColor("#666666")
       .text("Dyt. Ezgi Evgin Aktaş", { align: "center" })
-      .text(
-        "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA",
-        { align: "center" }
-      )
+      .text("Eryaman Altay Mah. Atayıldız Plaza No:70 Etimesgut/ANKARA", {
+        align: "center",
+      })
       .text("0546 265 04 40 ezgievgin_dytsyn@hotmail.com www.ezgievgin.com", {
         align: "center",
       });

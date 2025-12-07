@@ -19,7 +19,9 @@ function ensureFontFile(fontName: string): string {
   const targetPath = path.join(fontOutputDir, fontName);
   if (!fs.existsSync(targetPath)) {
     const vfs =
-      pdfMakeVfsModule?.pdfMake?.vfs || pdfMakeVfsModule?.vfs || pdfMakeVfsModule;
+      pdfMakeVfsModule?.pdfMake?.vfs ||
+      pdfMakeVfsModule?.vfs ||
+      pdfMakeVfsModule;
     const fontData = vfs?.[fontName];
 
     if (!fontData) {
@@ -96,8 +98,10 @@ interface TableCell {
 function formatMenuItem(item: MenuItem | string): string {
   if (typeof item === "string") return item;
   const miktar = item.miktar ?? "";
-  const birim = typeof item.birim === "string" ? item.birim : item.birim?.name ?? "";
-  const besin = typeof item.besin === "string" ? item.besin : item.besin?.name ?? "";
+  const birim =
+    typeof item.birim === "string" ? item.birim : item.birim?.name ?? "";
+  const besin =
+    typeof item.besin === "string" ? item.besin : item.besin?.name ?? "";
   return `${miktar} ${birim} ${besin}`.trim();
 }
 
@@ -108,18 +112,24 @@ function preparePdfDataFromDatabase(diet: any): PDFData | null {
   // Extract client name
   let clientName = "İsimsiz Danışan";
   if (diet.client) {
-    clientName = `${diet.client.name || ""} ${diet.client.surname || ""}`.trim() || "İsimsiz Danışan";
+    clientName =
+      `${diet.client.name || ""} ${diet.client.surname || ""}`.trim() ||
+      "İsimsiz Danışan";
   }
 
   // Process meals (oguns)
   const processedMeals = (diet.oguns || []).map((ogun: any) => {
     // Process menu items
-    const menuItems = (ogun.items || []).map((item: any) => {
-      const besinName = typeof item.besin === "string" ? item.besin : item.besin?.name || "";
-      const birimName = typeof item.birim === "string" ? item.birim : item.birim?.name || "";
-      const miktar = item.miktar || "";
-      return formatMenuItem({ miktar, birim: birimName, besin: besinName });
-    }).filter(Boolean);
+    const menuItems = (ogun.items || [])
+      .map((item: any) => {
+        const besinName =
+          typeof item.besin === "string" ? item.besin : item.besin?.name || "";
+        const birimName =
+          typeof item.birim === "string" ? item.birim : item.birim?.name || "";
+        const miktar = item.miktar || "";
+        return formatMenuItem({ miktar, birim: birimName, besin: besinName });
+      })
+      .filter(Boolean);
 
     return {
       name: ogun.name || "Belirtilmemiş",
@@ -139,9 +149,10 @@ function preparePdfDataFromDatabase(diet: any): PDFData | null {
     physicalActivity: diet.fizik || diet.Fizik || "Belirtilmemiş",
     isBirthdayCelebration: diet.isBirthdayCelebration || false,
     isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-    importantDate: diet.isImportantDateCelebrated && diet.importantDateMessage
-      ? { message: diet.importantDateMessage }
-      : undefined,
+    importantDate:
+      diet.isImportantDateCelebrated && diet.importantDateMessage
+        ? { message: diet.importantDateMessage }
+        : undefined,
     dietitianNote: diet.dietitianNote || "",
   };
 }
@@ -156,7 +167,7 @@ function buildMealTableRows(dietData: PDFData): TableCell[][] {
       { text: "NOTLAR", style: "tableHeader", alignment: "center" },
     ],
   ];
-  
+
   dietData.ogunler.forEach((ogun) => {
     const menuText = ogun.menuItems.join("\n• ");
     rows.push([
@@ -182,7 +193,7 @@ function buildMealTableRows(dietData: PDFData): TableCell[][] {
       },
     ]);
   });
-  
+
   // Append water consumption row only if it has a value
   if (dietData.waterConsumption?.trim()) {
     rows.push([
@@ -210,7 +221,7 @@ function buildMealTableRows(dietData: PDFData): TableCell[][] {
       },
     ]);
   }
-  
+
   // Append physical activity row only if it has a value
   if (dietData.physicalActivity?.trim()) {
     rows.push([
@@ -238,7 +249,7 @@ function buildMealTableRows(dietData: PDFData): TableCell[][] {
       },
     ]);
   }
-  
+
   return rows;
 }
 
@@ -257,7 +268,7 @@ function createDocDefinition(pdfData: PDFData, backgroundDataUrl: string) {
     color: string;
     margin: number[];
   }[] = [];
-  
+
   if (pdfData.isBirthdayCelebration) {
     celebrationsContent.push({
       text: "🎂 Doğum Gününüz Kutlu Olsun! İyi ki doğdunuz.",
@@ -266,7 +277,7 @@ function createDocDefinition(pdfData: PDFData, backgroundDataUrl: string) {
       margin: [0, 5, 0, 0],
     });
   }
-  
+
   if (pdfData.isImportantDateCelebrated && pdfData.importantDate?.message) {
     celebrationsContent.push({
       text: `🎉 ${pdfData.importantDate.message}`,
@@ -508,7 +519,7 @@ function createDocDefinition(pdfData: PDFData, backgroundDataUrl: string) {
         columns: [
           {
             text:
-              "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA\n" +
+              "Eryaman Altay Mah. Atayıldız Plaza No:70 Etimesgut/ANKARA\n" +
               "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
             style: "footerText",
             alignment: "center",
@@ -563,7 +574,9 @@ export async function GET(
     let backgroundDataUrl = "";
     if (fs.existsSync(logoPath)) {
       const logoBuffer = fs.readFileSync(logoPath);
-      backgroundDataUrl = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+      backgroundDataUrl = `data:image/png;base64,${logoBuffer.toString(
+        "base64"
+      )}`;
     }
 
     // Prepare PDF data

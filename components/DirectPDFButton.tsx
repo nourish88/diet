@@ -883,6 +883,13 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
 
     const content: PDFContentItem[] = [
+      // Title at the top
+      {
+        text: "KİŞİYE ÖZEL BESLENME PLANI",
+        alignment: "center",
+        style: "titleStyle",
+        margin: [0, 0, 0, 10],
+      },
       // Client info - two columns (name left, date right)
       {
         columns: [
@@ -1189,28 +1196,17 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
         },
       },
       header: {
-        stack: [
-          {
-            image: backgroundDataUrl,
-            width: 165, // Logo büyütüldü
-            alignment: "center",
-            margin: [0, 15, 0, 8],
-          },
-          {
-            text: "KİŞİYE ÖZEL BESLENME PLANI",
-            alignment: "center",
-            style: "titleStyle",
-            margin: [0, 0, 0, 0],
-          },
-        ],
-        margin: [0, 0, 0, 10],
+        image: backgroundDataUrl,
+        width: 165,
+        alignment: "center",
+        margin: [0, 15, 0, 10],
       },
       footer: function () {
         return {
           columns: [
             {
               text:
-                "Eryaman 4.Etap Üç Şehitler Cad. Haznedatoğlu Bl. 173 Etimesgut/ANKARA\n" +
+                "Eryaman Altay Mah. Atayıldız Plaza No:70 Etimesgut/ANKARA\n" +
                 "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
               style: "footerText",
               alignment: "center",
