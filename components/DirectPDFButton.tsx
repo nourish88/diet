@@ -827,8 +827,8 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       isImportantDateCelebrated: pdfData.isImportantDateCelebrated,
       importantDate: pdfData.importantDate,
     });
-    // Color scheme - changed to pink color (lighter for printing)
-    const primaryColor = "#e991ba"; // Lighter pink for printing
+    // Color scheme - vibrant but light pink for printing
+    const primaryColor = "#e06fa3"; // Vibrant light pink
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
     const formattedDietDate = formatDateTR(pdfData.dietDate);
@@ -883,13 +883,6 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
 
     const content: PDFContentItem[] = [
-      // Title centered
-      {
-        text: "KİŞİYE ÖZEL BESLENME PLANI",
-        alignment: "center",
-        style: "titleStyle",
-        margin: [0, 10, 0, 10],
-      },
       // Client info - two columns (name left, date right)
       {
         columns: [
@@ -947,9 +940,9 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineColor: () => borderColor,
           fillColor: function (rowIndex) {
             if (rowIndex === 0) {
-              return "#e991ba"; // Lighter header background for printing
+              return "#e06fa3"; // Vibrant light pink for header
             }
-            return rowIndex % 2 === 1 ? "#fef3f8" : null; // Very light pink for alternating rows
+            return rowIndex % 2 === 1 ? "#fce7f3" : null; // Light pink for alternating rows
           },
           paddingTop: (i) => (i === 0 ? 6 : 4), // Reduced padding
           paddingBottom: (i) => (i === 0 ? 6 : 4), // Reduced padding
@@ -1059,7 +1052,7 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           vLineWidth: () => 1,
           hLineColor: () => borderColor,
           vLineColor: () => "#fbcfe8",
-          fillColor: () => "#e991ba",
+          fillColor: () => "#e06fa3",
           paddingTop: () => 6,
           paddingBottom: () => 6,
           paddingLeft: () => 8,
@@ -1190,16 +1183,27 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
           color: "#ffffff",
         },
         titleStyle: {
-          fontSize: 17, // 21'den 17'ye küçültüldü
+          fontSize: 15, // Daha küçük
           bold: true,
           color: "#c2185b", // Updated to more professional pink
         },
       },
       header: {
-        image: backgroundDataUrl,
-        width: 140,
-        alignment: "center",
-        margin: [0, 15, 0, 0],
+        stack: [
+          {
+            image: backgroundDataUrl,
+            width: 165, // Logo büyütüldü
+            alignment: "center",
+            margin: [0, 15, 0, 8],
+          },
+          {
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            alignment: "center",
+            style: "titleStyle",
+            margin: [0, 0, 0, 0],
+          },
+        ],
+        margin: [0, 0, 0, 10],
       },
       footer: function () {
         return {

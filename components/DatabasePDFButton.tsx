@@ -706,11 +706,11 @@ const DatabasePDFButton = ({
     backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {
-    // Color scheme - Updated to lighter colors for printing
-    const primaryColor = "#e991ba"; // Lighter pink for printing
+    // Color scheme - Vibrant but light pink for printing
+    const primaryColor = "#e06fa3"; // Vibrant light pink
     const secondaryColor = "#64748b"; // Subtle slate gray
     const borderColor = "#e2e8f0"; // Light gray border
-    const stripedRowColor = "#fef3f8"; // Very light pink background for striped rows
+    const stripedRowColor = "#fce7f3"; // Light pink background for striped rows
 
     const formattedDietDate = formatDateTR(pdfData.dietDate);
 
@@ -723,13 +723,6 @@ const DatabasePDFButton = ({
         alignment: "center",
         margin: [0, 20, 0, -25],
         absolutePosition: { x: 50, y: 300 },
-      },
-      // Title centered
-      {
-        text: "KİŞİYE ÖZEL BESLENME PLANI",
-        alignment: "center",
-        style: "titleStyle",
-        margin: [0, 10, 0, 10],
       },
       // Client info - two columns (name left, date right)
       {
@@ -894,10 +887,21 @@ const DatabasePDFButton = ({
       pageSize: "A4",
       pageMargins: [30, 30, 30, 50],
       header: {
-        image: backgroundDataUrl,
-        width: 140,
-        alignment: "center",
-        margin: [0, 15, 0, 0],
+        stack: [
+          {
+            image: backgroundDataUrl,
+            width: 165, // Logo büyütüldü
+            alignment: "center",
+            margin: [0, 15, 0, 8],
+          },
+          {
+            text: "KİŞİYE ÖZEL BESLENME PLANI",
+            alignment: "center",
+            style: "titleStyle",
+            margin: [0, 0, 0, 0],
+          },
+        ],
+        margin: [0, 0, 0, 10],
       },
       footer: function () {
         return {
@@ -916,7 +920,7 @@ const DatabasePDFButton = ({
       },
       styles: {
         titleStyle: {
-          fontSize: 17, // 21'den 17'ye küçültüldü
+          fontSize: 15, // Daha küçük
           bold: true,
           color: "#c2185b", // Updated to more professional pink
         },
