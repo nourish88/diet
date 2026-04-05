@@ -53,6 +53,7 @@ export default function LoginPage() {
   const [normalizedPhone, setNormalizedPhone] = useState<string | null>(null);
   const [lookupClients, setLookupClients] = useState<PhoneLookupClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [singleClientAutoLogin, setSingleClientAutoLogin] = useState(false);
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [isConfirmingClient, setIsConfirmingClient] = useState(false);
 
@@ -83,6 +84,7 @@ export default function LoginPage() {
     setLookupClients([]);
     setSelectedClientId(null);
     setNormalizedPhone(null);
+    setSingleClientAutoLogin(false);
   };
 
   const handleDietitianSubmit = async (e: React.FormEvent) => {
@@ -115,6 +117,81 @@ export default function LoginPage() {
     }
   };
 
+  const completeClientLogin = async ({
+    selectedClientValue,
+    normalizedPhoneValue,
+    skipConfirmStep,
+  }: {
+    selectedClientValue: PhoneLookupClient;
+    normalizedPhoneValue: string;
+    skipConfirmStep: boolean;
+  }) => {
+    const sessionResponse = await fetch("/api/client-auth/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        phoneNumber: normalizedPhoneValue,
+      }),
+    });
+
+    const sessionData = await sessionResponse.json();
+
+    if (!sessionResponse.ok) {
+      throw new Error(sessionData.error || "Danışan oturumu hazırlanamadı.");
+    }
+
+    const { session, user: authUser } = await ensureClientSession(
+      sessionData.email,
+      sessionData.password
+    );
+
+    const syncEmail = authUser.email || sessionData.email;
+    if (!syncEmail) {
+      throw new Error("Hesap e-posta bilgisi alınamadı.");
+    }
+
+    const syncResponse = await fetch("/api/auth/sync", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        supabaseId: authUser.id,
+        email: syncEmail,
+        role: "client",
+      }),
+    });
+
+    if (!syncResponse.ok) {
+      const syncError = await syncResponse.json();
+      throw new Error(syncError.error || "Hesap senkronizasyonu başarısız.");
+    }
+
+    if (!skipConfirmStep) {
+      const confirmResponse = await fetch("/api/client-auth/confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhoneValue,
+          clientId: selectedClientValue.id,
+        }),
+      });
+
+      const confirmData = await confirmResponse.json();
+
+      if (!confirmResponse.ok) {
+        throw new Error(
+          confirmData.error || "Eşleştirme onaylanırken bir hata oluştu."
+        );
+      }
+    }
+  };
+
   const handleLookupClients = async () => {
     setIsSearchingClient(true);
 
@@ -133,19 +210,46 @@ export default function LoginPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.error ||
-            "Telefon numarası sorgulanırken bir hata oluştu."
+          data.error || "Telefon numarası sorgulanırken bir hata oluştu."
         );
       }
 
+      const clients: PhoneLookupClient[] = data.clients || [];
+      const firstClient = clients[0] || null;
+      const shouldAutoLogin =
+        Boolean(data.singleClientAutoLogin) && clients.length === 1 && firstClient;
+
       setNormalizedPhone(data.normalizedPhone);
-      setLookupClients(data.clients || []);
-      setSelectedClientId(data.clients?.[0]?.id || null);
+      setLookupClients(clients);
+      setSelectedClientId(firstClient?.id || null);
+      setSingleClientAutoLogin(Boolean(data.singleClientAutoLogin));
+
+      if (shouldAutoLogin && firstClient) {
+        setIsConfirmingClient(true);
+        toast({
+          title: "Otomatik Giriş",
+          description: "Daha önce onaylı eşleşmeniz bulundu. Giriş yapılıyor...",
+        });
+
+        await completeClientLogin({
+          selectedClientValue: firstClient,
+          normalizedPhoneValue: data.normalizedPhone,
+          skipConfirmStep: true,
+        });
+
+        toast({
+          title: "Hoş Geldiniz",
+          description: `${firstClient.name} ${firstClient.surname} profiliyle giriş yapıldı.`,
+        });
+
+        window.location.href = "/client";
+        return;
+      }
 
       toast({
         title: "Profil Bulundu",
         description:
-          data.clients?.length > 1
+          clients.length > 1
             ? "Telefon numaranızla birden fazla profil bulundu. Lütfen seçin."
             : "Profil bulundu. Onaylayarak devam edebilirsiniz.",
       });
@@ -160,6 +264,7 @@ export default function LoginPage() {
       });
     } finally {
       setIsSearchingClient(false);
+      setIsConfirmingClient(false);
     }
   };
 
@@ -227,70 +332,11 @@ export default function LoginPage() {
     setIsConfirmingClient(true);
 
     try {
-      const sessionResponse = await fetch("/api/client-auth/session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phoneNumber: normalizedPhone,
-        }),
+      await completeClientLogin({
+        selectedClientValue: selectedClient,
+        normalizedPhoneValue: normalizedPhone,
+        skipConfirmStep: false,
       });
-
-      const sessionData = await sessionResponse.json();
-
-      if (!sessionResponse.ok) {
-        throw new Error(
-          sessionData.error || "Danışan oturumu hazırlanamadı."
-        );
-      }
-
-      const { session, user: authUser } = await ensureClientSession(
-        sessionData.email,
-        sessionData.password
-      );
-
-      const syncEmail = authUser.email || sessionData.email;
-      if (!syncEmail) {
-        throw new Error("Hesap e-posta bilgisi alınamadı.");
-      }
-
-      const syncResponse = await fetch("/api/auth/sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          supabaseId: authUser.id,
-          email: syncEmail,
-          role: "client",
-        }),
-      });
-
-      if (!syncResponse.ok) {
-        const syncError = await syncResponse.json();
-        throw new Error(syncError.error || "Hesap senkronizasyonu başarısız.");
-      }
-
-      const confirmResponse = await fetch("/api/client-auth/confirm", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          phoneNumber: normalizedPhone,
-          clientId: selectedClient.id,
-        }),
-      });
-
-      const confirmData = await confirmResponse.json();
-
-      if (!confirmResponse.ok) {
-        throw new Error(
-          confirmData.error || "Eşleştirme onaylanırken bir hata oluştu."
-        );
-      }
 
       toast({
         title: "Eşleştirme Tamamlandı",
@@ -465,7 +511,9 @@ export default function LoginPage() {
               {lookupClients.length > 0 && (
                 <div className="space-y-3 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
                   <p className="text-sm text-gray-700 font-medium">
-                    Kim olduğunuzu seçin
+                    {lookupClients.length > 1
+                      ? "Kim olduğunuzu seçin"
+                      : "Profiliniz bulundu"}
                   </p>
 
                   <div className="space-y-2 max-h-56 overflow-auto pr-1">
@@ -494,7 +542,7 @@ export default function LoginPage() {
                     })}
                   </div>
 
-                  {selectedClient && (
+                  {selectedClient && !singleClientAutoLogin && (
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
                       <p className="text-sm text-emerald-900 font-medium">
                         {selectedClient.name} {selectedClient.surname} profili ile

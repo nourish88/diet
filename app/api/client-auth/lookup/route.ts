@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
-import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
+import {
+  buildClientPhoneCredentials,
+  normalizeClientPhoneNumber,
+} from "@/lib/client-phone-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +40,7 @@ export async function POST(request: NextRequest) {
             name: true,
             surname: true,
             birthdate: true,
+            userId: true,
           },
         },
       },
@@ -56,10 +60,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let singleClientAutoLogin = false;
+
+    if (mappings.length === 1) {
+      const credentials = buildClientPhoneCredentials(normalizedPhone);
+      const phoneAuthUser = await prisma.user.findUnique({
+        where: {
+          email: credentials.email,
+        },
+        select: {
+          id: true,
+          role: true,
+          isApproved: true,
+        },
+      });
+
+      singleClientAutoLogin =
+        Boolean(phoneAuthUser) &&
+        phoneAuthUser?.role === "client" &&
+        phoneAuthUser?.isApproved === true &&
+        mappings[0].client.userId === phoneAuthUser?.id;
+    }
+
     return addCorsHeaders(
       NextResponse.json({
         success: true,
         normalizedPhone,
+        singleClientAutoLogin,
         clients: mappings
           .map((mapping) => ({
             id: mapping.client.id,

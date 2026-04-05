@@ -233,7 +233,15 @@ export default function ClientDashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="mb-3 text-center">
+          <p className="text-sm font-semibold text-gray-700">Web ve Yorum</p>
+          <p className="text-xs text-gray-500">
+            Web sitemizi inceleyin, deneyiminizi Google&apos;da paylaşarak daha
+            fazla danışana yol gösterin.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <a
             href={DIETITIAN_WEBSITE_URL}
             target="_blank"
@@ -246,8 +254,12 @@ export default function ClientDashboard() {
                   <Globe className="w-5 h-5 text-blue-700" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Web Sitesi</p>
-                  <p className="text-xs text-gray-500">Bilgilere ve içeriklere göz atın</p>
+                  <p className="font-semibold text-gray-900">
+                    Web Sitemizi İnceleyin
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Programlar, içerikler ve danışmanlık detayları
+                  </p>
                 </div>
               </div>
               <ExternalLink className="w-4 h-4 text-blue-600" />
@@ -266,14 +278,23 @@ export default function ClientDashboard() {
                   <Star className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Google&apos;a Yorum Yaz</p>
-                  <p className="text-xs text-gray-500">Deneyiminizle diğer danışanlara destek olun</p>
+                  <p className="font-semibold text-gray-900">
+                    Google&apos;da Bizi Değerlendirin
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Yorumunuz, doğru diyetisyen arayanlara destek olur
+                  </p>
                 </div>
               </div>
               <ExternalLink className="w-4 h-4 text-amber-600" />
             </div>
           </a>
         </div>
+
+        <p className="text-center text-xs text-gray-500 mb-8">
+          30 saniyede web sitemizi gezebilir, 1-2 cümle yorumunuzla bize katkı
+          sağlayabilirsiniz.
+        </p>
 
         {/* Logout Card */}
         <div className="max-w-md mx-auto">
