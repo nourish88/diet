@@ -466,6 +466,24 @@ export default function ClientDetailPage() {
                 </div>
               </div>
 
+              {/* Phone auth mapping info */}
+              <div className="flex items-start">
+                <Phone className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-600">
+                    Telefon Giriş Eşleşmesi
+                  </div>
+                  <div className="text-gray-800">
+                    {client.phoneAuth?.phoneNormalized || "Telefon eşleşmesi yok"}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {client.user?.email
+                      ? `Aktif eşleşen hesap: ${client.user.email}`
+                      : "Henüz danışan hesabı ile eşleşmemiş"}
+                  </div>
+                </div>
+              </div>
+
               {/* Add Gender */}
               <div className="flex items-start gap-2">
                 <User className="h-5 w-5 text-indigo-500 mt-1" />
@@ -493,8 +511,8 @@ export default function ClientDetailPage() {
                     İlişki Kaldır
                   </Button>
                   <p className="text-xs text-gray-500 mt-2">
-                    İlişki kaldırıldıktan sonra danışan tekrar e-posta ve şifre
-                    ile eşleştirilebilir.
+                    İlişki kaldırıldıktan sonra danışan tekrar telefon ile giriş
+                    yaparak eşleşebilir.
                   </p>
                 </div>
               )}

@@ -19,7 +19,7 @@ model Client {
   name            String
   surname         String
   birthdate       DateTime?
-  phoneNumber     String?         @unique
+  phoneNumber     String?
   notes           String?
   gender          Int?
   illness         String?
@@ -34,10 +34,23 @@ model Client {
   mealPhotos      MealPhoto[]
   progressEntries ProgressEntry[]
   exerciseLogs    ExerciseLog[]
+  phoneAuth       ClientPhoneAuth?
 
   // Tanita mapping (opsiyonel)
   tanitaMemberId Int?        @unique // Tanita users.id (mapping için)
   tanitaUser     TanitaUser?
+}
+
+model ClientPhoneAuth {
+  id              Int      @id @default(autoincrement())
+  clientId        Int      @unique
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  phoneRaw        String
+  phoneNormalized String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([phoneNormalized])
 }
 
 model Diet {

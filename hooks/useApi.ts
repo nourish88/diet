@@ -56,6 +56,10 @@ export interface Client {
     id: number;
     email: string;
   } | null;
+  phoneAuth?: {
+    phoneRaw: string;
+    phoneNormalized: string;
+  } | null;
   bannedFoods?: Array<{
     id: number;
     besin: {
@@ -215,4 +219,3 @@ export function useInvalidateCache() {
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }
-

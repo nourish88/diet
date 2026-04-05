@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,56 +14,78 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, User, UserPlus, Stethoscope } from "lucide-react";
-import Link from "next/link";
+import {
+  Loader2,
+  User,
+  Stethoscope,
+  Search,
+  CheckCircle,
+  ArrowRight,
+} from "lucide-react";
+
+type LoginType = "dietitian" | "client";
+
+interface PhoneLookupClient {
+  id: number;
+  name: string;
+  surname: string;
+  birthdate: string | null;
+}
+
+function formatBirthdate(value: string | null): string {
+  if (!value) return "Doğum tarihi belirtilmemiş";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Doğum tarihi belirtilmemiş";
+  }
+
+  return date.toLocaleDateString("tr-TR");
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [loginType, setLoginType] = useState<"dietitian" | "client">(
-    "dietitian"
-  );
+  const [loginType, setLoginType] = useState<LoginType>("dietitian");
+
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [normalizedPhone, setNormalizedPhone] = useState<string | null>(null);
+  const [lookupClients, setLookupClients] = useState<PhoneLookupClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [isConfirmingClient, setIsConfirmingClient] = useState(false);
+
   const { signIn, user, databaseUser, loading } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
-  // Debug: Log loginType changes
-  useEffect(() => {
-    console.log("🔵 loginType changed:", loginType);
-  }, [loginType]);
+  const selectedClient = useMemo(
+    () => lookupClients.find((client) => client.id === selectedClientId) || null,
+    [lookupClients, selectedClientId]
+  );
 
-  // Removed handleRegisterClick - using Link component instead (no form submit possible)
-
-  // Redirect when user is authenticated - based on role
   useEffect(() => {
     if (!loading && user && databaseUser) {
-      console.log("🔄 Redirecting authenticated user");
-      console.log("🔄 User:", user?.email, "Role:", databaseUser?.role);
-
-      // Redirect based on role
       if (databaseUser.role === "client") {
-        // Check if client is approved
-        if (!databaseUser.isApproved) {
-          console.log(
-            "👤 Client not approved, redirecting to pending-approval"
-          );
-          window.location.href = "/pending-approval";
-        } else {
-          console.log("👤 Client approved, redirecting to /client");
+        if (databaseUser.isApproved) {
           window.location.href = "/client";
         }
       } else if (databaseUser.role === "dietitian") {
-        console.log("👨‍⚕️ Dietitian, redirecting to /");
         window.location.href = "/";
       } else {
-        // Unknown role, redirect to home
         window.location.href = "/";
       }
     }
   }, [user, databaseUser, loading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const resetClientFlow = () => {
+    setLookupClients([]);
+    setSelectedClientId(null);
+    setNormalizedPhone(null);
+  };
+
+  const handleDietitianSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -81,9 +103,8 @@ export default function LoginPage() {
           title: "Başarılı",
           description: "Giriş yapıldı! Yönlendiriliyorsunuz...",
         });
-        // Don't redirect here - let useEffect handle it when auth state updates
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Hata",
         description: "Beklenmeyen bir hata oluştu.",
@@ -94,11 +115,204 @@ export default function LoginPage() {
     }
   };
 
+  const handleLookupClients = async () => {
+    setIsSearchingClient(true);
+
+    try {
+      const response = await fetch("/api/client-auth/lookup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Telefon numarası sorgulanırken bir hata oluştu."
+        );
+      }
+
+      setNormalizedPhone(data.normalizedPhone);
+      setLookupClients(data.clients || []);
+      setSelectedClientId(data.clients?.[0]?.id || null);
+
+      toast({
+        title: "Profil Bulundu",
+        description:
+          data.clients?.length > 1
+            ? "Telefon numaranızla birden fazla profil bulundu. Lütfen seçin."
+            : "Profil bulundu. Onaylayarak devam edebilirsiniz.",
+      });
+    } catch (error: any) {
+      resetClientFlow();
+      toast({
+        title: "Telefon Doğrulama",
+        description:
+          error.message ||
+          "Telefon numarası doğrulanamadı. Lütfen diyetisyeninizle iletişime geçin.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingClient(false);
+    }
+  };
+
+  const ensureClientSession = async (emailValue: string, passwordValue: string) => {
+    const signedIn = await supabase.auth.signInWithPassword({
+      email: emailValue,
+      password: passwordValue,
+    });
+
+    if (!signedIn.error && signedIn.data.session && signedIn.data.user) {
+      return {
+        session: signedIn.data.session,
+        user: signedIn.data.user,
+      };
+    }
+
+    const signUpResult = await supabase.auth.signUp({
+      email: emailValue,
+      password: passwordValue,
+      options: {
+        data: {
+          role: "client",
+        },
+      },
+    });
+
+    if (signUpResult.error) {
+      const isAlreadyRegistered =
+        signUpResult.error.message?.toLowerCase().includes("already") ||
+        signUpResult.error.message?.toLowerCase().includes("registered");
+
+      if (!isAlreadyRegistered) {
+        throw new Error(signUpResult.error.message || "Danışan girişi başarısız.");
+      }
+    }
+
+    const retrySignIn = await supabase.auth.signInWithPassword({
+      email: emailValue,
+      password: passwordValue,
+    });
+
+    if (retrySignIn.error || !retrySignIn.data.session || !retrySignIn.data.user) {
+      throw new Error(
+        retrySignIn.error?.message ||
+          "Danışan oturumu açılamadı. Lütfen tekrar deneyin."
+      );
+    }
+
+    return {
+      session: retrySignIn.data.session,
+      user: retrySignIn.data.user,
+    };
+  };
+
+  const handleConfirmClient = async () => {
+    if (!selectedClient || !normalizedPhone) {
+      toast({
+        title: "Profil Seçimi",
+        description: "Devam etmek için profil seçiniz.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConfirmingClient(true);
+
+    try {
+      const sessionResponse = await fetch("/api/client-auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhone,
+        }),
+      });
+
+      const sessionData = await sessionResponse.json();
+
+      if (!sessionResponse.ok) {
+        throw new Error(
+          sessionData.error || "Danışan oturumu hazırlanamadı."
+        );
+      }
+
+      const { session, user: authUser } = await ensureClientSession(
+        sessionData.email,
+        sessionData.password
+      );
+
+      const syncEmail = authUser.email || sessionData.email;
+      if (!syncEmail) {
+        throw new Error("Hesap e-posta bilgisi alınamadı.");
+      }
+
+      const syncResponse = await fetch("/api/auth/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          supabaseId: authUser.id,
+          email: syncEmail,
+          role: "client",
+        }),
+      });
+
+      if (!syncResponse.ok) {
+        const syncError = await syncResponse.json();
+        throw new Error(syncError.error || "Hesap senkronizasyonu başarısız.");
+      }
+
+      const confirmResponse = await fetch("/api/client-auth/confirm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhone,
+          clientId: selectedClient.id,
+        }),
+      });
+
+      const confirmData = await confirmResponse.json();
+
+      if (!confirmResponse.ok) {
+        throw new Error(
+          confirmData.error || "Eşleştirme onaylanırken bir hata oluştu."
+        );
+      }
+
+      toast({
+        title: "Eşleştirme Tamamlandı",
+        description: `${selectedClient.name} ${selectedClient.surname} profiline yönlendiriliyorsunuz.`,
+      });
+
+      window.location.href = "/client";
+    } catch (error: any) {
+      toast({
+        title: "Danışan Girişi",
+        description: error.message || "Danışan girişi başarısız.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConfirmingClient(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 pb-4">
-          {/* Logo - Show for both dietitian and client */}
           <div className="flex justify-center mb-4">
             <img
               src="/ezgi_evgin-removebg-preview.png"
@@ -114,12 +328,15 @@ export default function LoginPage() {
             Giriş yapmak için bilgilerinizi girin
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-6">
-          {/* Login Type Selector */}
           <div className="grid grid-cols-2 gap-3 w-full">
             <button
               type="button"
-              onClick={() => setLoginType("dietitian")}
+              onClick={() => {
+                setLoginType("dietitian");
+                resetClientFlow();
+              }}
               className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
                 loginType === "dietitian"
                   ? "bg-indigo-50 border-indigo-600 text-indigo-700"
@@ -129,9 +346,14 @@ export default function LoginPage() {
               <Stethoscope className="w-5 h-5 flex-shrink-0" />
               <span className="font-medium whitespace-nowrap">Diyetisyen</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setLoginType("client")}
+              onClick={() => {
+                setLoginType("client");
+                setEmail("");
+                setPassword("");
+              }}
               className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
                 loginType === "client"
                   ? "bg-blue-50 border-blue-600 text-blue-700"
@@ -143,124 +365,165 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4 w-full"
-            id="login-form"
-          >
-            <div className="space-y-2 w-full">
-              <Label htmlFor="email" className="block">
-                E-posta
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="ornek@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2 w-full">
-              <Label htmlFor="password" className="block">
-                Şifre
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Şifrenizi girin"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-            <Button
-              type="submit"
-              className={`w-full ${
-                loginType === "dietitian"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                  : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-              }`}
-              disabled={isLoading}
+          {loginType === "dietitian" ? (
+            <form
+              onSubmit={handleDietitianSubmit}
+              className="space-y-4 w-full"
+              id="login-form"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Giriş yapılıyor...
-                </>
-              ) : (
-                <>
-                  {loginType === "dietitian" ? (
-                    <>
-                      <Stethoscope className="mr-2 h-4 w-4" />
-                      Diyetisyen Girişi
-                    </>
-                  ) : (
-                    <>
-                      <User className="mr-2 h-4 w-4" />
-                      Danışan Girişi
-                    </>
-                  )}
-                </>
-              )}
-            </Button>
-          </form>
-
-          {/* Client Registration Link - COMPLETELY OUTSIDE form */}
-          {loginType === "client" && (
-            <div className="mt-6 w-full">
-              <div className="relative mb-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">veya</span>
-                </div>
+              <div className="space-y-2 w-full">
+                <Label htmlFor="email" className="block">
+                  E-posta
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="ornek@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full"
+                />
               </div>
-              {/* Use Link to navigate to register-client */}
-              <Link
-                href="/register-client"
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-all font-medium bg-white text-center"
-                data-testid="register-client-button"
+
+              <div className="space-y-2 w-full">
+                <Label htmlFor="password" className="block">
+                  Şifre
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Şifrenizi girin"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                disabled={isLoading}
               >
-                <UserPlus className="w-5 h-5" />
-                <span>Danışan Kaydı Oluştur</span>
-              </Link>
-              {/* Debug info */}
-              {process.env.NODE_ENV === "development" && (
-                <div className="mt-2 text-xs text-gray-400 text-center">
-                  Debug: loginType={loginType}, router=
-                  {router ? "ready" : "not ready"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Giriş yapılıyor...
+                  </>
+                ) : (
+                  <>
+                    <Stethoscope className="mr-2 h-4 w-4" />
+                    Diyetisyen Girişi
+                  </>
+                )}
+              </Button>
+
+              <div className="mt-4 text-center text-sm text-gray-600">
+                Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime
+                geçin.
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="client-phone">Telefon Numarası</Label>
+                <Input
+                  id="client-phone"
+                  type="tel"
+                  placeholder="05XXXXXXXXX"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value);
+                    resetClientFlow();
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  Diyetisyeninizin sisteme kaydettiği telefon numarasını girin.
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                onClick={handleLookupClients}
+                disabled={isSearchingClient || !phoneNumber.trim()}
+              >
+                {isSearchingClient ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Profil aranıyor...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Profili Bul
+                  </>
+                )}
+              </Button>
+
+              {lookupClients.length > 0 && (
+                <div className="space-y-3 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
+                  <p className="text-sm text-gray-700 font-medium">
+                    Kim olduğunuzu seçin
+                  </p>
+
+                  <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                    {lookupClients.map((client) => {
+                      const isSelected = selectedClientId === client.id;
+
+                      return (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => setSelectedClientId(client.id)}
+                          className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
+                            isSelected
+                              ? "border-blue-500 bg-white"
+                              : "border-gray-200 bg-white/80 hover:border-blue-300"
+                          }`}
+                        >
+                          <p className="text-sm font-semibold text-gray-900">
+                            {client.name} {client.surname}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatBirthdate(client.birthdate)}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedClient && (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+                      <p className="text-sm text-emerald-900 font-medium">
+                        {selectedClient.name} {selectedClient.surname} profili ile
+                        eşleştirileceksiniz. Onaylıyor musunuz?
+                      </p>
+
+                      <Button
+                        type="button"
+                        onClick={handleConfirmClient}
+                        disabled={isConfirmingClient}
+                        className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {isConfirmingClient ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Onaylanıyor...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            Onaylıyorum, Devam Et
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
-              <p className="mt-3 text-xs text-gray-500 text-center">
-                Hesabınız yok mu? Kayıt olun ve diyetisyeninizle eşleşin
-              </p>
-            </div>
-          )}
-
-          {/* Dietitian Info */}
-          {loginType === "dietitian" && (
-            <div className="mt-4 text-center text-sm text-gray-600">
-              Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime
-              geçin.
-            </div>
-          )}
-
-          {/* Debug: Manual redirect button */}
-          {user && databaseUser && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800 mb-2">
-                ✅ Giriş başarılı! Manuel yönlendirme için:
-              </p>
-              <Button
-                onClick={() => (window.location.href = "/")}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                Ana Sayfaya Git
-              </Button>
             </div>
           )}
         </CardContent>

@@ -66,11 +66,6 @@ const Navbar = () => {
       { href: "/clients", label: "Danışanlar", icon: Users },
       { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
       { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
-      {
-        href: "/pending-clients",
-        label: "Onay Bekleyenler",
-        icon: Users,
-      },
     ];
 
     // If user is not authenticated, show no items

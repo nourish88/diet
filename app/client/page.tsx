@@ -7,6 +7,9 @@ import {
   MessageCircle,
   LogOut,
   ChevronRight,
+  Globe,
+  Star,
+  ExternalLink,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
@@ -18,6 +21,12 @@ interface UnreadData {
 }
 
 export default function ClientDashboard() {
+  const DIETITIAN_WEBSITE_URL =
+    process.env.NEXT_PUBLIC_DIETITIAN_WEBSITE_URL ||
+    "https://ezgievginaktas.com";
+  const GOOGLE_REVIEW_URL =
+    "https://www.google.com/maps/place/Diyetisyen+Ezgi+Evgin/@39.9669753,32.6332346,17z/data=!3m1!4b1!4m6!3m5!1s0x14d330d2f71d4659:0x83b8bf59458d8408!8m2!3d39.9669753!4d32.6358095!16s%2Fg%2F11dymr8nhs?entry=ttu&g_ep=EgoyMDI2MDQwMS4wIKXMDSoASAFQAw%3D%3D";
+
   const router = useRouter();
   const { databaseUser } = useAuth();
   const [userName, setUserName] = useState<string>("");
@@ -222,6 +231,48 @@ export default function ClientDashboard() {
               </div>
             </div>
           </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <a
+            href={DIETITIAN_WEBSITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-400 p-5 transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Web Sitesi</p>
+                  <p className="text-xs text-gray-500">Bilgilere ve içeriklere göz atın</p>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-blue-600" />
+            </div>
+          </a>
+
+          <a
+            href={GOOGLE_REVIEW_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-amber-400 p-5 transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <Star className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Google&apos;a Yorum Yaz</p>
+                  <p className="text-xs text-gray-500">Deneyiminizle diğer danışanlara destek olun</p>
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-amber-600" />
+            </div>
+          </a>
         </div>
 
         {/* Logout Card */}

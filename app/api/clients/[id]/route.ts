@@ -3,10 +3,9 @@ import prisma from "@/lib/prisma";
 import {
   requireOwnClient,
   authenticateRequest,
-  requireDietitian,
-  AuthResult,
 } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
 
 export async function GET(
   request: NextRequest,
@@ -64,6 +63,7 @@ export async function GET(
             email: true,
           },
         },
+        phoneAuth: true,
       },
     });
 
@@ -97,10 +97,23 @@ export async function PUT(
     const { id } = await params;
     const clientId = parseInt(id);
     const data = await request.json();
+    const normalizedPhone = normalizeClientPhoneNumber(data.phoneNumber);
 
     if (isNaN(clientId)) {
       return addCorsHeaders(
         NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    if (data.phoneNumber && !normalizedPhone) {
+      return addCorsHeaders(
+        NextResponse.json(
+          {
+            error:
+              "Telefon numarası geçerli değil. Lütfen gerçek bir Türkiye cep telefonu girin.",
+          },
+          { status: 400 }
+        )
       );
     }
 
@@ -126,31 +139,53 @@ export async function PUT(
     }
 
     // First, update the client's basic information
-    const updatedClient = await prisma.client.update({
-      where: {
-        id: clientId,
-      },
-      data: {
-        ...clientData,
-        gender: gender,
-        birthdate: clientData.birthdate ? new Date(clientData.birthdate) : null,
-        // First, delete all existing banned foods
-        bannedFoods: {
-          deleteMany: {},
+    await prisma.$transaction(async (tx) => {
+      await tx.client.update({
+        where: {
+          id: clientId,
         },
-      },
-    });
-
-    // Then, if there are banned foods, create them
-    if (bannedBesins && bannedBesins.length > 0) {
-      await prisma.bannedFood.createMany({
-        data: bannedBesins.map((banned: any) => ({
-          clientId: clientId,
-          besinId: banned.besinId,
-          reason: banned.reason || "",
-        })),
+        data: {
+          ...clientData,
+          gender: gender,
+          birthdate: clientData.birthdate ? new Date(clientData.birthdate) : null,
+          // First, delete all existing banned foods
+          bannedFoods: {
+            deleteMany: {},
+          },
+        },
       });
-    }
+
+      // Then, if there are banned foods, create them
+      if (bannedBesins && bannedBesins.length > 0) {
+        await tx.bannedFood.createMany({
+          data: bannedBesins.map((banned: any) => ({
+            clientId: clientId,
+            besinId: banned.besinId,
+            reason: banned.reason || "",
+          })),
+        });
+      }
+
+      if (normalizedPhone && data.phoneNumber) {
+        await tx.clientPhoneAuth.upsert({
+          where: { clientId },
+          create: {
+            clientId,
+            phoneRaw: data.phoneNumber,
+            phoneNormalized: normalizedPhone,
+          },
+          update: {
+            phoneRaw: data.phoneNumber,
+            phoneNormalized: normalizedPhone,
+          },
+        });
+      } else {
+        await tx.clientPhoneAuth.deleteMany({
+          where: { clientId },
+        });
+      }
+
+    });
 
     // Fetch the updated client with all relations
     const finalClient = await prisma.client.findUnique({
@@ -179,6 +214,7 @@ export async function PUT(
             email: true,
           },
         },
+        phoneAuth: true,
       },
     });
 
@@ -209,10 +245,23 @@ export async function PATCH(
     const { id } = await params;
     const clientId = parseInt(id);
     const data = await request.json();
+    const normalizedPhone = normalizeClientPhoneNumber(data.phoneNumber);
 
     if (isNaN(clientId)) {
       return addCorsHeaders(
         NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
+      );
+    }
+
+    if (data.phoneNumber && !normalizedPhone) {
+      return addCorsHeaders(
+        NextResponse.json(
+          {
+            error:
+              "Telefon numarası geçerli değil. Lütfen gerçek bir Türkiye cep telefonu girin.",
+          },
+          { status: 400 }
+        )
       );
     }
 
@@ -224,34 +273,60 @@ export async function PATCH(
       );
     }
 
-    const updatedClient = await prisma.client.update({
-      where: {
-        id: clientId,
-      },
-      data,
-      include: {
-        diets: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          select: {
-            id: true,
-            createdAt: true,
-            tarih: true,
-          },
+    const updatedClient = await prisma.$transaction(async (tx) => {
+      const updated = await tx.client.update({
+        where: {
+          id: clientId,
         },
-        bannedFoods: {
-          include: {
-            besin: true,
+        data,
+        include: {
+          diets: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            select: {
+              id: true,
+              createdAt: true,
+              tarih: true,
+            },
           },
-        },
-        user: {
-          select: {
-            id: true,
-            email: true,
+          bannedFoods: {
+            include: {
+              besin: true,
+            },
           },
+          user: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          phoneAuth: true,
         },
-      },
+      });
+
+      if (Object.prototype.hasOwnProperty.call(data, "phoneNumber")) {
+        if (normalizedPhone && data.phoneNumber) {
+          await tx.clientPhoneAuth.upsert({
+            where: { clientId },
+            create: {
+              clientId,
+              phoneRaw: data.phoneNumber,
+              phoneNormalized: normalizedPhone,
+            },
+            update: {
+              phoneRaw: data.phoneNumber,
+              phoneNormalized: normalizedPhone,
+            },
+          });
+        } else {
+          await tx.clientPhoneAuth.deleteMany({
+            where: { clientId },
+          });
+        }
+      }
+
+      return updated;
     });
 
     return addCorsHeaders(NextResponse.json(updatedClient));

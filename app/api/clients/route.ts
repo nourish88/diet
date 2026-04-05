@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -110,6 +111,19 @@ export const POST = requireDietitian(
       }
 
       const { bannedBesins, ...clientDetails } = clientData;
+      const normalizedPhone = normalizeClientPhoneNumber(clientDetails.phoneNumber);
+
+      if (clientDetails.phoneNumber && !normalizedPhone) {
+        return addCorsHeaders(
+          NextResponse.json(
+            {
+              error:
+                "Telefon numarası geçerli değil. Lütfen gerçek bir Türkiye cep telefonu girin.",
+            },
+            { status: 400 }
+          )
+        );
+      }
 
       const transformedData = {
         ...clientDetails,
@@ -122,26 +136,45 @@ export const POST = requireDietitian(
 
       console.log("Transformed data being sent to Prisma:", transformedData);
 
-      const client = await prisma.client.create({
-        data: {
-          ...transformedData,
-          bannedFoods: {
-            create:
-              bannedBesins?.map(
-                (ban: { besinId: number; reason?: string }) => ({
-                  besinId: ban.besinId,
-                  reason: ban.reason,
-                })
-              ) || [],
-          },
-        },
-        include: {
-          bannedFoods: {
-            include: {
-              besin: true,
+      const client = await prisma.$transaction(async (tx) => {
+        const createdClient = await tx.client.create({
+          data: {
+            ...transformedData,
+            bannedFoods: {
+              create:
+                bannedBesins?.map(
+                  (ban: { besinId: number; reason?: string }) => ({
+                    besinId: ban.besinId,
+                    reason: ban.reason,
+                  })
+                ) || [],
             },
           },
-        },
+          include: {
+            bannedFoods: {
+              include: {
+                besin: true,
+              },
+            },
+          },
+        });
+
+        if (normalizedPhone) {
+          await tx.clientPhoneAuth.upsert({
+            where: { clientId: createdClient.id },
+            create: {
+              clientId: createdClient.id,
+              phoneRaw: clientDetails.phoneNumber,
+              phoneNormalized: normalizedPhone,
+            },
+            update: {
+              phoneRaw: clientDetails.phoneNumber,
+              phoneNormalized: normalizedPhone,
+            },
+          });
+        }
+
+        return createdClient;
       });
 
       console.log("Created client:", client);

@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { TanitaService, type TanitaUser } from "./TanitaService";
 import { Client } from "@prisma/client";
+import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
 
 /**
  * Telefon numarasını normalize et (boşlukları ve özel karakterleri temizle)
@@ -72,14 +73,14 @@ export const TanitaMappingService = {
       // 2. phoneNumber eşleşmesi
       const normalizedPhone = normalizePhone(tanitaUser.phone);
       if (normalizedPhone) {
-        const clientByPhone = await prisma.client.findUnique({
-          where: { phoneNumber: normalizedPhone },
+        const clientByPhone = await prisma.client.findFirst({
+          where: {
+            phoneNumber: normalizedPhone,
+            ...(dietitianId ? { dietitianId } : {}),
+          },
         });
         if (clientByPhone) {
-          // Dietitian kontrolü
-          if (!dietitianId || clientByPhone.dietitianId === dietitianId) {
-            return clientByPhone;
-          }
+          return clientByPhone;
         }
       }
 
@@ -236,6 +237,25 @@ export const TanitaMappingService = {
         },
       });
 
+      const normalizedLoginPhone = normalizeClientPhoneNumber(
+        updatedClient.phoneNumber
+      );
+
+      if (normalizedLoginPhone && updatedClient.phoneNumber) {
+        await prisma.clientPhoneAuth.upsert({
+          where: { clientId: updatedClient.id },
+          create: {
+            clientId: updatedClient.id,
+            phoneRaw: updatedClient.phoneNumber,
+            phoneNormalized: normalizedLoginPhone,
+          },
+          update: {
+            phoneRaw: updatedClient.phoneNumber,
+            phoneNormalized: normalizedLoginPhone,
+          },
+        });
+      }
+
       return { client: updatedClient, tanitaUser: tanitaUserRecord };
     } catch (error) {
       console.error("Error mapping client to Tanita:", error);
@@ -292,6 +312,22 @@ export const TanitaMappingService = {
           tanitaMemberId: tanitaUser.id,
         },
       });
+
+      const normalizedLoginPhone = normalizeClientPhoneNumber(client.phoneNumber);
+      if (normalizedLoginPhone && client.phoneNumber) {
+        await prisma.clientPhoneAuth.upsert({
+          where: { clientId: client.id },
+          create: {
+            clientId: client.id,
+            phoneRaw: client.phoneNumber,
+            phoneNormalized: normalizedLoginPhone,
+          },
+          update: {
+            phoneRaw: client.phoneNumber,
+            phoneNormalized: normalizedLoginPhone,
+          },
+        });
+      }
 
       // TanitaUser kaydı oluştur
       const tanitaUserRecord = await prisma.tanitaUser.create({
@@ -369,4 +405,3 @@ export const TanitaMappingService = {
     }
   },
 };
-

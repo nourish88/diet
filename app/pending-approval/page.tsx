@@ -1,13 +1,13 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, CheckCircle, Mail, LogOut } from "lucide-react";
+import { Clock, CheckCircle, LogOut, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 
 export default function PendingApprovalPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,19 +26,17 @@ export default function PendingApprovalPage() {
         return;
       }
 
-      const data = await apiClient.get<{ user: { isApproved: boolean; role: string; email?: string; referenceCode?: string } }>("/auth/sync");
-      
-      // If approved, redirect to appropriate page
+      const data = await apiClient.get<{
+        user: { isApproved: boolean; role: string };
+      }>("/auth/sync");
+
       if (data.user.isApproved) {
         if (data.user.role === "client") {
           router.push("/client");
         } else {
           router.push("/");
         }
-        return;
       }
-
-      setUser(data.user);
     } catch (error) {
       console.error("Error checking status:", error);
     } finally {
@@ -67,85 +65,33 @@ export default function PendingApprovalPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Icon */}
           <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Clock className="w-10 h-10 text-yellow-600" />
           </div>
 
-          {/* Title */}
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-4">
-            Hesabınız Onay Bekliyor
+            Profil Eşleşmesi Bekleniyor
           </h1>
 
-          {/* Reference Code */}
-          {user?.referenceCode && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-900 font-medium mb-2">
-                Referans Kodunuz:
-              </p>
-              <div className="bg-white border-2 border-blue-600 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600 tracking-wider">
-                  {user.referenceCode}
-                </p>
-              </div>
-              <p className="text-xs text-blue-700 mt-2">
-                Bu kodu diyetisyeninize verin
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Smartphone className="w-4 h-4 text-blue-700" />
+              <p className="text-sm text-blue-900 font-medium">
+                Telefon ile giriş adımlarını tamamlayın
               </p>
             </div>
-          )}
-
-          {/* Instructions */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-blue-600 font-bold text-sm">1</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  <strong>Referans kodunuzu</strong> diyetisyeninizle paylaşın
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-blue-600 font-bold text-sm">2</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  Diyetisyeniniz kodu kullanarak sizi <strong>mevcut danışan kaydınızla eşleştirecek</strong>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-blue-600 font-bold text-sm">3</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  Onaylandıktan sonra <strong>beslenme programlarınıza erişebileceksiniz</strong>
-                </p>
-              </div>
-            </div>
+            <p className="text-xs text-blue-800">
+              Giriş ekranında telefon numaranızı girip profilinizi seçin ve onaylayın.
+            </p>
           </div>
 
-          {/* User Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-              <Mail className="w-4 h-4" />
-              <span>{user?.email}</span>
-            </div>
-          </div>
-
-          {/* Actions */}
           <div className="space-y-3">
             <button
-              onClick={() => checkStatus()}
+              onClick={() => router.push("/login")}
               className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               <CheckCircle className="w-5 h-5" />
-              <span>Durumu Kontrol Et</span>
+              <span>Giriş Ekranına Git</span>
             </button>
 
             <button
@@ -156,16 +102,8 @@ export default function PendingApprovalPage() {
               <span>Çıkış Yap</span>
             </button>
           </div>
-
-          {/* Help */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              Sorun mu yaşıyorsunuz? Diyetisyeninizle iletişime geçin.
-            </p>
-          </div>
         </div>
       </div>
     </div>
   );
 }
-
