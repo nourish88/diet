@@ -144,12 +144,14 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Danışan Yönetimi</h1>
+    <div className="container mx-auto px-4 pt-2 pb-8 sm:pt-4 max-w-7xl">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-800 shrink-0">
+          Danışan Yönetimi
+        </h1>
         <Button
           onClick={() => router.push("/clients/new")}
-          className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+          className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shrink-0 w-fit sm:ml-4"
         >
           <UserPlus className="h-4 w-4 mr-2" />
           Yeni Danışan Ekle
