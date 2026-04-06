@@ -39,6 +39,11 @@ model Client {
   // Tanita mapping (opsiyonel)
   tanitaMemberId Int?        @unique // Tanita users.id (mapping için)
   tanitaUser     TanitaUser?
+
+  // KVKK / portal açık rıza özeti (detay ClientConsentRecord)
+  kvkkPortalConsentAt       DateTime?
+  kvkkPortalConsentVersion  String?
+  consentRecords            ClientConsentRecord[]
 }
 
 model ClientPhoneAuth {
@@ -303,9 +308,27 @@ model User {
   conversationPresences ConversationPresence[]
   progressEntries       ProgressEntry[]
   exerciseLogs          ExerciseLog[]
+  consentRecords        ClientConsentRecord[]
 
   @@index([supabaseId])
   @@index([email])
+}
+
+model ClientConsentRecord {
+  id              Int      @id @default(autoincrement())
+  clientId        Int
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentVersion  String
+  consentType     String
+  acceptedAt      DateTime @default(now())
+  channel         String
+  userAgent       String?
+  ipHash          String?
+
+  @@index([clientId, acceptedAt])
+  @@index([clientId, consentVersion])
 }
 
 model DietComment {

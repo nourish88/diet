@@ -10,6 +10,8 @@ import {
   Globe,
   Star,
   ExternalLink,
+  X,
+  Bell,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
@@ -19,6 +21,8 @@ interface UnreadData {
   totalUnread: number;
   unreadByDiet: Record<number, number>;
 }
+
+const WELCOME_DISMISS_KEY = "client_welcome_dismissed_v1";
 
 export default function ClientDashboard() {
   const DIETITIAN_WEBSITE_URL =
@@ -35,6 +39,17 @@ export default function ClientDashboard() {
     unreadByDiet: {},
   });
   const [loading, setLoading] = useState(true);
+  const [showWelcomeTip, setShowWelcomeTip] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && !localStorage.getItem(WELCOME_DISMISS_KEY)) {
+        setShowWelcomeTip(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -168,6 +183,51 @@ export default function ClientDashboard() {
             style={{ width: "180px", height: "auto" }}
           />
         </div>
+
+        {showWelcomeTip && (
+          <div className="relative mb-8 rounded-2xl border border-blue-200 bg-white/90 p-4 md:p-5 shadow-sm text-left">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem(WELCOME_DISMISS_KEY, "1");
+                } catch {
+                  /* ignore */
+                }
+                setShowWelcomeTip(false);
+              }}
+              className="absolute top-3 right-3 p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              aria-label="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <p className="text-sm font-semibold text-gray-900 pr-10 mb-3">
+              Hızlı başlangıç
+            </p>
+            <ul className="text-sm text-gray-700 space-y-2 mb-4 list-disc list-inside">
+              <li>
+                <strong>Diyetlerim:</strong> güncel planlarınız ve geçmiş kayıtlar
+              </li>
+              <li>
+                <strong>Sohbetlerim:</strong> diyetisyeninizle mesajlaşma
+              </li>
+              <li className="flex flex-wrap items-center gap-1">
+                <Bell className="w-4 h-4 inline text-blue-600 shrink-0" />
+                <span>
+                  Bildirimler için{" "}
+                  <Link
+                    href="/client/settings"
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    ayarlara
+                  </Link>{" "}
+                  göz atın (PWA: ana ekrana ekleyebilirsiniz)
+                </span>
+              </li>
+            </ul>
+          </div>
+        )}
+
         {/* Welcome Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">

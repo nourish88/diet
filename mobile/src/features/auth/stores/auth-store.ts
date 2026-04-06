@@ -17,9 +17,12 @@ export interface User {
   referenceCode?: string | null; // Reference code for client matching
   clientId?: number; // Only for clients
   client?: {
+    id?: number;
     name: string;
     surname: string;
-  };
+    kvkkPortalConsentAt?: string | null;
+    kvkkPortalConsentVersion?: string | null;
+  } | null;
 }
 
 interface AuthState {

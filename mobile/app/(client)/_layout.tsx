@@ -1,11 +1,12 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useAuthStore } from "@/features/auth/stores/auth-store";
 import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { consentRequired } from "@/core/config/kvkk-consent";
 
 export default function ClientLayout() {
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     console.log("🏠 Client Layout check:", {
@@ -24,13 +25,41 @@ export default function ClientLayout() {
     // Redirect if client is not approved
     if (user?.role === "client" && !user?.isApproved) {
       console.log("⏸️ Client not approved, redirecting to pending approval");
-      // Use router.push instead of replace to allow back navigation
       router.push("/pending-approval");
+      return;
     }
-  }, [isAuthenticated, user, router]);
+
+    const c = user?.client as
+      | {
+          kvkkPortalConsentAt?: string | null;
+          kvkkPortalConsentVersion?: string | null;
+        }
+      | null
+      | undefined;
+    const needsKvkk = consentRequired(
+      c?.kvkkPortalConsentAt,
+      c?.kvkkPortalConsentVersion
+    );
+    const onKvkkScreen = segments.some((s) => s === "kvkk-onay");
+
+    if (needsKvkk && !onKvkkScreen) {
+      router.replace("/(client)/kvkk-onay");
+      return;
+    }
+    if (!needsKvkk && onKvkkScreen) {
+      router.replace("/(client)");
+    }
+  }, [isAuthenticated, user, router, segments]);
 
   return (
     <Stack>
+      <Stack.Screen
+        name="kvkk-onay"
+        options={{
+          title: "KVKK Onayı",
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="index"
         options={{

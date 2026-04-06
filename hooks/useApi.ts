@@ -73,6 +73,8 @@ export interface Client {
     createdAt: string;
     tarih?: string | null;
   }>;
+  kvkkPortalConsentAt?: string | null;
+  kvkkPortalConsentVersion?: string | null;
 }
 
 export interface DashboardStats {

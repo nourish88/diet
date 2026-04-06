@@ -1,9 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ClientTopNav from "@/components/client/ClientTopNav";
+import { consentRequired } from "@/lib/kvkk-consent-config";
+
+interface SyncUser {
+  role: string;
+  isApproved: boolean;
+  client?: {
+    kvkkPortalConsentAt: string | null;
+    kvkkPortalConsentVersion: string | null;
+  } | null;
+}
+
+const KVKK_PATH = "/client/kvkk-onay";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -11,11 +23,12 @@ interface ClientLayoutProps {
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [pathname]);
 
   const checkAuth = async () => {
     try {
@@ -29,18 +42,33 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         return;
       }
 
-      // Fetch user details from our backend
-      const data = await apiClient.get<{ success?: boolean; user: { role: string; isApproved: boolean } }>("/auth/sync");
-      
-      // Check if user is a client
+      const data = await apiClient.get<{ success?: boolean; user: SyncUser }>(
+        "/auth/sync"
+      );
+
       if (data.user.role !== "client") {
         router.push("/");
         return;
       }
 
-      // Check if client is approved
       if (!data.user.isApproved) {
         router.push("/pending-approval");
+        return;
+      }
+
+      const c = data.user.client;
+      const needsKvkk = consentRequired(
+        c?.kvkkPortalConsentAt ?? null,
+        c?.kvkkPortalConsentVersion ?? null
+      );
+
+      if (needsKvkk && pathname !== KVKK_PATH) {
+        router.replace(KVKK_PATH);
+        return;
+      }
+
+      if (!needsKvkk && pathname === KVKK_PATH) {
+        router.replace("/client");
         return;
       }
     } catch (error) {
@@ -62,11 +90,12 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     );
   }
 
+  const hideNav = pathname === KVKK_PATH;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <ClientTopNav />
+      {!hideNav && <ClientTopNav />}
       <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
     </div>
   );
 }
-

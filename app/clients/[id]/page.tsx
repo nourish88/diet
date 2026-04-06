@@ -19,6 +19,7 @@ import {
   Activity,
   Mail,
   Unlink,
+  Shield,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale/tr";
@@ -382,6 +383,58 @@ export default function ClientDetailPage() {
           Danışan Listesine Dön
         </Link>
       </div>
+
+      <Card className="mb-6 border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-white">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-5 w-5 text-indigo-600" />
+            KVKK / portal açık rıza
+          </CardTitle>
+          <CardDescription>
+            Danışanın uygulama girişinde verdiği son onay özeti (yasal kayıt
+            için geçmiş listesi aşağıdaki bağlantıda).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-sm text-gray-700">
+            {client.kvkkPortalConsentAt && client.kvkkPortalConsentVersion ? (
+              <>
+                <p>
+                  <span className="font-medium text-gray-900">Son onay: </span>
+                  {format(parseISO(client.kvkkPortalConsentAt), "d MMMM yyyy HH:mm", {
+                    locale: tr,
+                  })}
+                </p>
+                <p className="text-gray-600 mt-1">
+                  Sürüm:{" "}
+                  <code className="text-xs bg-gray-100 px-1 rounded">
+                    {client.kvkkPortalConsentVersion}
+                  </code>
+                </p>
+              </>
+            ) : (
+              <p className="text-amber-800">
+                Henüz portal üzerinden onay kaydı yok (danışan giriş yaptığında
+                istenecek).
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/clients/${client.id}/kvkk`}>Geçmiş kayıtlar</Link>
+            </Button>
+            <Button variant="secondary" size="sm" asChild>
+              <a
+                href={`/api/clients/${client.id}/consents?format=csv`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                CSV indir
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
         <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white flex justify-between items-center">
