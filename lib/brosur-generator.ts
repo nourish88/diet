@@ -51,7 +51,7 @@ export async function loadLogoAsDataUrl(logoPath: string = "/ezgi_evgin.png"): P
  * Broşür için gerekli tüm içeriği hazırlar
  */
 export async function prepareBrosurContent(): Promise<BrosurContent> {
-  const registerUrl = "https://diet-six.vercel.app/register-client";
+  const registerUrl = "https://diet-six.vercel.app/login";
   
   const [logoDataUrl, qrCodeDataUrl] = await Promise.all([
     loadLogoAsDataUrl("/ezgi_evgin.png"),
@@ -64,4 +64,3 @@ export async function prepareBrosurContent(): Promise<BrosurContent> {
     registerUrl,
   };
 }
-

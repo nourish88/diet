@@ -39,10 +39,10 @@ export default function BrosurPage() {
 
               {/* Title */}
               <h2 className="text-2xl font-bold text-indigo-600 text-center mb-2">
-                Mobil Uygulamayı Kurun
+                Danışan Portalını Telefona Kurun
               </h2>
               <p className="text-sm text-gray-500 text-center mb-6">
-                Beslenme programınıza kolayca erişin
+                iOS ve Android için hızlı PWA kurulumu
               </p>
 
               {/* QR Code Placeholder */}
@@ -52,7 +52,7 @@ export default function BrosurPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 text-center mb-8">
-                QR Kodu tarayarak kayıt olun
+                QR kodu tarayıp giriş ekranını açın
               </p>
 
               {/* Installation Instructions */}
@@ -66,10 +66,12 @@ export default function BrosurPage() {
                       iOS (iPhone/iPad):
                     </p>
                     <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
-                      <li>Safari'de sayfayı açın</li>
-                      <li>Paylaş butonuna basın</li>
-                      <li>"Ana Ekrana Ekle" seçeneğini seçin</li>
-                      <li>Uygulamayı açın</li>
+                      <li>Bağlantıyı Safari ile açın</li>
+                      <li>Paylaş simgesine dokunun</li>
+                      <li>"Ana Ekrana Ekle" seçeneğini seçip Ekle deyin</li>
+                      <li>Ana ekrandaki uygulama ikonundan açın</li>
+                      <li>Telefon numaranızla giriş yapın</li>
+                      <li>Bildirim sorulduğunda İzin Ver seçin</li>
                     </ul>
                   </div>
                   <div>
@@ -77,9 +79,12 @@ export default function BrosurPage() {
                       Android:
                     </p>
                     <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
-                      <li>Chrome'da sayfayı açın</li>
-                      <li>Menüden "Ana ekrana ekle" seçin</li>
-                      <li>Uygulamayı açın</li>
+                      <li>Bağlantıyı Chrome ile açın</li>
+                      <li>Yükle simgesini veya menüdeki "Uygulamayı yükle" seçeneğini kullanın</li>
+                      <li>"Ana ekrana ekle / Yükle" onayını verin</li>
+                      <li>Ana ekrandaki uygulama ikonundan açın</li>
+                      <li>Telefon numaranızla giriş yapın</li>
+                      <li>Bildirim sorulduğunda İzin Ver seçin</li>
                     </ul>
                   </div>
                 </div>
@@ -93,7 +98,11 @@ export default function BrosurPage() {
                 <div className="grid grid-cols-1 gap-2">
                   <div className="flex items-start gap-2 text-xs text-gray-600">
                     <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Öğün hatırlatıcıları (30 dakika önce bildirim)</span>
+                    <span>Öğün hatırlatıcıları ve günlük bildirimler</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-gray-600">
+                    <Smartphone className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+                    <span>Telefon numarası ile hızlı danışan girişi</span>
                   </div>
                   <div className="flex items-start gap-2 text-xs text-gray-600">
                     <Calendar className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -124,7 +133,9 @@ export default function BrosurPage() {
                   Önemli Bilgi
                 </p>
                 <p className="text-xs text-gray-700">
-                  Kayıt olduktan sonra diyetisyeninizin onayını bekleyin. Onaylandıktan sonra uygulamayı kullanmaya başlayabilirsiniz.
+                  Sisteme kayıtlı telefon numaranız ile giriş yapın. Numaranız
+                  sistemde yoksa veya eşleşme bulunamazsa diyetisyeninizle
+                  iletişime geçin.
                 </p>
               </div>
 
@@ -151,4 +162,3 @@ export default function BrosurPage() {
     </div>
   );
 }
-

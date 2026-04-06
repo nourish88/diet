@@ -98,11 +98,11 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           },
           // Başlık
           {
-            text: "Mobil Uygulamayı Kurun",
+            text: "Danışan Portalını Telefona Kurun",
             style: "header",
           },
           {
-            text: "Beslenme programınıza kolayca erişin",
+            text: "iOS ve Android için hızlı PWA kurulumu",
             style: "subheader",
           },
           // QR Kod
@@ -113,7 +113,7 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
             margin: [0, 8, 0, 5],
           },
           {
-            text: "QR Kodu tarayarak kayıt olun",
+            text: "QR kodu tarayıp giriş ekranını açın",
             fontSize: 9,
             alignment: "center",
             color: "#6b7280",
@@ -134,10 +134,12 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           },
           {
             ul: [
-              "Safari'de sayfayı açın",
-              "Paylaş butonuna basın",
-              '"Ana Ekrana Ekle" seçeneğini seçin',
-              "Uygulamayı açın",
+              "Bağlantıyı Safari ile açın (iOS'ta PWA için önerilen tarayıcı Safari)",
+              "Alt menüden Paylaş simgesine dokunun",
+              '"Ana Ekrana Ekle" seçeneğini seçip Ekle deyin',
+              "Ana ekrandaki uygulama ikonundan açın",
+              "İlk girişte telefon numaranızla giriş yapın",
+              "Bildirim sorulduğunda İzin Ver seçin",
             ],
             fontSize: 8,
             color: "#4b5563",
@@ -153,9 +155,12 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           },
           {
             ul: [
-              "Chrome'da sayfayı açın",
-              'Menüden "Ana ekrana ekle" seçin',
-              "Uygulamayı açın",
+              "Bağlantıyı Chrome ile açın",
+              "Adres çubuğundaki Yükle simgesini veya menüdeki Uygulamayı yükle seçeneğini kullanın",
+              '"Ana ekrana ekle / Yükle" onayını verin',
+              "Ana ekrandaki uygulama ikonundan açın",
+              "İlk girişte telefon numaranızla giriş yapın",
+              "Bildirim sorulduğunda İzin Ver seçin",
             ],
             fontSize: 8,
             color: "#4b5563",
@@ -168,7 +173,8 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           },
           {
             ul: [
-              "Öğün hatırlatıcıları (30 dakika önce bildirim)",
+              "Öğün hatırlatıcıları ve günlük bildirimler",
+              "Telefon numarası ile hızlı danışan girişi",
               "Diyet programlarını görüntüleme",
               "Diyetisyenle gerçek zamanlı mesajlaşma",
               "Öğün fotoğrafı gönderme",
@@ -191,7 +197,7 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
               body: [
                 [
                   {
-                    text: "Kayıt olduktan sonra diyetisyeninizin onayını bekleyin. Onaylandıktan sonra uygulamayı kullanmaya başlayabilirsiniz.",
+                    text: "Sisteme kayıtlı telefon numaranız ile giriş yapın. Numaranız sistemde yoksa veya eşleşme bulunamazsa diyetisyeninizle iletişime geçin.",
                     style: "infoText",
                     alignment: "justify",
                     fillColor: "#eef2ff",
@@ -248,4 +254,3 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
     </Button>
   );
 }
-
