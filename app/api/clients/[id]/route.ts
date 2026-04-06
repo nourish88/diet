@@ -110,7 +110,7 @@ export async function PUT(
         NextResponse.json(
           {
             error:
-              "Telefon numarası geçerli değil. Lütfen gerçek bir Türkiye cep telefonu girin.",
+              "Telefon numarası geçerli değil. Türkiye için 05… veya +90…; yurtdışı için +ülke kodu ile gerçek bir numara girin.",
           },
           { status: 400 }
         )
@@ -258,7 +258,7 @@ export async function PATCH(
         NextResponse.json(
           {
             error:
-              "Telefon numarası geçerli değil. Lütfen gerçek bir Türkiye cep telefonu girin.",
+              "Telefon numarası geçerli değil. Türkiye için 05… veya +90…; yurtdışı için +ülke kodu ile gerçek bir numara girin.",
           },
           { status: 400 }
         )

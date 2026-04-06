@@ -1,11 +1,8 @@
 import { createHash } from "crypto";
+import parsePhoneNumberFromString from "libphonenumber-js";
 
 const PHONE_AUTH_SECRET =
   process.env.CLIENT_PHONE_AUTH_SECRET || "fallback-client-phone-auth-secret";
-
-function onlyDigits(value: string): string {
-  return value.replace(/\D/g, "");
-}
 
 function isLikelyFakeNationalNumber(national: string): boolean {
   if (/^(\d)\1{9}$/.test(national)) {
@@ -19,29 +16,40 @@ function isLikelyFakeNationalNumber(national: string): boolean {
   return false;
 }
 
+/** Normalize leading international prefix (00 → +) for easier parsing. */
+function preprocessPhoneInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (/^00\d/.test(trimmed)) {
+    return `+${trimmed.slice(2)}`;
+  }
+  return trimmed;
+}
+
 export function normalizeClientPhoneNumber(phoneNumber?: string | null): string | null {
   if (!phoneNumber) {
     return null;
   }
 
-  const digits = onlyDigits(phoneNumber);
-  let national = "";
-
-  if (digits.length === 10 && digits.startsWith("5")) {
-    national = digits;
-  } else if (digits.length === 11 && digits.startsWith("0") && digits[1] === "5") {
-    national = digits.slice(1);
-  } else if (digits.length === 12 && digits.startsWith("90") && digits[2] === "5") {
-    national = digits.slice(2);
-  } else {
+  const cleaned = preprocessPhoneInput(phoneNumber);
+  if (!cleaned) {
     return null;
   }
 
-  if (isLikelyFakeNationalNumber(national)) {
+  const parsed = parsePhoneNumberFromString(cleaned, "TR");
+  if (!parsed || !parsed.isValid()) {
     return null;
   }
 
-  return `+90${national}`;
+  const e164 = parsed.format("E.164");
+
+  if (parsed.country === "TR") {
+    const national = parsed.nationalNumber;
+    if (/^5\d{9}$/.test(national) && isLikelyFakeNationalNumber(national)) {
+      return null;
+    }
+  }
+
+  return e164;
 }
 
 export function buildClientPhoneCredentials(normalizedPhone: string): {

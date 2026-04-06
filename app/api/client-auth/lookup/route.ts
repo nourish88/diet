@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             code: "INVALID_PHONE",
-            error: "Geçerli bir Türkiye cep telefonu giriniz.",
+            error:
+              "Geçerli bir telefon numarası giriniz. Türkiye için 05… veya +90…; yurtdışı için +ülke kodu ile deneyin.",
           },
           { status: 400 }
         )
