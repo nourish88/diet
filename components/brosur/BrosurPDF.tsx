@@ -36,35 +36,35 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
       // A5 boyutu: 148 x 210 mm = 419.53 x 595.28 points
       const pageWidth = 419.53;
       const pageHeight = 595.28;
-      const margin = 25;
+      const margin = 18;
 
       const docDefinition: any = {
         pageSize: { width: pageWidth, height: pageHeight },
         pageMargins: [margin, margin, margin, margin],
         defaultStyle: {
           font: "Roboto",
-          fontSize: 9,
+          fontSize: 8,
           color: "#1a1a1a",
         },
         styles: {
           header: {
-            fontSize: 20,
+            fontSize: 16,
             bold: true,
             color: "#4f46e5",
             alignment: "center",
-            margin: [0, 0, 0, 5],
+            margin: [0, 0, 0, 3],
           },
           subheader: {
-            fontSize: 10,
+            fontSize: 8,
             color: "#6b7280",
             alignment: "center",
-            margin: [0, 0, 0, 12],
+            margin: [0, 0, 0, 8],
           },
           title: {
-            fontSize: 12,
+            fontSize: 10,
             bold: true,
             color: "#1f2937",
-            margin: [0, 8, 0, 5],
+            margin: [0, 5, 0, 3],
           },
           feature: {
             fontSize: 8,
@@ -77,24 +77,24 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
             margin: [0, 1, 0, 1],
           },
           highlight: {
-            fontSize: 9,
+            fontSize: 8,
             bold: true,
             color: "#4f46e5",
-            margin: [0, 6, 0, 3],
+            margin: [0, 4, 0, 2],
           },
           infoText: {
-            fontSize: 8,
+            fontSize: 7,
             color: "#1f2937",
-            margin: [0, 3, 0, 3],
+            margin: [0, 2, 0, 2],
           },
         },
         content: [
           // Logo
           {
             image: content.logoDataUrl,
-            width: 50,
+            width: 40,
             alignment: "center",
-            margin: [0, 0, 0, 8],
+            margin: [0, 0, 0, 5],
           },
           // Başlık
           {
@@ -108,16 +108,16 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           // QR Kod
           {
             image: content.qrCodeDataUrl,
-            width: 100,
+            width: 82,
             alignment: "center",
-            margin: [0, 8, 0, 5],
+            margin: [0, 5, 0, 3],
           },
           {
             text: "QR kodu tarayıp giriş ekranını açın",
-            fontSize: 9,
+            fontSize: 8,
             alignment: "center",
             color: "#6b7280",
-            margin: [0, 0, 0, 12],
+            margin: [0, 0, 0, 7],
           },
           // Kurulum Talimatları
           {
@@ -127,44 +127,40 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           // iOS
           {
             text: "iOS (iPhone/iPad):",
-            fontSize: 9,
+            fontSize: 8,
             bold: true,
             color: "#4f46e5",
-            margin: [0, 3, 0, 2],
+            margin: [0, 2, 0, 1],
           },
           {
             ul: [
-              "Bağlantıyı Safari ile açın (iOS'ta PWA için önerilen tarayıcı Safari)",
+              "Bağlantıyı Safari ile açın",
               "Alt menüden Paylaş simgesine dokunun",
               '"Ana Ekrana Ekle" seçeneğini seçip Ekle deyin',
-              "Ana ekrandaki uygulama ikonundan açın",
-              "İlk girişte telefon numaranızla giriş yapın",
-              "Bildirim sorulduğunda İzin Ver seçin",
+              "Ana ekrandan açıp telefon numarasıyla giriş yapın",
             ],
-            fontSize: 8,
+            fontSize: 7,
             color: "#4b5563",
-            margin: [12, 0, 0, 6],
+            margin: [10, 0, 0, 4],
           },
           // Android
           {
             text: "Android:",
-            fontSize: 9,
+            fontSize: 8,
             bold: true,
             color: "#4f46e5",
-            margin: [0, 3, 0, 2],
+            margin: [0, 2, 0, 1],
           },
           {
             ul: [
               "Bağlantıyı Chrome ile açın",
-              "Adres çubuğundaki Yükle simgesini veya menüdeki Uygulamayı yükle seçeneğini kullanın",
+              '"Uygulamayı Yükle / Ana ekrana ekle" seçeneğini kullanın',
               '"Ana ekrana ekle / Yükle" onayını verin',
-              "Ana ekrandaki uygulama ikonundan açın",
-              "İlk girişte telefon numaranızla giriş yapın",
-              "Bildirim sorulduğunda İzin Ver seçin",
+              "Ana ekrandan açıp telefon numarasıyla giriş yapın",
             ],
-            fontSize: 8,
+            fontSize: 7,
             color: "#4b5563",
-            margin: [12, 0, 0, 10],
+            margin: [10, 0, 0, 5],
           },
           // Uygulama Özellikleri
           {
@@ -178,13 +174,11 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
               "Diyet programlarını görüntüleme",
               "Diyetisyenle gerçek zamanlı mesajlaşma",
               "Öğün fotoğrafı gönderme",
-              "Kilo, ölçü takibi (bel/kalça çevresi, vücut yağ oranı)",
-              "Fiziksel aktivite kaydı",
-              "İlerleme grafikleri",
+              "Kilo/ölçü takibi ve ilerleme grafikleri",
             ],
-            fontSize: 8,
+            fontSize: 7,
             color: "#374151",
-            margin: [12, 0, 0, 10],
+            margin: [10, 0, 0, 5],
           },
           // Diyetisyen Onayı Bilgisi
           {
@@ -199,15 +193,15 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
                   {
                     text: "Sisteme kayıtlı telefon numaranız ile giriş yapın. Numaranız sistemde yoksa veya eşleşme bulunamazsa diyetisyeninizle iletişime geçin.",
                     style: "infoText",
-                    alignment: "justify",
+                    alignment: "left",
                     fillColor: "#eef2ff",
-                    margin: [8, 6, 8, 6],
+                    margin: [6, 4, 6, 4],
                   },
                 ],
               ],
             },
             layout: "noBorders",
-            margin: [0, 0, 0, 8],
+            margin: [0, 0, 0, 4],
           },
           // İletişim
           {
@@ -215,7 +209,7 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
             fontSize: 8,
             color: "#6b7280",
             alignment: "center",
-            margin: [0, 8, 0, 0],
+            margin: [0, 4, 0, 0],
             italics: true,
           },
         ],
