@@ -92,9 +92,9 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           // Logo
           {
             image: content.logoDataUrl,
-            width: 40,
+            width: 56,
             alignment: "center",
-            margin: [0, 0, 0, 5],
+            margin: [0, 0, 0, 4],
           },
           // Başlık
           {
