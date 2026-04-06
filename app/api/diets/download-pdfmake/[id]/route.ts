@@ -110,11 +110,14 @@ function preparePdfDataFromDatabase(diet: any): PDFData | null {
   if (!diet) return null;
 
   // Extract client name
-  let clientName = "İsimsiz Danışan";
+  const fallbackName = "İsimsiz Danışan";
+  let clientName = fallbackName;
   if (diet.client) {
-    clientName =
-      `${diet.client.name || ""} ${diet.client.surname || ""}`.trim() ||
-      "İsimsiz Danışan";
+    const c = diet.client;
+    const fromFull =
+      typeof c.fullName === "string" ? c.fullName.trim() : "";
+    const fromParts = `${c.name ?? ""} ${c.surname ?? ""}`.trim();
+    clientName = (fromFull || fromParts) || fallbackName;
   }
 
   // Process meals (oguns)

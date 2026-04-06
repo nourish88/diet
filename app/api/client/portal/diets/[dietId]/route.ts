@@ -59,6 +59,12 @@ export async function GET(
             message: true,
           },
         },
+        client: {
+          select: {
+            name: true,
+            surname: true,
+          },
+        },
         oguns: {
           orderBy: { order: "asc" },
           select: {

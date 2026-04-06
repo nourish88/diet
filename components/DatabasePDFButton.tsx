@@ -191,11 +191,15 @@ const DatabasePDFButton = ({
 
     console.log("Preparing PDF data from database diet:", diet);
 
-    let clientName = "İsimsiz Danışan";
+    const fallbackName = "İsimsiz Danışan";
+    let clientName = fallbackName;
     if (diet.client) {
-      clientName =
-        diet.client.fullName ||
-        `${diet.client.name || ""} ${diet.client.surname || ""}`.trim();
+      const c = diet.client;
+      const fromFull =
+        typeof c.fullName === "string" ? c.fullName.trim() : "";
+      const fromParts = `${c.name ?? ""} ${c.surname ?? ""}`.trim();
+      const resolved = fromFull || fromParts;
+      clientName = resolved || fallbackName;
     }
 
     const unsortedMeals: PDFData["ogunler"] = (diet.oguns || []).map(
