@@ -92,7 +92,7 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
           // Logo
           {
             image: content.logoDataUrl,
-            width: 56,
+            width: 112,
             alignment: "center",
             margin: [0, 0, 0, 4],
           },
