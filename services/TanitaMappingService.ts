@@ -298,12 +298,18 @@ export const TanitaMappingService = {
         gender = 2;
       }
 
+      const cleanedPhone = normalizePhone(tanitaUser.phone);
+      const phoneNumber =
+        cleanedPhone && normalizeClientPhoneNumber(cleanedPhone)
+          ? cleanedPhone
+          : null;
+
       // Client oluştur
       const client = await prisma.client.create({
         data: {
           name: tanitaUser.name,
           surname: tanitaUser.surname,
-          phoneNumber: normalizePhone(tanitaUser.phone),
+          phoneNumber,
           birthdate: birthdate,
           gender: gender,
           notes: tanitaUser.notes || null,
@@ -353,6 +359,62 @@ export const TanitaMappingService = {
       console.error("Error creating client from Tanita:", error);
       throw error;
     }
+  },
+
+  /**
+   * POST /api/clients ile oluşturulan danışan için Prisma TanitaUser satırını
+   * Tanita SQLite verisiyle eşleştirir (createClientFromTanita ile aynı snapshot).
+   */
+  async ensurePrismaTanitaUserForClient(
+    clientId: number,
+    tanitaMemberId: number
+  ): Promise<void> {
+    const tanita = TanitaService.getUserById(tanitaMemberId);
+    if (!tanita) {
+      throw new Error("Tanita danışanı bulunamadı");
+    }
+
+    const existing = await prisma.tanitaUser.findUnique({
+      where: { tanitaMemberId },
+    });
+    if (existing?.clientId && existing.clientId !== clientId) {
+      throw new Error(
+        "Bu Tanita kaydı başka bir danışan ile eşleşmiş. Önce o eşleşmeyi kaldırın."
+      );
+    }
+
+    await prisma.tanitaUser.upsert({
+      where: { tanitaMemberId },
+      create: {
+        tanitaMemberId: tanita.id,
+        name: tanita.name,
+        surname: tanita.surname,
+        email: tanita.email || null,
+        phone: tanita.phone || null,
+        dob: tanita.dob || null,
+        gender: tanita.gender || null,
+        bodyType: tanita.bodyType || null,
+        height: tanita.height || null,
+        identityNumber: tanita.identityNumber || null,
+        notes: tanita.notes || null,
+        clientId,
+        lastSyncedAt: new Date(),
+      },
+      update: {
+        clientId,
+        name: tanita.name,
+        surname: tanita.surname,
+        email: tanita.email || null,
+        phone: tanita.phone || null,
+        dob: tanita.dob || null,
+        gender: tanita.gender || null,
+        bodyType: tanita.bodyType || null,
+        height: tanita.height || null,
+        identityNumber: tanita.identityNumber || null,
+        notes: tanita.notes || null,
+        lastSyncedAt: new Date(),
+      },
+    });
   },
 
   /**

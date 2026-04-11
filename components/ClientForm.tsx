@@ -3,30 +3,41 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api-client";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "./ui/use-toast";
 import MultiBesinSelector from "./MultiBesinSelector";
 import TanitaSearchModal from "./tanita/TanitaSearchModal";
+import { normalizeClientPhoneNumber } from "@/lib/phone-normalize";
 
-const clientSchema = z.object({
-  name: z.string().min(1, "İsim zorunludur"),
-  surname: z.string().min(1, "Soyisim zorunludur"),
-  birthdate: z
-    .string()
-    .nullable()
-    .transform((val) => (val && val !== "" ? val : null)),
-  phoneNumber: z.string().nullable(),
-  notes: z.string().nullable(),
-  gender: z
-    .string()
-    .transform((val) => (val ? parseInt(val) : null))
-    .nullable(),
-  illness: z.string().nullable(),
-});
+const clientSchema = z
+  .object({
+    name: z.string().min(1, "İsim zorunludur"),
+    surname: z.string().min(1, "Soyisim zorunludur"),
+    birthdate: z
+      .string()
+      .nullable()
+      .transform((val) => (val && val !== "" ? val : null)),
+    phoneNumber: z.string().nullable(),
+    notes: z.string().nullable(),
+    gender: z
+      .string()
+      .transform((val) => (val ? parseInt(val) : null))
+      .nullable(),
+    illness: z.string().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    const p = data.phoneNumber?.trim();
+    if (p && !normalizeClientPhoneNumber(p)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Geçerli bir telefon numarası girin (ör. +90…, 05… veya yurtdışı +ülke kodu).",
+        path: ["phoneNumber"],
+      });
+    }
+  });
 
 interface ClientFormProps {
   initialData?: any;
@@ -63,61 +74,28 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
     },
   });
 
-  // Tanita'dan client oluşturma mutation
-  const createFromTanitaMutation = useMutation({
-    mutationFn: async (data: { tanitaMemberId: number; syncMeasurements: boolean }) => {
-      return await apiClient.post("/tanita/create-client", data);
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Başarılı",
-        description: "Tanita'dan danışan oluşturuldu",
-      });
-      onSuccess(data.client.id);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Tanita'dan danışan oluşturulamadı",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Tanita user seçildiğinde form'u doldur
   const handleTanitaUserSelect = (user: any) => {
     setSelectedTanitaUser(user);
-    
-    // Form alanlarını doldur
+
     const dob = user.dob ? new Date(user.dob).toISOString().split("T")[0] : null;
-    const gender = user.gender === "ERKEK" ? "1" : user.gender === "KADIN" ? "2" : null;
-    
+    const gender =
+      user.gender === "ERKEK" ? "1" : user.gender === "KADIN" ? "2" : null;
+
     form.setValue("name", user.name);
     form.setValue("surname", user.surname);
     form.setValue("phoneNumber", user.phone || "");
     form.setValue("birthdate", dob);
-    form.setValue("gender", gender as any); // Form schema accepts string, will be transformed
+    form.setValue("gender", gender as any);
     form.setValue("notes", user.notes || "");
-    
-    // Tanita'dan oluştur butonunu göster
-    setAddMode("tanita");
-  };
 
-  // Tanita'dan client oluştur
-  const handleCreateFromTanita = async () => {
-    if (!selectedTanitaUser) return;
-    
-    createFromTanitaMutation.mutate({
-      tanitaMemberId: selectedTanitaUser.id,
-      syncMeasurements: false, // İsteğe bağlı olarak true yapılabilir
-    });
+    setAddMode("tanita");
   };
 
   const handleSelectedBesinsChange = (
     newSelectedBesins: Array<{ besinId: number; reason?: string }>
   ) => {
     try {
-      // Always ensure we're setting a valid array
       if (!newSelectedBesins) {
         setSelectedBesins([]);
         return;
@@ -129,7 +107,6 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         return;
       }
 
-      // Filter out invalid items
       const validBesins = newSelectedBesins.filter(
         (item) => item && typeof item === "object" && "besinId" in item
       );
@@ -143,6 +120,15 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
 
   const onSubmit = async (values: z.infer<typeof clientSchema>) => {
     try {
+      if (!isEdit && addMode === "tanita" && !selectedTanitaUser) {
+        toast({
+          title: "Tanita seçimi gerekli",
+          description: "Önce Tanita'dan bir danışan seçin.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       console.log("Raw form values:", values);
 
       const transformedValues = {
@@ -154,18 +140,25 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         gender: values.gender,
       };
 
-      console.log("Transformed values being sent to API:", transformedValues);
+      const payload: Record<string, unknown> = {
+        ...transformedValues,
+        bannedBesins: selectedBesins,
+      };
+
+      if (!isEdit && addMode === "tanita" && selectedTanitaUser) {
+        payload.tanitaMemberId = selectedTanitaUser.id;
+        payload.syncMeasurements = false;
+      }
+
+      console.log("Transformed values being sent to API:", payload);
 
       const response = await fetch(
         isEdit ? `/api/clients/${initialData.id}` : "/api/clients",
         {
           method: isEdit ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include", // Include credentials for authentication
-          body: JSON.stringify({
-            ...transformedValues,
-            bannedBesins: selectedBesins,
-          }),
+          credentials: "include",
+          body: JSON.stringify(payload),
         }
       );
 
@@ -184,7 +177,6 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         throw new Error(errorMessage);
       }
 
-      // Only try to parse JSON if we have a JSON response
       let data;
       if (contentType && contentType.includes("application/json")) {
         data = await response.json();
@@ -212,13 +204,15 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
     }
   };
 
+  const tanitaBlocked =
+    !isEdit && addMode === "tanita" && !selectedTanitaUser;
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
       <h2 className="text-xl font-semibold mb-6">
         {isEdit ? "Danışan Düzenle" : "Yeni Danışan Ekle"}
       </h2>
 
-      {/* Add Mode Selection (only for new clients) */}
       {!isEdit && (
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -250,10 +244,10 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
                 }}
                 className="h-4 w-4 text-blue-600"
               />
-              <span>Tanita'dan Ekle</span>
+              <span>Tanita&apos;dan Ekle</span>
             </label>
           </div>
-          
+
           {addMode === "tanita" && (
             <div className="mt-4">
               <Button
@@ -272,12 +266,22 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
                     {selectedTanitaUser.name} {selectedTanitaUser.surname}
                   </div>
                   {selectedTanitaUser.phone && (
-                    <div className="text-gray-600">📞 {selectedTanitaUser.phone}</div>
+                    <div className="text-gray-600">
+                      📞 {selectedTanitaUser.phone}
+                    </div>
                   )}
                   {selectedTanitaUser.email && (
-                    <div className="text-gray-600">✉️ {selectedTanitaUser.email}</div>
+                    <div className="text-gray-600">
+                      ✉️ {selectedTanitaUser.email}
+                    </div>
                   )}
                 </div>
+              )}
+              {tanitaBlocked && (
+                <p className="text-sm text-amber-700 mt-2">
+                  Kaydetmeden önce Tanita&apos;dan bir danışan seçin; ardından
+                  telefonu gerekirse formda düzenleyin.
+                </p>
               )}
             </div>
           )}
@@ -353,40 +357,16 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
               </label>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-medium text-gray-700">
               Telefon
             </label>
             <Input
-              {...form.register("phoneNumber", {
-                pattern: {
-                  value: /^5\d{9}$/,
-                  message:
-                    "Telefon numarası 5 ile başlamalı ve 10 haneli olmalıdır",
-                },
-                validate: (value) => {
-                  if (!value) return true; // Optional field
-                  if (value.length === 0) return true;
-                  if (value.length !== 10)
-                    return "Telefon numarası 10 haneli olmalıdır";
-                  if (!value.startsWith("5"))
-                    return "Telefon numarası 5 ile başlamalıdır";
-                  if (!/^\d+$/.test(value))
-                    return "Telefon numarası sadece rakam içermelidir";
-                  return true;
-                },
-              })}
+              {...form.register("phoneNumber")}
               className="w-full"
-              placeholder="5XXXXXXXXX formatında giriniz"
-              maxLength={10}
+              placeholder="Örn. +90 532…, 0532… veya yurtdışı +ülke kodu"
               type="tel"
-              onInput={(e) => {
-                const input = e.currentTarget;
-                input.value = input.value.replace(/[^0-9]/g, ""); // Only allow numbers
-                if (input.value.length > 0 && !input.value.startsWith("5")) {
-                  input.value = "5" + input.value.substring(1);
-                }
-              }}
+              autoComplete="tel"
             />
             {form.formState.errors.phoneNumber && (
               <span className="text-red-500 text-sm">
@@ -429,28 +409,21 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
           />
         </div>
 
-        {addMode === "tanita" && selectedTanitaUser ? (
-          <Button
-            type="button"
-            onClick={handleCreateFromTanita}
-            disabled={createFromTanitaMutation.isPending}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-          >
-            {createFromTanitaMutation.isPending
-              ? "Oluşturuluyor..."
-              : "Tanita'dan Oluştur"}
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
-          >
-            {isEdit ? "Güncelle" : "Kaydet"}
-          </Button>
-        )}
+        <Button
+          type="submit"
+          disabled={tanitaBlocked || form.formState.isSubmitting}
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+        >
+          {form.formState.isSubmitting
+            ? "Kaydediliyor..."
+            : isEdit
+              ? "Güncelle"
+              : addMode === "tanita"
+                ? "Tanita ile Kaydet"
+                : "Kaydet"}
+        </Button>
       </form>
 
-      {/* Tanita Search Modal */}
       {!isEdit && (
         <TanitaSearchModal
           open={showTanitaModal}

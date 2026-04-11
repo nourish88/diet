@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
+import { TanitaMappingService } from "@/services/TanitaMappingService";
+import { TanitaProgressService } from "@/services/TanitaProgressService";
+import { TanitaService } from "@/services/TanitaService";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -101,7 +104,14 @@ export const POST = requireDietitian(
       const clientData = await request.json();
       console.log("Received client data in API:", clientData);
 
-      if (!clientData.name || !clientData.surname) {
+      const {
+        bannedBesins,
+        tanitaMemberId: rawTanitaMemberId,
+        syncMeasurements,
+        ...clientDetails
+      } = clientData;
+
+      if (!clientDetails.name || !clientDetails.surname) {
         return addCorsHeaders(
           NextResponse.json(
             { error: "İsim ve soyisim zorunludur" },
@@ -110,8 +120,53 @@ export const POST = requireDietitian(
         );
       }
 
-      const { bannedBesins, ...clientDetails } = clientData;
-      const normalizedPhone = normalizeClientPhoneNumber(clientDetails.phoneNumber);
+      let tanitaMemberId: number | undefined;
+      if (
+        rawTanitaMemberId !== undefined &&
+        rawTanitaMemberId !== null &&
+        rawTanitaMemberId !== ""
+      ) {
+        const n = Number(rawTanitaMemberId);
+        if (!Number.isInteger(n) || n <= 0) {
+          return addCorsHeaders(
+            NextResponse.json(
+              { error: "Geçersiz Tanita üye numarası" },
+              { status: 400 }
+            )
+          );
+        }
+        tanitaMemberId = n;
+      }
+
+      if (tanitaMemberId !== undefined) {
+        const tanitaUser = TanitaService.getUserById(tanitaMemberId);
+        if (!tanitaUser) {
+          return addCorsHeaders(
+            NextResponse.json(
+              { error: "Tanita'da bu üye bulunamadı" },
+              { status: 400 }
+            )
+          );
+        }
+        const taken = await prisma.client.findFirst({
+          where: { tanitaMemberId },
+        });
+        if (taken) {
+          return addCorsHeaders(
+            NextResponse.json(
+              {
+                error:
+                  "Bu Tanita kaydı zaten başka bir danışan ile eşleşmiş.",
+              },
+              { status: 409 }
+            )
+          );
+        }
+      }
+
+      const normalizedPhone = normalizeClientPhoneNumber(
+        clientDetails.phoneNumber
+      );
 
       if (clientDetails.phoneNumber && !normalizedPhone) {
         return addCorsHeaders(
@@ -125,13 +180,38 @@ export const POST = requireDietitian(
         );
       }
 
+      const phoneTrimmed =
+        typeof clientDetails.phoneNumber === "string"
+          ? clientDetails.phoneNumber.trim()
+          : clientDetails.phoneNumber
+            ? String(clientDetails.phoneNumber).trim()
+            : "";
+
+      let gender: number | null = null;
+      if (
+        clientDetails.gender !== undefined &&
+        clientDetails.gender !== null &&
+        clientDetails.gender !== ""
+      ) {
+        const g = Number(clientDetails.gender);
+        gender = Number.isFinite(g) ? g : null;
+      }
+
       const transformedData = {
-        ...clientDetails,
-        dietitianId: auth.user!.id, // SECURITY: Assign to authenticated dietitian
+        name: clientDetails.name,
+        surname: clientDetails.surname,
+        notes: clientDetails.notes ?? null,
+        illness: clientDetails.illness ?? null,
+        gender,
+        phoneNumber: phoneTrimmed || null,
+        dietitianId: auth.user!.id,
         birthdate:
           clientDetails.birthdate && clientDetails.birthdate !== "null"
             ? new Date(clientDetails.birthdate)
             : null,
+        ...(tanitaMemberId !== undefined
+          ? { tanitaMemberId }
+          : {}),
       };
 
       console.log("Transformed data being sent to Prisma:", transformedData);
@@ -164,11 +244,11 @@ export const POST = requireDietitian(
             where: { clientId: createdClient.id },
             create: {
               clientId: createdClient.id,
-              phoneRaw: clientDetails.phoneNumber,
+              phoneRaw: phoneTrimmed,
               phoneNormalized: normalizedPhone,
             },
             update: {
-              phoneRaw: clientDetails.phoneNumber,
+              phoneRaw: phoneTrimmed,
               phoneNormalized: normalizedPhone,
             },
           });
@@ -176,6 +256,24 @@ export const POST = requireDietitian(
 
         return createdClient;
       });
+
+      if (tanitaMemberId !== undefined) {
+        await TanitaMappingService.ensurePrismaTanitaUserForClient(
+          client.id,
+          tanitaMemberId
+        );
+      }
+
+      if (syncMeasurements && client.userId && tanitaMemberId !== undefined) {
+        try {
+          await TanitaProgressService.syncMeasurementsToProgress(
+            client.id,
+            client.userId
+          );
+        } catch (syncErr) {
+          console.warn("Tanita ölçü senkronu atlandı:", syncErr);
+        }
+      }
 
       console.log("Created client:", client);
 
