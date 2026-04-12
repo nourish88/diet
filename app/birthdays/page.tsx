@@ -17,7 +17,10 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { apiClient } from "@/lib/api-client";
 import { openWhatsApp } from "@/utils/whatsapp";
-import { formatBirthdayMessage } from "@/services/BirthdayService";
+
+function formatBirthdayMessage(clientName: string): string {
+  return `Merhaba ${clientName}, doğum gününüz kutlu olsun! Ezgi Evgin Aktaş diyet ve beslenme danışmanlığı olarak fit ve sağlıklı bir yıl dileriz. 🎂🎉`;
+}
 
 interface BirthdayClient {
   id: number;
