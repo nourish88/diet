@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +30,7 @@ interface BirthdayClient {
   birthdate: string | null;
 }
 
-export default function BirthdaysPage() {
+function BirthdaysContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -334,5 +334,13 @@ export default function BirthdaysPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function BirthdaysPage() {
+  return (
+    <Suspense fallback={null}>
+      <BirthdaysContent />
+    </Suspense>
   );
 }
