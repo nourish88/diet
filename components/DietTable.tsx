@@ -172,6 +172,30 @@ const DietTable = ({
     });
   };
 
+  // Bulk add items to a specific ogun
+  const handleBulkAdd = (
+    ogunIndex: number,
+    items: Array<{ besin: string; miktar: string; birim: string }>
+  ) => {
+    setDiet((prevDiet: Diet): Diet => {
+      const updatedOguns = prevDiet.Oguns.map((ogun, idx) => {
+        if (idx === ogunIndex) {
+          const newItems = items.map((item) => ({
+            besin: item.besin,
+            miktar: item.miktar,
+            birim: item.birim,
+          }));
+          return {
+            ...ogun,
+            items: [...ogun.items, ...newItems],
+          };
+        }
+        return ogun;
+      });
+      return { ...prevDiet, Oguns: updatedOguns };
+    });
+  };
+
   const onResize =
     (column: keyof typeof columnWidths) =>
     (e: any, { size }: { size: { width: number } }) => {
@@ -344,6 +368,9 @@ const DietTable = ({
                                 ogunItems={ogun.items}
                                 onApplyPreset={(preset) =>
                                   handleApplyPreset(index, preset)
+                                }
+                                onBulkAdd={(items) =>
+                                  handleBulkAdd(index, items)
                                 }
                               />
                               <Input
@@ -664,6 +691,9 @@ const DietTable = ({
                                       onApplyPreset={(preset) =>
                                         handleApplyPreset(index, preset)
                                       }
+                                      onBulkAdd={(items) =>
+                                        handleBulkAdd(index, items)
+                                      }
                                       compact={false}
                                     />
                                   </div>
@@ -707,6 +737,8 @@ const DietTable = ({
                                           handleDeleteMenuItem(index, itemIndex)
                                         }
                                         onItemChange={handleMenuItemChange}
+                                        isLast={itemIndex === ogun.items.length - 1}
+                                        onAddItem={handleAddMenuItem}
                                       />
                                     </div>
                                   ))}

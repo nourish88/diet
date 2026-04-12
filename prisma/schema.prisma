@@ -44,6 +44,7 @@ model Client {
   kvkkPortalConsentAt       DateTime?
   kvkkPortalConsentVersion  String?
   consentRecords            ClientConsentRecord[]
+  congratulationLogs        CongratulationLog[]
 }
 
 model ClientPhoneAuth {
@@ -309,9 +310,27 @@ model User {
   progressEntries       ProgressEntry[]
   exerciseLogs          ExerciseLog[]
   consentRecords        ClientConsentRecord[]
+  congratulationLogs    CongratulationLog[]
 
   @@index([supabaseId])
   @@index([email])
+}
+
+model CongratulationLog {
+  id                Int       @id @default(autoincrement())
+  clientId          Int
+  dietitianId       Int
+  date              DateTime  // The birthday date (day, stored as midnight UTC)
+  congratulatedAt   DateTime? // Null = not yet congratulated
+  notificationCount Int       @default(0) // How many push notifications sent
+  lastNotifiedAt    DateTime? // When the last notification was sent
+  createdAt         DateTime  @default(now())
+
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  dietitian User   @relation(fields: [dietitianId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, dietitianId, date])
+  @@index([dietitianId, date])
 }
 
 model ClientConsentRecord {

@@ -79,6 +79,7 @@ export async function proxy(request: NextRequest) {
   // Public routes that don't require authentication
   const publicRoutes = [
     "/login",
+    "/account",
     "/register",
     "/register-client",
     "/pending-approval",
@@ -94,7 +95,10 @@ export async function proxy(request: NextRequest) {
 
   if (!user) {
     console.log("❌ No authenticated user, redirecting to login");
-    return NextResponse.redirect(new URL("/login", request.url));
+    // Client pages → /login, dietitian pages → /account
+    const isClientPath = pathname.startsWith("/client");
+    const redirectPath = isClientPath ? "/login" : "/account";
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   console.log("✅ Authenticated user:", user.email);

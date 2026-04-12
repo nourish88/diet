@@ -14,7 +14,8 @@ export default function ConditionalLayout({
 
   // Don't show navbar on auth pages
   const isAuthPage =
-    pathname?.startsWith("/login") || 
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/account") ||
     pathname?.startsWith("/register") ||
     pathname?.startsWith("/pending-approval");
 

@@ -44,7 +44,7 @@ export default function RegisterPage() {
         description: "Bu sayfaya sadece diyetisyenler erişebilir.",
         variant: "destructive",
       });
-      router.push("/login");
+      router.push("/account");
     }
   }, [user, databaseUser, loading, router, toast]);
 
@@ -72,7 +72,7 @@ export default function RegisterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => router.push("/login")} className="w-full">
+            <Button onClick={() => router.push("/account")} className="w-full">
               Giriş Sayfasına Dön
             </Button>
           </CardContent>
@@ -118,7 +118,7 @@ export default function RegisterPage() {
           title: "Başarılı",
           description: "Kayıt başarılı! E-posta adresinizi kontrol edin.",
         });
-        router.push("/login");
+        router.push("/account");
       }
     } catch (error) {
       toast({
@@ -210,7 +210,7 @@ export default function RegisterPage() {
             <Button
               variant="link"
               className="p-0 h-auto"
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/account")}
             >
               Giriş yapın
             </Button>

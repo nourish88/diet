@@ -12,7 +12,7 @@ export interface BirthdayClient {
 export interface DietitianWithBirthdays {
   dietitianId: number;
   userId: number;
-  clientCount: number;
+  clients: BirthdayClient[];
   pushSubscriptions: Array<{
     endpoint: string;
     auth: string;
@@ -31,6 +31,20 @@ export function getTurkeyTime(): Date {
 }
 
 /**
+ * Get today's date at midnight UTC for use as the log date key
+ */
+export function getTodayDateKey(): Date {
+  const turkeyTime = getTurkeyTime();
+  return new Date(
+    Date.UTC(
+      turkeyTime.getFullYear(),
+      turkeyTime.getMonth(),
+      turkeyTime.getDate()
+    )
+  );
+}
+
+/**
  * Get clients with birthdays today (GMT+3)
  * @param dietitianId Optional: filter by dietitian ID
  */
@@ -38,20 +52,17 @@ export async function getClientsWithBirthdaysToday(
   dietitianId?: number
 ): Promise<BirthdayClient[]> {
   const turkeyTime = getTurkeyTime();
-  const todayMonth = turkeyTime.getMonth() + 1; // JavaScript months are 0-indexed
+  const todayMonth = turkeyTime.getMonth() + 1;
   const todayDay = turkeyTime.getDate();
 
   const whereClause: any = {
-    birthdate: {
-      not: null,
-    },
+    birthdate: { not: null },
   };
 
   if (dietitianId) {
     whereClause.dietitianId = dietitianId;
   }
 
-  // Get all clients with birthdates
   const clients = await prisma.client.findMany({
     where: whereClause,
     select: {
@@ -64,23 +75,18 @@ export async function getClientsWithBirthdaysToday(
     },
   });
 
-  // Filter clients whose birthday is today
-  const birthdayClients: BirthdayClient[] = clients.filter((client) => {
+  return clients.filter((client) => {
     if (!client.birthdate) return false;
-
     const birthdate = new Date(client.birthdate);
-    const birthMonth = birthdate.getMonth() + 1;
-    const birthDay = birthdate.getDate();
-
-    return birthMonth === todayMonth && birthDay === todayDay;
+    return (
+      birthdate.getMonth() + 1 === todayMonth &&
+      birthdate.getDate() === todayDay
+    );
   });
-
-  return birthdayClients;
 }
 
 /**
  * Format birthday WhatsApp message
- * @param clientName Client's first name
  */
 export function formatBirthdayMessage(clientName: string): string {
   return `Merhaba ${clientName}, doğum gününüz kutlu olsun! Ezgi Evgin Aktaş diyet ve beslenme danışmanlığı olarak fit ve sağlıklı bir yıl dileriz. 🎂🎉`;
@@ -88,25 +94,17 @@ export function formatBirthdayMessage(clientName: string): string {
 
 /**
  * Generate WhatsApp deep link URL
- * @param phoneNumber Phone number (can be in various formats)
- * @param message Pre-filled message
  */
 export function generateWhatsAppURL(
   phoneNumber: string,
   message: string
 ): string {
-  // Remove any non-digit characters
   const cleanedPhone = phoneNumber.replace(/\D/g, "");
-  
-  // Format phone number for WhatsApp (international format)
   let formattedPhone = cleanedPhone;
-  
-  // If phone starts with 0 (Turkish local format), replace with 90
+
   if (formattedPhone.startsWith("0")) {
     formattedPhone = "90" + formattedPhone.substring(1);
-  }
-  // If phone doesn't start with country code and doesn't start with 0, assume Turkey (90)
-  else if (!formattedPhone.startsWith("90")) {
+  } else if (!formattedPhone.startsWith("90")) {
     formattedPhone = "90" + formattedPhone;
   }
 
@@ -115,32 +113,109 @@ export function generateWhatsAppURL(
 }
 
 /**
- * Get dietitians who have clients with birthdays today
+ * Mark a client as congratulated
+ */
+export async function markAsCongratulated(
+  clientId: number,
+  dietitianId: number
+): Promise<void> {
+  const dateKey = getTodayDateKey();
+
+  await prisma.congratulationLog.upsert({
+    where: {
+      clientId_dietitianId_date: {
+        clientId,
+        dietitianId,
+        date: dateKey,
+      },
+    },
+    create: {
+      clientId,
+      dietitianId,
+      date: dateKey,
+      congratulatedAt: new Date(),
+      notificationCount: 1,
+      lastNotifiedAt: new Date(),
+    },
+    update: {
+      congratulatedAt: new Date(),
+    },
+  });
+}
+
+/**
+ * Get today's CongratulationLog entries for a dietitian
+ */
+async function getTodayLogs(
+  dietitianId: number,
+  dateKey: Date
+): Promise<
+  Map<
+    number,
+    {
+      congratulatedAt: Date | null;
+      notificationCount: number;
+      lastNotifiedAt: Date | null;
+    }
+  >
+> {
+  const logs = await prisma.congratulationLog.findMany({
+    where: {
+      dietitianId,
+      date: dateKey,
+    },
+    select: {
+      clientId: true,
+      congratulatedAt: true,
+      notificationCount: true,
+      lastNotifiedAt: true,
+    },
+  });
+
+  const map = new Map<
+    number,
+    {
+      congratulatedAt: Date | null;
+      notificationCount: number;
+      lastNotifiedAt: Date | null;
+    }
+  >();
+
+  for (const log of logs) {
+    map.set(log.clientId, {
+      congratulatedAt: log.congratulatedAt,
+      notificationCount: log.notificationCount,
+      lastNotifiedAt: log.lastNotifiedAt,
+    });
+  }
+
+  return map;
+}
+
+/**
+ * Get dietitians with birthday clients today, including their push subscriptions
  */
 export async function getDietitiansWithBirthdayClients(): Promise<
   DietitianWithBirthdays[]
 > {
-  // Get all clients with birthdays today
   const birthdayClients = await getClientsWithBirthdaysToday();
 
   if (birthdayClients.length === 0) {
     return [];
   }
 
-  // Group clients by dietitian
   const clientsByDietitian = new Map<number, BirthdayClient[]>();
-  
+
   for (const client of birthdayClients) {
     if (!client.dietitianId) continue;
-    
+
     if (!clientsByDietitian.has(client.dietitianId)) {
       clientsByDietitian.set(client.dietitianId, []);
     }
-    
+
     clientsByDietitian.get(client.dietitianId)!.push(client);
   }
 
-  // Get dietitians with their push subscriptions
   const dietitianIds = Array.from(clientsByDietitian.keys());
   const dietitians = await prisma.user.findMany({
     where: {
@@ -150,9 +225,6 @@ export async function getDietitiansWithBirthdayClients(): Promise<
     select: {
       id: true,
       pushSubscriptions: {
-        where: {
-          // Only active subscriptions (you might want to add expiration checks)
-        },
         select: {
           endpoint: true,
           auth: true,
@@ -162,19 +234,18 @@ export async function getDietitiansWithBirthdayClients(): Promise<
     },
   });
 
-  // Build result array
   const result: DietitianWithBirthdays[] = [];
 
   for (const dietitian of dietitians) {
     if (dietitian.pushSubscriptions.length === 0) continue;
 
-    const clientCount = clientsByDietitian.get(dietitian.id)?.length || 0;
-    if (clientCount === 0) continue;
+    const clients = clientsByDietitian.get(dietitian.id) || [];
+    if (clients.length === 0) continue;
 
     result.push({
       dietitianId: dietitian.id,
       userId: dietitian.id,
-      clientCount,
+      clients,
       pushSubscriptions: dietitian.pushSubscriptions.map((sub) => ({
         endpoint: sub.endpoint,
         auth: sub.auth,
@@ -187,18 +258,28 @@ export async function getDietitiansWithBirthdayClients(): Promise<
 }
 
 /**
- * Send birthday notifications to dietitians
+ * Send birthday notifications for a specific cron slot.
+ *
+ * Slot schedule (GMT+3):
+ *   slot 0 = 10:00 → send notification for client[0]
+ *   slot 1 = 10:30 → retry client[0] if not congratulated + send client[1]
+ *   slot 2 = 11:00 → retry client[0,1] if not congratulated + send client[2]
+ *   slot 3 = 11:30 → retry client[0,1,2] if not congratulated + send client[3]
+ *   ...
+ *
+ * Each notification names the "main" client and mentions the others.
  */
-export async function sendBirthdayNotifications(): Promise<{
+export async function sendBirthdayNotificationsForSlot(slot: number): Promise<{
   sent: number;
   failed: number;
-  dietitiansNotified: number;
+  skipped: number;
 }> {
   const dietitians = await getDietitiansWithBirthdayClients();
+  const dateKey = getTodayDateKey();
 
   if (dietitians.length === 0) {
     console.log("📅 No dietitians with birthday clients today");
-    return { sent: 0, failed: 0, dietitiansNotified: 0 };
+    return { sent: 0, failed: 0, skipped: 0 };
   }
 
   const { sendWebPushNotification, isWebPushConfigured } = await import(
@@ -206,21 +287,60 @@ export async function sendBirthdayNotifications(): Promise<{
   );
 
   if (!isWebPushConfigured()) {
-    console.warn("⚠️ Web push is not configured, skipping birthday notifications");
-    return { sent: 0, failed: dietitians.length, dietitiansNotified: 0 };
+    console.warn("⚠️ Web push not configured, skipping birthday notifications");
+    return { sent: 0, failed: 0, skipped: dietitians.length };
   }
 
   let sent = 0;
   let failed = 0;
-  let dietitiansNotified = 0;
+  let skipped = 0;
+
+  const MAX_NOTIFICATIONS_PER_CLIENT = 4; // max retries per client
 
   for (const dietitian of dietitians) {
-    try {
-      const notificationTitle = "Doğum Günü Hatırlatıcısı";
-      const notificationBody = `${dietitian.clientCount} adet danışanınızın bugün doğum günü kutlamak için tıklayınız`;
-      const notificationTag = `birthday-reminder-${dietitian.dietitianId}`;
+    const logs = await getTodayLogs(dietitian.dietitianId, dateKey);
+    const clients = dietitian.clients;
 
-      // Send notification to all push subscriptions
+    // Determine which clients to notify in this slot:
+    // - The "new" client for this slot (index = slot)
+    // - All previous clients that haven't been congratulated yet (retries)
+    const clientsToNotify: BirthdayClient[] = [];
+
+    for (let i = 0; i <= slot; i++) {
+      if (i >= clients.length) break;
+
+      const client = clients[i];
+      const log = logs.get(client.id);
+
+      // Skip if already congratulated
+      if (log?.congratulatedAt) continue;
+
+      // Skip if exceeded max notification count
+      if ((log?.notificationCount ?? 0) >= MAX_NOTIFICATIONS_PER_CLIENT) continue;
+
+      clientsToNotify.push(client);
+    }
+
+    if (clientsToNotify.length === 0) {
+      skipped++;
+      continue;
+    }
+
+    // For each client to notify, send a notification mentioning others
+    const allClientNames = clients.map((c) => `${c.name} ${c.surname}`);
+
+    for (const mainClient of clientsToNotify) {
+      const otherClients = clients.filter((c) => c.id !== mainClient.id);
+      const otherNames = otherClients.map((c) => `${c.name} ${c.surname}`);
+
+      const notificationTitle = "🎂 Doğum Günü Hatırlatıcısı";
+      const notificationBody =
+        otherNames.length > 0
+          ? `${mainClient.name} ${mainClient.surname}'nın bugün doğum günü! Kutlamak ister misiniz? Ayrıca: ${otherNames.join(", ")}`
+          : `${mainClient.name} ${mainClient.surname}'nın bugün doğum günü! Kutlamak ister misiniz?`;
+
+      const notificationTag = `birthday-${dietitian.dietitianId}-${mainClient.id}`;
+
       for (const subscription of dietitian.pushSubscriptions) {
         try {
           await sendWebPushNotification(
@@ -234,53 +354,83 @@ export async function sendBirthdayNotifications(): Promise<{
             {
               title: notificationTitle,
               body: notificationBody,
-              url: "/birthdays",
+              url: `/birthdays?clientId=${mainClient.id}`,
               tag: notificationTag,
-              requireInteraction: false,
+              requireInteraction: true,
               data: {
                 type: "birthday_reminder",
-                count: dietitian.clientCount,
-                url: "/birthdays",
+                clientId: mainClient.id,
+                phoneNumber: mainClient.phoneNumber,
+                otherBirthdays: otherClients.map((c) => ({
+                  id: c.id,
+                  name: `${c.name} ${c.surname}`,
+                  phoneNumber: c.phoneNumber,
+                })),
+                url: `/birthdays?clientId=${mainClient.id}`,
               },
             }
           );
           sent++;
         } catch (error: any) {
           console.error(
-            `❌ Failed to send birthday notification to dietitian ${dietitian.dietitianId}:`,
+            `❌ Failed to send birthday notification for client ${mainClient.id}:`,
             error
           );
           failed++;
 
-          // Delete invalid/expired subscriptions
           if (error?.statusCode === 404 || error?.statusCode === 410) {
             try {
               await prisma.pushSubscription.delete({
                 where: { endpoint: subscription.endpoint },
               });
-              console.log(
-                `🗑️ Deleted invalid subscription: ${subscription.endpoint}`
-              );
-            } catch (deleteError) {
-              console.error("Error deleting subscription:", deleteError);
-            }
+            } catch {}
           }
         }
       }
 
-      dietitiansNotified++;
+      // Update/create the log for this client
+      await prisma.congratulationLog.upsert({
+        where: {
+          clientId_dietitianId_date: {
+            clientId: mainClient.id,
+            dietitianId: dietitian.dietitianId,
+            date: dateKey,
+          },
+        },
+        create: {
+          clientId: mainClient.id,
+          dietitianId: dietitian.dietitianId,
+          date: dateKey,
+          notificationCount: 1,
+          lastNotifiedAt: new Date(),
+        },
+        update: {
+          notificationCount: { increment: 1 },
+          lastNotifiedAt: new Date(),
+        },
+      });
+
       console.log(
-        `✅ Sent birthday notification to dietitian ${dietitian.dietitianId} (${dietitian.clientCount} clients)`
+        `✅ Sent birthday notification for ${mainClient.name} ${mainClient.surname} (slot ${slot})`
       );
-    } catch (error: any) {
-      console.error(
-        `❌ Error processing dietitian ${dietitian.dietitianId}:`,
-        error
-      );
-      failed++;
     }
   }
 
-  return { sent, failed, dietitiansNotified };
+  return { sent, failed, skipped };
 }
 
+/**
+ * Legacy: send birthday notifications (used for backward compatibility)
+ */
+export async function sendBirthdayNotifications(): Promise<{
+  sent: number;
+  failed: number;
+  dietitiansNotified: number;
+}> {
+  const result = await sendBirthdayNotificationsForSlot(0);
+  return {
+    sent: result.sent,
+    failed: result.failed,
+    dietitiansNotified: result.sent > 0 ? 1 : 0,
+  };
+}

@@ -16,14 +16,12 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import {
   Loader2,
-  User,
-  Stethoscope,
   Search,
   CheckCircle,
   ArrowRight,
+  Stethoscope,
 } from "lucide-react";
-
-type LoginType = "dietitian" | "client";
+import Link from "next/link";
 
 interface PhoneLookupClient {
   id: number;
@@ -44,11 +42,6 @@ function formatBirthdate(value: string | null): string {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [loginType, setLoginType] = useState<LoginType>("dietitian");
-
   const [phoneNumber, setPhoneNumber] = useState("");
   const [normalizedPhone, setNormalizedPhone] = useState<string | null>(null);
   const [lookupClients, setLookupClients] = useState<PhoneLookupClient[]>([]);
@@ -57,7 +50,7 @@ export default function LoginPage() {
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [isConfirmingClient, setIsConfirmingClient] = useState(false);
 
-  const { signIn, user, databaseUser, loading } = useAuth();
+  const { user, databaseUser, loading } = useAuth();
   const { toast } = useToast();
   const supabase = useMemo(() => createClient(), []);
 
@@ -74,8 +67,6 @@ export default function LoginPage() {
         }
       } else if (databaseUser.role === "dietitian") {
         window.location.href = "/";
-      } else {
-        window.location.href = "/";
       }
     }
   }, [user, databaseUser, loading]);
@@ -85,36 +76,6 @@ export default function LoginPage() {
     setSelectedClientId(null);
     setNormalizedPhone(null);
     setSingleClientAutoLogin(false);
-  };
-
-  const handleDietitianSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await signIn(email, password);
-
-      if (error) {
-        toast({
-          title: "Giriş Hatası",
-          description: error.message || "Giriş yapılırken bir hata oluştu.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Başarılı",
-          description: "Giriş yapıldı! Yönlendiriliyorsunuz...",
-        });
-      }
-    } catch {
-      toast({
-        title: "Hata",
-        description: "Beklenmeyen bir hata oluştu.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const completeClientLogin = async ({
@@ -128,12 +89,8 @@ export default function LoginPage() {
   }) => {
     const sessionResponse = await fetch("/api/client-auth/session", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        phoneNumber: normalizedPhoneValue,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phoneNumber: normalizedPhoneValue }),
     });
 
     const sessionData = await sessionResponse.json();
@@ -154,9 +111,7 @@ export default function LoginPage() {
 
     const syncResponse = await fetch("/api/auth/sync", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         supabaseId: authUser.id,
         email: syncEmail,
@@ -198,12 +153,8 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/client-auth/lookup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phoneNumber,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
       });
 
       const data = await response.json();
@@ -275,20 +226,13 @@ export default function LoginPage() {
     });
 
     if (!signedIn.error && signedIn.data.session && signedIn.data.user) {
-      return {
-        session: signedIn.data.session,
-        user: signedIn.data.user,
-      };
+      return { session: signedIn.data.session, user: signedIn.data.user };
     }
 
     const signUpResult = await supabase.auth.signUp({
       email: emailValue,
       password: passwordValue,
-      options: {
-        data: {
-          role: "client",
-        },
-      },
+      options: { data: { role: "client" } },
     });
 
     if (signUpResult.error) {
@@ -313,10 +257,7 @@ export default function LoginPage() {
       );
     }
 
-    return {
-      session: retrySignIn.data.session,
-      user: retrySignIn.data.user,
-    };
+    return { session: retrySignIn.data.session, user: retrySignIn.data.user };
   };
 
   const handleConfirmClient = async () => {
@@ -368,212 +309,133 @@ export default function LoginPage() {
             />
           </div>
           <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
-            Hoş Geldiniz
+            Danışan Girişi
           </CardTitle>
           <CardDescription className="text-center text-gray-600">
-            Giriş yapmak için bilgilerinizi girin
+            Telefon numaranızla profilinize erişin
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 w-full">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginType("dietitian");
-                resetClientFlow();
-              }}
-              className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
-                loginType === "dietitian"
-                  ? "bg-indigo-50 border-indigo-600 text-indigo-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
-            >
-              <Stethoscope className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium whitespace-nowrap">Diyetisyen</span>
-            </button>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-phone">Telefon Numarası</Label>
+              <Input
+                id="client-phone"
+                type="tel"
+                placeholder="05XXXXXXXXX"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value);
+                  resetClientFlow();
+                }}
+              />
+              <p className="text-xs text-gray-500">
+                Diyetisyeninizin sisteme kaydettiği telefon numarasını girin.
+              </p>
+            </div>
 
-            <button
+            <Button
               type="button"
-              onClick={() => {
-                setLoginType("client");
-                setEmail("");
-                setPassword("");
-              }}
-              className={`flex flex-row items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 transition-all w-full ${
-                loginType === "client"
-                  ? "bg-blue-50 border-blue-600 text-blue-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
-              }`}
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              onClick={handleLookupClients}
+              disabled={isSearchingClient || !phoneNumber.trim()}
             >
-              <User className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium whitespace-nowrap">Danışan</span>
-            </button>
+              {isSearchingClient ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Profil aranıyor...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Profili Bul
+                </>
+              )}
+            </Button>
+
+            {lookupClients.length > 0 && (
+              <div className="space-y-3 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
+                <p className="text-sm text-gray-700 font-medium">
+                  {lookupClients.length > 1
+                    ? "Kim olduğunuzu seçin"
+                    : "Profiliniz bulundu"}
+                </p>
+
+                <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                  {lookupClients.map((client) => {
+                    const isSelected = selectedClientId === client.id;
+
+                    return (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => setSelectedClientId(client.id)}
+                        className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
+                          isSelected
+                            ? "border-blue-500 bg-white"
+                            : "border-gray-200 bg-white/80 hover:border-blue-300"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-gray-900">
+                          {client.name} {client.surname}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatBirthdate(client.birthdate)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedClient && !singleClientAutoLogin && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+                    <p className="text-sm text-emerald-900 font-medium">
+                      {selectedClient.name} {selectedClient.surname} profili ile
+                      eşleştirileceksiniz. Onaylıyor musunuz?
+                    </p>
+
+                    <Button
+                      type="button"
+                      onClick={handleConfirmClient}
+                      disabled={isConfirmingClient}
+                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {isConfirmingClient ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Onaylanıyor...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Onaylıyorum, Devam Et
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {loginType === "dietitian" ? (
-            <form
-              onSubmit={handleDietitianSubmit}
-              className="space-y-4 w-full"
-              id="login-form"
-            >
-              <div className="space-y-2 w-full">
-                <Label htmlFor="email" className="block">
-                  E-posta
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="ornek@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2 w-full">
-                <Label htmlFor="password" className="block">
-                  Şifre
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Şifrenizi girin"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Giriş yapılıyor...
-                  </>
-                ) : (
-                  <>
-                    <Stethoscope className="mr-2 h-4 w-4" />
-                    Diyetisyen Girişi
-                  </>
-                )}
-              </Button>
-
-              <div className="mt-4 text-center text-sm text-gray-600">
-                Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime
-                geçin.
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="client-phone">Telefon Numarası</Label>
-                <Input
-                  id="client-phone"
-                  type="tel"
-                  placeholder="05XXXXXXXXX"
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
-                    resetClientFlow();
-                  }}
-                />
-                <p className="text-xs text-gray-500">
-                  Diyetisyeninizin sisteme kaydettiği telefon numarasını girin.
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                onClick={handleLookupClients}
-                disabled={isSearchingClient || !phoneNumber.trim()}
-              >
-                {isSearchingClient ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Profil aranıyor...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Profili Bul
-                  </>
-                )}
-              </Button>
-
-              {lookupClients.length > 0 && (
-                <div className="space-y-3 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
-                  <p className="text-sm text-gray-700 font-medium">
-                    {lookupClients.length > 1
-                      ? "Kim olduğunuzu seçin"
-                      : "Profiliniz bulundu"}
-                  </p>
-
-                  <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                    {lookupClients.map((client) => {
-                      const isSelected = selectedClientId === client.id;
-
-                      return (
-                        <button
-                          key={client.id}
-                          type="button"
-                          onClick={() => setSelectedClientId(client.id)}
-                          className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
-                            isSelected
-                              ? "border-blue-500 bg-white"
-                              : "border-gray-200 bg-white/80 hover:border-blue-300"
-                          }`}
-                        >
-                          <p className="text-sm font-semibold text-gray-900">
-                            {client.name} {client.surname}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatBirthdate(client.birthdate)}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {selectedClient && !singleClientAutoLogin && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-                      <p className="text-sm text-emerald-900 font-medium">
-                        {selectedClient.name} {selectedClient.surname} profili ile
-                        eşleştirileceksiniz. Onaylıyor musunuz?
-                      </p>
-
-                      <Button
-                        type="button"
-                        onClick={handleConfirmClient}
-                        disabled={isConfirmingClient}
-                        className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        {isConfirmingClient ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Onaylanıyor...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Onaylıyorum, Devam Et
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
             </div>
-          )}
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">veya</span>
+            </div>
+          </div>
+
+          <Link
+            href="/account"
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg border-2 border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-sm font-medium"
+          >
+            <Stethoscope className="w-4 h-4" />
+            Diyetisyen girişi için tıklayın
+          </Link>
         </CardContent>
       </Card>
     </div>

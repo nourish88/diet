@@ -699,6 +699,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           }
 
+          // Clear auto-saved draft on successful save
+          clearDraft();
+
           // Redirect to diet detail page after successful save (only for new diets)
           if (!isUpdateMode) {
             // Small delay to show toast, then redirect
@@ -764,6 +767,75 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Add this helper function to check if form should be disabled
   const isFormDisabled = !selectedClientId;
 
+  // ─── Auto-save draft to localStorage (Madde 1-G) ───
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false);
+  const DRAFT_KEY = selectedClientId
+    ? `diet-draft-${selectedClientId}`
+    : "diet-draft-new";
+
+  // Check for existing draft on mount (only for new diets)
+  useEffect(() => {
+    if (!selectedClientId || isUpdateMode) return;
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Only prompt if draft has meaningful data (non-empty meals)
+        const hasData = parsed?.Oguns?.some((o: any) => o.items?.length > 0);
+        if (hasData) setShowDraftPrompt(true);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!selectedClientId || isUpdateMode) return;
+    const interval = setInterval(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(diet));
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diet, selectedClientId, isUpdateMode]);
+
+  // Clear draft after successful save
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  };
+
+  const restoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) setDiet(JSON.parse(saved));
+    } catch {}
+    setShowDraftPrompt(false);
+  };
+
+  // ─── Keyboard shortcuts (Madde 1-A) ───
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (selectedClientId) handleSaveToDB();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId, diet, isUpdateMode]);
+
+  // ─── Progress indicator (Madde 1-F) ───
+  const filledMeals = diet.Oguns.filter((o) =>
+    o.items.some((item) => {
+      const besin = typeof item.besin === "string" ? item.besin : (item.besin as any)?.name;
+      return besin && besin.trim();
+    })
+  ).length;
+  const totalMeals = diet.Oguns.length;
+  const progressPercent = totalMeals > 0 ? Math.round((filledMeals / totalMeals) * 100) : 0;
+
   return (
     <div className="container mx-auto px-2 sm:px-4 max-w-7xl">
       <div style={{ fontSize: `${fontSize}px` }}>
@@ -773,6 +845,53 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             className="space-y-4 sm:space-y-8"
           >
             <DietHeader />
+
+            {/* Draft restore prompt (Madde 1-G) */}
+            {showDraftPrompt && (
+              <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm no-print">
+                <span className="text-amber-800 flex-1">
+                  Kaydedilmemiş bir diyet taslağı var. Kaldığın yerden devam et mi?
+                </span>
+                <button
+                  type="button"
+                  onClick={restoreDraft}
+                  className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-medium"
+                >
+                  Devam Et
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowDraftPrompt(false); clearDraft(); }}
+                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs"
+                >
+                  Yoksay
+                </button>
+              </div>
+            )}
+
+            {/* Progress indicator (Madde 1-F) */}
+            {selectedClientId && totalMeals > 0 && (
+              <div className="no-print space-y-1">
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>
+                    Dolu öğün: <span className="font-semibold text-gray-700">{filledMeals}/{totalMeals}</span>
+                  </span>
+                  <span className={progressPercent === 100 ? "text-green-600 font-semibold" : ""}>
+                    {progressPercent}%
+                    {progressPercent === 100 && " ✓ Tüm öğünler dolu"}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${progressPercent}%`,
+                      backgroundColor: progressPercent === 100 ? "#16a34a" : progressPercent > 50 ? "#3b82f6" : "#f59e0b",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Client selector with improved styling */}
             <div className="mb-4">

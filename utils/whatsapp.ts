@@ -51,20 +51,39 @@ export function getWhatsAppURL(phoneNumber: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 }
 
+/**
+ * Detect if the page is running as an installed PWA (standalone mode)
+ */
+export function isPWA(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as any).standalone === true
+  );
+}
+
+/**
+ * Open WhatsApp with a pre-filled message.
+ * - PWA/mobile: uses whatsapp:// deep link to open native app directly
+ * - Web browser: opens wa.me link in a new tab (WhatsApp Web)
+ */
 export function openWhatsApp(phoneNumber: string, message: string): string {
-  const url = getWhatsAppURL(phoneNumber, message);
+  const cleanPhone = formatPhoneForWhatsApp(phoneNumber);
+  const encodedMessage = encodeURIComponent(message);
 
-  // For web browsers
   if (typeof window !== "undefined") {
-    window.open(url, "_blank");
-    return url;
+    if (isPWA()) {
+      // PWA: open native WhatsApp app directly
+      const nativeUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodedMessage}`;
+      window.location.href = nativeUrl;
+      return nativeUrl;
+    } else {
+      // Web: open WhatsApp Web in new tab
+      const webUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+      window.open(webUrl, "_blank");
+      return webUrl;
+    }
   }
 
-  // For React Native (mobile)
-  if (typeof window === "undefined" && typeof global !== "undefined") {
-    // This will be handled by the mobile app using Linking
-    return url;
-  }
-
-  return url;
+  return getWhatsAppURL(phoneNumber, message);
 }

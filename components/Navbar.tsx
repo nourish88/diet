@@ -41,7 +41,9 @@ const Navbar = () => {
 
   // Don't show navbar on auth pages (login, register)
   const isAuthPage =
-    pathname?.startsWith("/login") || pathname?.startsWith("/register");
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/account") ||
+    pathname?.startsWith("/register");
   if (isAuthPage) {
     return null;
   }

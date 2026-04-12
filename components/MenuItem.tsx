@@ -41,6 +41,8 @@ interface MenuItemProps {
     field: string,
     value: string
   ) => void;
+  isLast?: boolean;
+  onAddItem?: (ogunIndex: number) => void;
 }
 
 const MenuItem = ({
@@ -49,6 +51,8 @@ const MenuItem = ({
   ogunIndex,
   onDelete,
   onItemChange,
+  isLast = false,
+  onAddItem,
 }: MenuItemProps) => {
   // Normalize miktar: if any integer-like decimal (e.g., "1.0", "2.0", "3.00"), normalize to integer
   // Allow empty strings for cases like "sınırsız salata"
@@ -133,13 +137,9 @@ const MenuItem = ({
               // If a suggestion was selected, auto-fill miktar and birim
               if (suggestion) {
                 if (suggestion.miktar) {
-                  // Normalize suggestion miktar (e.g., "1.0" -> "1", but preserve "0.5")
                   const normalizedMiktar = normalizeMiktar(suggestion.miktar);
                   setMiktar(normalizedMiktar);
                   updateParentState("miktar", normalizedMiktar);
-                } else {
-                  // If suggestion has no miktar, allow empty (don't force "1")
-                  // User can manually enter or leave empty
                 }
                 if (suggestion.birim) {
                   setBirim(suggestion.birim);
@@ -157,7 +157,7 @@ const MenuItem = ({
                 }
               }
             }}
-            placeholder="Besin ara..."
+            placeholder="Besin adı yazın, Tab ile miktara geçin"
             className="border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
           />
         </div>
@@ -184,10 +184,7 @@ const MenuItem = ({
                 updateParentState("miktar", value);
               }}
               onBlur={(e) => {
-                // On blur, normalize "1.0", "1.00", etc. to "1"
-                // But preserve empty strings
                 let value = e.target.value;
-                // Only normalize if value is not empty
                 if (value.trim() !== "") {
                   const normalized = normalizeMiktar(value);
                   if (normalized !== value) {
@@ -195,12 +192,20 @@ const MenuItem = ({
                     updateParentState("miktar", normalized);
                   }
                 } else {
-                  // Allow empty string
                   setMiktar("");
                   updateParentState("miktar", "");
                 }
               }}
-              placeholder="Miktar"
+              onKeyDown={(e) => {
+                // Tab or Enter on last item's miktar → add new item
+                if ((e.key === "Tab" || e.key === "Enter") && isLast && onAddItem && !e.shiftKey) {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onAddItem(ogunIndex);
+                  }
+                }
+              }}
+              placeholder="Miktar (Tab→birim)"
               className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
             />
           </div>
@@ -235,6 +240,10 @@ const MenuItem = ({
                             setBirim(currentValue);
                             setBirimOpen(false);
                             updateParentState("birim", currentValue);
+                            // If this is the last item, add a new row automatically
+                            if (isLast && onAddItem) {
+                              setTimeout(() => onAddItem(ogunIndex), 50);
+                            }
                           }}
                         >
                           <Check

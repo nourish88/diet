@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Sparkles, FileText, Save } from "lucide-react";
+import { Sparkles, Save, ChevronRight, ClipboardList } from "lucide-react";
 import PresetService, { MealPreset } from "@/services/PresetService";
 import { PresetSelector } from "./presets/PresetSelector";
+import { BulkPasteModal } from "./BulkPasteModal";
 import { useToast } from "@/components/ui/use-toast";
 import { MenuItem } from "@/types/types";
 
@@ -12,6 +13,7 @@ interface OgunQuickActionsProps {
   ogunName: string;
   ogunItems: MenuItem[];
   onApplyPreset: (preset: MealPreset) => void;
+  onBulkAdd?: (items: Array<{ besin: string; miktar: string; birim: string }>) => void;
   compact?: boolean;
 }
 
@@ -19,10 +21,13 @@ export const OgunQuickActions = ({
   ogunName,
   ogunItems,
   onApplyPreset,
+  onBulkAdd,
   compact = true,
 }: OgunQuickActionsProps) => {
   const [showPresetSelector, setShowPresetSelector] = useState(false);
+  const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [presets, setPresets] = useState<MealPreset[]>([]);
+  const [inlinePresets, setInlinePresets] = useState<MealPreset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -78,6 +83,24 @@ export const OgunQuickActions = ({
       setIsLoading(false);
     }
   };
+
+  // Load inline presets on mount (silent — no error toast)
+  useEffect(() => {
+    const loadInlinePresets = async () => {
+      try {
+        const mealType = getMealType(ogunName);
+        let data = await PresetService.getPresets(mealType);
+        if ((!data || data.length === 0) && mealType) {
+          data = await PresetService.getPresets();
+        }
+        setInlinePresets((data || []).slice(0, 3));
+      } catch {
+        // silent fail
+      }
+    };
+    loadInlinePresets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ogunName]);
 
   const handleOpenPresets = () => {
     loadPresets();
@@ -146,17 +169,35 @@ export const OgunQuickActions = ({
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-1.5 items-center">
+      {/* Inline preset buttons — top 3, single click to apply */}
+      {inlinePresets.map((preset) => (
+        <Button
+          key={preset.id}
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => onApplyPreset(preset)}
+          className="text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50 max-w-[130px] truncate"
+          title={`Uygula: ${preset.name}`}
+        >
+          <Sparkles className="h-3 w-3 mr-1 flex-shrink-0" />
+          <span className="truncate">{preset.name}</span>
+        </Button>
+      ))}
+
+      {/* "More presets" button — opens full modal */}
       <Button
         type="button"
         size="sm"
         variant="outline"
         onClick={handleOpenPresets}
         className="text-xs border-purple-300 text-purple-600 hover:bg-purple-50"
-        aria-label={compact ? "Preset kullan" : undefined}
+        aria-label="Tüm presetler"
+        title="Tüm presetleri gör"
       >
-        <Sparkles className={`h-3 w-3 ${compact ? "" : "mr-1"}`} />
-        {!compact && "Preset Kullan"}
+        <ChevronRight className="h-3 w-3" />
+        {!compact && " Tümü"}
       </Button>
 
       <Button
@@ -173,6 +214,21 @@ export const OgunQuickActions = ({
         {compact && isSaving && <span className="ml-2 text-xs">…</span>}
       </Button>
 
+      {/* Toplu besin girişi / sesli dikte */}
+      {onBulkAdd && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setShowBulkPaste(true)}
+          className="text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+          title="Toplu besin girişi veya sesli dikte"
+        >
+          <ClipboardList className="h-3 w-3 mr-1" />
+          {!compact && "Toplu Ekle"}
+        </Button>
+      )}
+
       <PresetSelector
         open={showPresetSelector}
         onClose={() => setShowPresetSelector(false)}
@@ -184,6 +240,15 @@ export const OgunQuickActions = ({
           setShowPresetSelector(false);
         }}
       />
+
+      {onBulkAdd && (
+        <BulkPasteModal
+          open={showBulkPaste}
+          onClose={() => setShowBulkPaste(false)}
+          ogunName={ogunName}
+          onApply={onBulkAdd}
+        />
+      )}
     </div>
   );
 };

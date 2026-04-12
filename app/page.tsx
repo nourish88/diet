@@ -134,7 +134,7 @@ export default function Home() {
       }
     } else if (!authLoading && !user) {
       // No user, redirect to login
-      router.push("/login");
+      router.push("/account");
     }
   }, [authLoading, user, databaseUser, router, loadDashboardData, loadUnreadMessages]);
 
