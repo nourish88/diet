@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Save, ChevronRight, ClipboardList } from "lucide-react";
+import { Sparkles, Save, ClipboardList } from "lucide-react";
 import PresetService, { MealPreset } from "@/services/PresetService";
 import { PresetSelector } from "./presets/PresetSelector";
 import { BulkPasteModal } from "./BulkPasteModal";
@@ -27,7 +27,6 @@ export const OgunQuickActions = ({
   const [showPresetSelector, setShowPresetSelector] = useState(false);
   const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [presets, setPresets] = useState<MealPreset[]>([]);
-  const [inlinePresets, setInlinePresets] = useState<MealPreset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -83,24 +82,6 @@ export const OgunQuickActions = ({
       setIsLoading(false);
     }
   };
-
-  // Load inline presets on mount (silent — no error toast)
-  useEffect(() => {
-    const loadInlinePresets = async () => {
-      try {
-        const mealType = getMealType(ogunName);
-        let data = await PresetService.getPresets(mealType);
-        if ((!data || data.length === 0) && mealType) {
-          data = await PresetService.getPresets();
-        }
-        setInlinePresets((data || []).slice(0, 3));
-      } catch {
-        // silent fail
-      }
-    };
-    loadInlinePresets();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ogunName]);
 
   const handleOpenPresets = () => {
     loadPresets();
@@ -170,34 +151,15 @@ export const OgunQuickActions = ({
 
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
-      {/* Inline preset buttons — top 3, single click to apply */}
-      {inlinePresets.map((preset) => (
-        <Button
-          key={preset.id}
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => onApplyPreset(preset)}
-          className="text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50 max-w-[130px] truncate"
-          title={`Uygula: ${preset.name}`}
-        >
-          <Sparkles className="h-3 w-3 mr-1 flex-shrink-0" />
-          <span className="truncate">{preset.name}</span>
-        </Button>
-      ))}
-
-      {/* "More presets" button — opens full modal */}
       <Button
         type="button"
         size="sm"
         variant="outline"
         onClick={handleOpenPresets}
         className="text-xs border-purple-300 text-purple-600 hover:bg-purple-50"
-        aria-label="Tüm presetler"
-        title="Tüm presetleri gör"
       >
-        <ChevronRight className="h-3 w-3" />
-        {!compact && " Tümü"}
+        <Sparkles className="h-3 w-3 mr-1" />
+        Preset Ekle
       </Button>
 
       <Button
