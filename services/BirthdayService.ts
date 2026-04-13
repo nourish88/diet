@@ -78,9 +78,11 @@ export async function getClientsWithBirthdaysToday(
   return clients.filter((client) => {
     if (!client.birthdate) return false;
     const birthdate = new Date(client.birthdate);
+    // Convert birthdate to GMT+3 before comparing, to match todayMonth/todayDay
+    const birthdateInTurkey = new Date(birthdate.getTime() + 3 * 3600000);
     return (
-      birthdate.getMonth() + 1 === todayMonth &&
-      birthdate.getDate() === todayDay
+      birthdateInTurkey.getMonth() + 1 === todayMonth &&
+      birthdateInTurkey.getDate() === todayDay
     );
   });
 }
@@ -237,7 +239,10 @@ export async function getDietitiansWithBirthdayClients(): Promise<
   const result: DietitianWithBirthdays[] = [];
 
   for (const dietitian of dietitians) {
-    if (dietitian.pushSubscriptions.length === 0) continue;
+    if (dietitian.pushSubscriptions.length === 0) {
+      console.log(`⚠️ Dietitian userId=${dietitian.id} has no push subscriptions, skipping`);
+      continue;
+    }
 
     const clients = clientsByDietitian.get(dietitian.id) || [];
     if (clients.length === 0) continue;

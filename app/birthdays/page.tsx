@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,7 +11,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Calendar, Gift, MessageCircle, Phone, PhoneMissed, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Calendar, Gift, MessageCircle, Phone, PhoneMissed } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
@@ -31,7 +33,6 @@ interface BirthdayClient {
 }
 
 function BirthdaysContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
@@ -39,9 +40,15 @@ function BirthdaysContent() {
   const [loading, setLoading] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
 
-  // Modal state
+  // Celebration modal state
   const [modalClient, setModalClient] = useState<BirthdayClient | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Phone update modal state
+  const [phoneModalClient, setPhoneModalClient] = useState<BirthdayClient | null>(null);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   const loadBirthdayClients = useCallback(async () => {
     try {
@@ -77,6 +84,35 @@ function BirthdaysContent() {
   const openCelebrationModal = (client: BirthdayClient) => {
     setModalClient(client);
     setModalOpen(true);
+  };
+
+  const openPhoneModal = (client: BirthdayClient) => {
+    setPhoneModalClient(client);
+    setPhoneInput(client.phoneNumber || "");
+    setPhoneModalOpen(true);
+  };
+
+  const handlePhoneUpdate = async () => {
+    if (!phoneModalClient || !phoneInput.trim()) return;
+    setPhoneLoading(true);
+    try {
+      await apiClient.patch(`/clients/${phoneModalClient.id}`, { phoneNumber: phoneInput.trim() });
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === phoneModalClient.id ? { ...c, phoneNumber: phoneInput.trim() } : c
+        )
+      );
+      // Update celebration modal client too if it's the same person
+      if (modalClient?.id === phoneModalClient.id) {
+        setModalClient((prev) => prev ? { ...prev, phoneNumber: phoneInput.trim() } : prev);
+      }
+      setPhoneModalOpen(false);
+      toast({ title: "Kaydedildi", description: "Telefon numarası güncellendi." });
+    } catch {
+      toast({ title: "Hata", description: "Telefon numarası güncellenemedi.", variant: "destructive" });
+    } finally {
+      setPhoneLoading(false);
+    }
   };
 
   const handleCelebrate = async (client: BirthdayClient) => {
@@ -208,9 +244,9 @@ function BirthdaysContent() {
                         variant="outline"
                         size="sm"
                         className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-                        onClick={() => router.push(`/clients/${client.id}`)}
+                        onClick={() => openPhoneModal(client)}
                       >
-                        <ExternalLink className="w-4 h-4 mr-2" />
+                        <Phone className="w-4 h-4 mr-2" />
                         Telefon Numarası Ekle
                       </Button>
                     </div>
@@ -281,11 +317,10 @@ function BirthdaysContent() {
                   variant="outline"
                   className="w-full text-blue-600 border-blue-200"
                   onClick={() => {
-                    setModalOpen(false);
-                    router.push(`/clients/${modalClient?.id}`);
+                    if (modalClient) openPhoneModal(modalClient);
                   }}
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
+                  <Phone className="w-4 h-4 mr-2" />
                   Telefon Numarası Ekle
                 </Button>
               </div>
@@ -330,6 +365,60 @@ function BirthdaysContent() {
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Phone Update Modal */}
+      <Dialog open={phoneModalOpen} onOpenChange={setPhoneModalOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="w-5 h-5 text-blue-500" />
+              Telefon Numarası Güncelle
+            </DialogTitle>
+            <DialogDescription>
+              {phoneModalClient && (
+                <span>
+                  <span className="font-semibold text-gray-900">
+                    {phoneModalClient.name} {phoneModalClient.surname}
+                  </span>{" "}
+                  için telefon numarası girin.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label htmlFor="phone-input">Telefon Numarası</Label>
+              <Input
+                id="phone-input"
+                type="tel"
+                placeholder="05XX XXX XX XX"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handlePhoneUpdate()}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePhoneUpdate}
+                disabled={phoneLoading || !phoneInput.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {phoneLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Kaydet"
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setPhoneModalOpen(false)}
+                className="flex-1"
+              >
+                İptal
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
