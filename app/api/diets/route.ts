@@ -45,60 +45,101 @@ export const POST = requireDietitian(
         select: { dietitianId: true },
       });
 
-      // Create diet with proper null checks and defaults
-      const diet = await prisma.diet.create({
-        data: {
-          clientId: data.clientId,
-          dietitianId: auth.user!.id, // SECURITY: Assign to authenticated dietitian
-          tarih: data.tarih ? new Date(data.tarih) : null,
-          su: data.su || "",
-          sonuc: data.sonuc || "",
-          hedef: data.hedef || "",
-          fizik: data.fizik || "",
-          isBirthdayCelebration: data.isBirthdayCelebration || false,
-          isImportantDateCelebrated: data.isImportantDateCelebrated || false,
-          importantDateId: data.importantDateId || null,
-          dietitianNote: data.dietitianNote || "",
-          oguns: {
-            create: (data.oguns || []).map((ogun: any) => ({
-              name: ogun.name || "",
-              time: ogun.time || "",
-              detail: ogun.detail || "",
-              order: ogun.order || 0,
-              items: {
-                create: (ogun.items || []).map((item: any) => ({
-                  miktar: item.miktar || "",
-                  birim: {
-                    connectOrCreate: {
-                      where: { name: item.birim || "" },
-                      create: { name: item.birim || "" },
-                    },
-                  },
-                  besin: {
-                    connectOrCreate: {
-                      where: { name: item.besin || "" },
-                      create: { name: item.besin || "" },
-                    },
-                  },
-                })),
-              },
-            })),
+      // Duplicate guard: if a diet already exists for the same client + dietitian
+      // on the same calendar day (tarih), override it instead of creating a new row.
+      let existingDietId: number | null = null;
+      if (data.tarih) {
+        const target = new Date(data.tarih);
+        const startOfDay = new Date(target);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(target);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const existing = await prisma.diet.findFirst({
+          where: {
+            clientId: data.clientId,
+            dietitianId: auth.user!.id,
+            tarih: { gte: startOfDay, lte: endOfDay },
           },
+          select: { id: true },
+        });
+        existingDietId = existing?.id ?? null;
+      }
+
+      const ogunsCreate = (data.oguns || []).map((ogun: any) => ({
+        name: ogun.name || "",
+        time: ogun.time || "",
+        detail: ogun.detail || "",
+        order: ogun.order || 0,
+        items: {
+          create: (ogun.items || []).map((item: any) => ({
+            miktar: item.miktar || "",
+            birim: {
+              connectOrCreate: {
+                where: { name: item.birim || "" },
+                create: { name: item.birim || "" },
+              },
+            },
+            besin: {
+              connectOrCreate: {
+                where: { name: item.besin || "" },
+                create: { name: item.besin || "" },
+              },
+            },
+          })),
         },
-        include: {
-          oguns: {
-            include: {
-              items: {
-                include: {
-                  birim: true,
-                  besin: true,
-                },
+      }));
+
+      const dietFields = {
+        tarih: data.tarih ? new Date(data.tarih) : null,
+        su: data.su || "",
+        sonuc: data.sonuc || "",
+        hedef: data.hedef || "",
+        fizik: data.fizik || "",
+        isBirthdayCelebration: data.isBirthdayCelebration || false,
+        isImportantDateCelebrated: data.isImportantDateCelebrated || false,
+        importantDateId: data.importantDateId || null,
+        dietitianNote: data.dietitianNote || "",
+      };
+
+      const include = {
+        oguns: {
+          include: {
+            items: {
+              include: {
+                birim: true,
+                besin: true,
               },
             },
           },
-          client: true,
         },
-      });
+        client: true,
+      } as const;
+
+      const diet = existingDietId
+        ? await prisma.$transaction(async (tx) => {
+            // Override: replace meals (cascades menu items) and update fields
+            await tx.ogun.deleteMany({ where: { dietId: existingDietId } });
+            return tx.diet.update({
+              where: { id: existingDietId },
+              data: {
+                ...dietFields,
+                oguns: { create: ogunsCreate },
+              },
+              include,
+            });
+          })
+        : await prisma.diet.create({
+            data: {
+              clientId: data.clientId,
+              dietitianId: auth.user!.id, // SECURITY: Assign to authenticated dietitian
+              ...dietFields,
+              oguns: { create: ogunsCreate },
+            },
+            include,
+          });
+
+      const wasOverridden = existingDietId !== null;
 
       // Log diet creation on server side
       try {
@@ -115,7 +156,7 @@ export const POST = requireDietitian(
               dietitianId: auth.user!.id,
               clientId: data.clientId,
               dietId: diet.id,
-              action: "diet_saved",
+              action: wasOverridden ? "diet_overridden" : "diet_saved",
               source: "server", // Server-side log
               metadata: {
                 ogunCount: diet.oguns.length,
@@ -123,6 +164,7 @@ export const POST = requireDietitian(
                   (sum, ogun) => sum + (ogun.items?.length || 0),
                   0
                 ),
+                overridden: wasOverridden,
               },
             }),
           }
@@ -136,7 +178,9 @@ export const POST = requireDietitian(
         console.warn("Error logging diet creation:", logError);
       }
 
-      return addCorsHeaders(NextResponse.json(diet));
+      return addCorsHeaders(
+        NextResponse.json({ ...diet, _overridden: wasOverridden })
+      );
     } catch (error) {
       // Enhanced error logging with detailed information
       const errorDetails: any = {
