@@ -86,6 +86,8 @@ model Diet {
   importantDateId           Int?
   importantDate             ImportantDate? @relation(fields: [importantDateId], references: [id])
   isImportantDateCelebrated Boolean        @default(false)
+
+  notifiedAt DateTime?
 }
 
 model Ogun {

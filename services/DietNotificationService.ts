@@ -9,19 +9,20 @@ export interface NewDietNotification {
 }
 
 /**
- * Get diets created in the last 15 minutes that haven't been notified yet
+ * Get diets created in the last 30 minutes that haven't been notified yet
  */
 export async function getNewDietsForNotification(): Promise<NewDietNotification[]> {
-  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
   const now = new Date();
 
-  // Get diets created in the last 15 minutes
+  // Get diets created in the last 30 minutes that haven't been notified yet
   const diets = await prisma.diet.findMany({
     where: {
       createdAt: {
-        gte: fifteenMinutesAgo,
+        gte: thirtyMinutesAgo,
         lte: now,
       },
+      notifiedAt: null,
       // Only get diets that have a client with a user
       client: {
         userId: {
@@ -157,6 +158,10 @@ export async function sendNewDietNotifications(): Promise<void> {
     for (const diet of eligibleDiets) {
       try {
         await sendNewDietNotification(diet as any);
+        await prisma.diet.update({
+          where: { id: diet.dietId },
+          data: { notifiedAt: new Date() },
+        });
         console.log(
           `Sent new diet notification for diet ${diet.dietId} to client ${diet.clientId}`
         );
@@ -170,6 +175,64 @@ export async function sendNewDietNotifications(): Promise<void> {
   } catch (error) {
     console.error("Error in sendNewDietNotifications:", error);
     throw error;
+  }
+}
+
+/**
+ * Send a new diet notification for a single diet right after creation.
+ * Sets notifiedAt on success so the cron safety net doesn't double-send.
+ * Swallows errors — never blocks the diet creation request.
+ */
+export async function notifyClientOfNewDiet(dietId: number): Promise<void> {
+  try {
+    const diet = await prisma.diet.findUnique({
+      where: { id: dietId },
+      include: {
+        client: {
+          include: {
+            user: {
+              include: {
+                notificationPreference: true,
+                pushSubscriptions: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!diet || diet.notifiedAt) return;
+
+    const user = diet.client.user;
+    if (!user) return;
+
+    const dietUpdatesEnabled =
+      user.notificationPreference?.dietUpdates !== undefined
+        ? user.notificationPreference.dietUpdates
+        : true;
+
+    if (!dietUpdatesEnabled) return;
+    if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) return;
+
+    await sendNewDietNotification({
+      dietId: diet.id,
+      clientId: diet.client.id,
+      clientName: `${diet.client.name} ${diet.client.surname}`,
+      createdAt: diet.createdAt,
+      user,
+    } as any);
+
+    await prisma.diet.update({
+      where: { id: diet.id },
+      data: { notifiedAt: new Date() },
+    });
+
+    console.log(`Sent immediate new diet notification for diet ${diet.id}`);
+  } catch (error) {
+    console.error(
+      `Failed to send immediate new diet notification for diet ${dietId}:`,
+      error
+    );
   }
 }
 

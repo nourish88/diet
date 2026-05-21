@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult, requireOwnClient } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -125,6 +126,7 @@ export const POST = requireDietitian(
               data: {
                 ...dietFields,
                 oguns: { create: ogunsCreate },
+                notifiedAt: null, // re-notify since the diet changed
               },
               include,
             });
@@ -140,6 +142,9 @@ export const POST = requireDietitian(
           });
 
       const wasOverridden = existingDietId !== null;
+
+      // Push notification to the client — runs after response is sent
+      after(() => notifyClientOfNewDiet(diet.id));
 
       // Log diet creation on server side
       try {

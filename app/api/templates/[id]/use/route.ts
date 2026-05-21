@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/prisma";
+import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 
 export async function POST(
   request: NextRequest,
@@ -90,6 +91,8 @@ export async function POST(
         client: true,
       },
     });
+
+    after(() => notifyClientOfNewDiet(diet.id));
 
     return NextResponse.json({ diet }, { status: 201 });
   } catch (error) {
