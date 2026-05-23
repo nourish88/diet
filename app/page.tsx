@@ -16,6 +16,13 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 
@@ -40,6 +47,7 @@ interface DashboardStats {
   totalClients: number;
   totalDiets: number;
   thisMonthDiets: number;
+  periodDiets?: number;
   pendingApprovals: number;
 }
 
@@ -68,6 +76,7 @@ export default function Home() {
   const [recentDiets, setRecentDiets] = useState<RecentDiet[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [unreadByDiet, setUnreadByDiet] = useState<UnreadMessagesByDiet>({});
+  const [timeRange, setTimeRange] = useState("current_month");
   
   // Get user role from databaseUser
   const userRole = databaseUser?.role || null;
@@ -77,11 +86,11 @@ export default function Home() {
       setStatsLoading(true);
 
       // Load dashboard stats
-      const statsData = await apiClient.get<DashboardStats>("/analytics/stats");
+      const statsData = await apiClient.get<DashboardStats>(`/analytics/stats?timeRange=${timeRange}`);
       setDashboardStats({
         totalClients: statsData.totalClients || 0,
         totalDiets: statsData.totalDiets || 0,
-        thisMonthDiets: statsData.thisMonthDiets || 0,
+        thisMonthDiets: statsData.periodDiets ?? statsData.thisMonthDiets ?? 0,
         pendingApprovals: statsData.pendingApprovals || 0,
       });
 
@@ -93,7 +102,7 @@ export default function Home() {
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [timeRange]);
 
   const loadUnreadMessages = useCallback(async () => {
     try {
@@ -194,6 +203,21 @@ export default function Home() {
     <div className="container mx-auto px-4 py-12 max-w-7xl">
       {/* Mobile Dashboard Features - Üst Bölüm */}
       <div className="mb-16">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <h2 className="text-xl font-semibold text-gray-900">Genel Durum</h2>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[180px] bg-white">
+              <SelectValue placeholder="Zaman Aralığı" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current_month">İçinde Bulunulan Ay</SelectItem>
+              <SelectItem value="24h">Son 24 Saat</SelectItem>
+              <SelectItem value="7d">Son 7 Gün</SelectItem>
+              <SelectItem value="30d">Son 30 Gün</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Stats Grid */}
         {statsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
@@ -244,7 +268,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Bu Ay */}
+            {/* Bu Ay / Seçili Dönem */}
             <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border-l-4 border-orange-500">
               <div className="flex items-center justify-center mb-3 md:mb-4">
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-50 rounded-full flex items-center justify-center">
@@ -255,7 +279,7 @@ export default function Home() {
                 <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
                   {dashboardStats?.thisMonthDiets || 0}
                 </div>
-                <div className="text-xs md:text-sm text-gray-600 font-medium">Bu Ay</div>
+                <div className="text-xs md:text-sm text-gray-600 font-medium">Seçili Dönem (Diyet)</div>
               </div>
             </div>
 
