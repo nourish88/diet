@@ -90,6 +90,71 @@ async function sendSubscriptionToServer(
   }
 }
 
+export async function setupPushNotificationsForUser(
+  userId: number,
+  options: {
+    requestPermissionIfDefault?: boolean;
+    respectPromptMemory?: boolean;
+  } = {}
+): Promise<{
+  ok: boolean;
+  reason?: "unsupported" | "denied" | "dismissed" | "missing-registration" | "missing-subscription";
+}> {
+  if (!isSupported()) {
+    return { ok: false, reason: "unsupported" };
+  }
+
+  const {
+    requestPermissionIfDefault = true,
+    respectPromptMemory = true,
+  } = options;
+
+  if (Notification.permission === "denied") {
+    return { ok: false, reason: "denied" };
+  }
+
+  if (Notification.permission === "default") {
+    if (!requestPermissionIfDefault) {
+      return { ok: false, reason: "dismissed" };
+    }
+
+    const alreadyPrompted =
+      respectPromptMemory && window.localStorage.getItem(PROMPT_KEY);
+    if (alreadyPrompted) {
+      return { ok: false, reason: "dismissed" };
+    }
+
+    const permission = await Notification.requestPermission();
+    window.localStorage.setItem(PROMPT_KEY, "true");
+    if (permission !== "granted") {
+      return { ok: false, reason: "dismissed" };
+    }
+  }
+
+  const registration = await registerServiceWorker();
+  if (!registration) {
+    return { ok: false, reason: "missing-registration" };
+  }
+
+  const subscription = await subscribeToPush(registration);
+  if (!subscription) {
+    return { ok: false, reason: "missing-subscription" };
+  }
+
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  await sendSubscriptionToServer(
+    subscription,
+    userId,
+    session?.access_token
+  );
+
+  return { ok: true };
+}
+
 export default function PushNotificationProvider() {
   const { databaseUser } = useAuth();
   const hasAttempted = useRef(false);
@@ -103,47 +168,7 @@ export default function PushNotificationProvider() {
 
     const setup = async () => {
       try {
-        const supabase = createClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-
-        if (Notification.permission === "denied") {
-          return;
-        }
-
-        if (
-          Notification.permission === "default" &&
-          typeof window !== "undefined"
-        ) {
-          const alreadyPrompted = window.localStorage.getItem(PROMPT_KEY);
-          if (!alreadyPrompted) {
-            const permission = await Notification.requestPermission();
-            window.localStorage.setItem(PROMPT_KEY, "true");
-            if (permission !== "granted") {
-              return;
-            }
-          } else {
-            return;
-          }
-        }
-
-        const registration = await registerServiceWorker();
-        if (!registration) {
-          return;
-        }
-
-        const subscription = await subscribeToPush(registration);
-        if (!subscription) {
-          return;
-        }
-
-        await sendSubscriptionToServer(
-          subscription,
-          databaseUser.id,
-          accessToken
-        );
+        await setupPushNotificationsForUser(databaseUser.id);
       } catch (error) {
         console.error("❌ Push notification setup error:", error);
       }
@@ -154,4 +179,3 @@ export default function PushNotificationProvider() {
 
   return null;
 }
-

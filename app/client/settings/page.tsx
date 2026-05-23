@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bell, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { setupPushNotificationsForUser } from "@/components/providers/PushNotificationProvider";
 
 interface NotificationPreference {
   id: number;
@@ -82,10 +83,34 @@ export default function SettingsPage() {
   const requestNotificationPermission = async () => {
     if (typeof window !== "undefined" && "Notification" in window) {
       try {
+        if (!userId) {
+          toast({
+            title: "Oturum bulunamadı",
+            description: "Bildirimleri açmak için tekrar giriş yapın.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const permission = await Notification.requestPermission();
         setNotificationPermission(permission);
         
         if (permission === "granted") {
+          const setupResult = await setupPushNotificationsForUser(userId, {
+            requestPermissionIfDefault: false,
+            respectPromptMemory: false,
+          });
+
+          if (!setupResult.ok) {
+            toast({
+              title: "Bildirim aboneliği oluşturulamadı",
+              description:
+                "İzin verildi ama cihaz aboneliği kaydedilemedi. Sayfayı yenileyip tekrar deneyin.",
+              variant: "destructive",
+            });
+            return;
+          }
+
           toast({
             title: "Bildirim izni verildi",
             description: "Artık öğün hatırlatıcıları alabilirsiniz.",
@@ -300,4 +325,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
