@@ -18,11 +18,10 @@ import {
   X,
 } from "lucide-react";
 
+import { GOOGLE_REVIEW_URL } from "@/lib/site-urls";
+
 const REVIEW_DONE_KEY = "client_review_done";
 const REVIEW_NUDGE_DISMISSED_KEY = "client_review_nudge_diet_dismissed";
-
-const GOOGLE_REVIEW_URL =
-  "https://www.google.com/maps/place/Diyetisyen+Ezgi+Evgin/@39.9669753,32.6332346,17z/data=!3m1!4b1!4m6!3m5!1s0x14d330d2f71d4659:0x83b8bf59458d8408!8m2!3d39.9669753!4d32.6358095!16s%2Fg%2F11dymr8nhs?entry=ttu&g_ep=EgoyMDI2MDQwMS4wIKXMDSoASAFQAw%3D%3D";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import DatabasePDFButton from "@/components/DatabasePDFButton";

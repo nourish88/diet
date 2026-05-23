@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { GOOGLE_REVIEW_URL, DIETITIAN_WEBSITE_URL } from "@/lib/site-urls";
 
 interface UnreadData {
   totalUnread: number;
@@ -58,12 +59,6 @@ function shouldShowReviewPrompt(): boolean {
 }
 
 export default function ClientDashboard() {
-  const DIETITIAN_WEBSITE_URL =
-    process.env.NEXT_PUBLIC_DIETITIAN_WEBSITE_URL ||
-    "https://ezgievginaktas.com";
-  const GOOGLE_REVIEW_URL =
-    "https://www.google.com/maps/place/Diyetisyen+Ezgi+Evgin/@39.9669753,32.6332346,17z/data=!3m1!4b1!4m6!3m5!1s0x14d330d2f71d4659:0x83b8bf59458d8408!8m2!3d39.9669753!4d32.6358095!16s%2Fg%2F11dymr8nhs?entry=ttu&g_ep=EgoyMDI2MDQwMS4wIKXMDSoASAFQAw%3D%3D";
-
   const router = useRouter();
   const { databaseUser, signOut } = useAuth();
   const [userName, setUserName] = useState<string>("");
