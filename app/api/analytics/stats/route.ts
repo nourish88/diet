@@ -3,12 +3,10 @@ import prisma from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate request
     const auth = await authenticateRequest(request);
 
     if (!auth.user || auth.user.role !== "dietitian") {
@@ -19,53 +17,34 @@ export async function GET(request: NextRequest) {
 
     const dietitianId = auth.user.id;
 
-    // Get total clients count for this dietitian
-    const totalClients = await prisma.client.count({
-      where: {
-        dietitianId: dietitianId,
-      },
-    });
+    // Dates for this month and last month
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    // Get total diets count for this dietitian
-    const totalDiets = await prisma.diet.count({
-      where: {
-        dietitianId: dietitianId,
-      },
-    });
+    // Promises for concurrent execution
+    const [
+      totalClients,
+      totalDiets,
+      thisMonthDiets,
+      lastMonthDiets,
+      newClientsThisMonth,
+      newClientsLastMonth,
+      pendingApprovals,
+      kvkkConsentsThisMonth,
+    ] = await Promise.all([
+      prisma.client.count({ where: { dietitianId } }),
+      prisma.diet.count({ where: { dietitianId } }),
+      prisma.diet.count({ where: { dietitianId, createdAt: { gte: thisMonthStart } } }),
+      prisma.diet.count({ where: { dietitianId, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+      prisma.client.count({ where: { dietitianId, createdAt: { gte: thisMonthStart } } }),
+      prisma.client.count({ where: { dietitianId, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+      prisma.user.count({ where: { role: "client", isApproved: false } }),
+      prisma.client.count({ where: { dietitianId, kvkkPortalConsentAt: { gte: thisMonthStart } } }),
+    ]);
 
-    // Get diets this month for this dietitian
-    const thisMonthStart = new Date();
-    thisMonthStart.setDate(1);
-    thisMonthStart.setHours(0, 0, 0, 0);
-
-    const thisMonthDiets = await prisma.diet.count({
-      where: {
-        dietitianId: dietitianId,
-        createdAt: {
-          gte: thisMonthStart,
-        },
-      },
-    });
-
-    // Get last month's diets for comparison
-    const lastMonthStart = new Date();
-    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-    lastMonthStart.setDate(1);
-    lastMonthStart.setHours(0, 0, 0, 0);
-    const lastMonthEnd = new Date(thisMonthStart);
-    lastMonthEnd.setTime(lastMonthEnd.getTime() - 1);
-
-    const lastMonthDiets = await prisma.diet.count({
-      where: {
-        dietitianId: dietitianId,
-        createdAt: {
-          gte: lastMonthStart,
-          lte: lastMonthEnd,
-        },
-      },
-    });
-
-    // Get top used besins (top 10)
+    // Top besins (raw query)
     const topBesins = await prisma.$queryRaw<any[]>`
       SELECT 
         b.id,
@@ -83,24 +62,37 @@ export async function GET(request: NextRequest) {
       LIMIT 10
     `;
 
-    // Get pending approvals count
-    const pendingApprovals = await prisma.user.count({
-      where: {
-        role: "client",
-        isApproved: false,
-      },
-    });
+    // Monthly data for the last 6 months
+    const monthlyData: { month: string; diets: number; clients: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      
+      const monthName = monthStart.toLocaleString('tr-TR', { month: 'short' });
+      
+      const [dietsCount, clientsCount] = await Promise.all([
+        prisma.diet.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
+        prisma.client.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
+      ]);
+      
+      monthlyData.push({
+        month: monthName,
+        diets: dietsCount,
+        clients: clientsCount,
+      });
+    }
 
-    // Format response to match mobile and web expectations
     return addCorsHeaders(
       NextResponse.json({
-        // Mobile dashboard format (flat structure)
         totalClients,
         totalDiets,
         thisMonthDiets,
         pendingApprovals,
+        newClientsThisMonth,
+        newClientsLastMonth,
+        kvkkConsentsThisMonth,
+        monthlyData,
         
-        // Web analytics page format (nested structure for backward compatibility)
         topBesins: topBesins.map((b) => ({
           id: b.id,
           name: b.name,
@@ -108,14 +100,14 @@ export async function GET(request: NextRequest) {
           usageCount: Number(b.usageCount),
         })),
         totals: {
-          totalDiets: totalDiets,
+          totalDiets,
           dietsThisMonth: thisMonthDiets,
           dietsLastMonth: lastMonthDiets,
         },
         efficiency: {
-          avgTimeThisMonth: 0, // Placeholder
-          avgTimeLastMonth: 0, // Placeholder
-          improvement: 0, // Placeholder
+          avgTimeThisMonth: 0, 
+          avgTimeLastMonth: 0,
+          improvement: 0, 
         },
       })
     );

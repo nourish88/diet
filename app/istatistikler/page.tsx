@@ -3,13 +3,35 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Sparkles, 
+  Loader2, 
+  Users, 
+  FileText, 
+  CheckCircle2,
+  CalendarDays,
+  TrendingDown,
+  Activity
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PresetService from "@/services/PresetService";
 import { apiClient } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from "recharts";
 
 interface BesinStat {
   id: number;
@@ -21,8 +43,22 @@ interface BesinStat {
   groupName?: string;
 }
 
+interface MonthlyData {
+  month: string;
+  diets: number;
+  clients: number;
+}
+
 interface AnalyticsData {
   topBesins: BesinStat[];
+  totalClients: number;
+  totalDiets: number;
+  thisMonthDiets: number;
+  pendingApprovals: number;
+  newClientsThisMonth: number;
+  newClientsLastMonth: number;
+  kvkkConsentsThisMonth: number;
+  monthlyData: MonthlyData[];
   totals: {
     totalDiets: number;
     dietsThisMonth: number;
@@ -35,11 +71,28 @@ interface AnalyticsData {
   };
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-lg shadow-xl">
+        <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 text-sm">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-slate-600 dark:text-slate-400">{entry.name}:</span>
+            <span className="font-medium text-slate-900 dark:text-white">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function IstatistiklerPage() {
   const [isGeneratingPresets, setIsGeneratingPresets] = useState(false);
   const { toast } = useToast();
 
-  // Use React Query for data fetching
   const {
     data: analyticsData,
     isLoading,
@@ -51,7 +104,7 @@ export default function IstatistiklerPage() {
     queryFn: async () => {
       return apiClient.get<AnalyticsData>("/analytics/stats");
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 
@@ -65,7 +118,6 @@ export default function IstatistiklerPage() {
         description: result.message,
       });
       
-      // Refetch analytics after generating presets
       refetch();
     } catch (error: any) {
       toast({
@@ -78,252 +130,307 @@ export default function IstatistiklerPage() {
     }
   };
 
-  // Handle error state
   if (isError) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="text-center py-16">
-          <p className="text-red-600 mb-4">
-            İstatistikler yüklenirken bir hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center p-8 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-100 dark:border-red-900/30 max-w-md">
+          <Activity className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-900 dark:text-red-400 mb-2">Bağlantı Hatası</h3>
+          <p className="text-red-600 dark:text-red-500/80 mb-6">
+            {error instanceof Error ? error.message : 'İstatistikler yüklenirken bir sorun oluştu.'}
           </p>
-          <Button onClick={() => refetch()}>Tekrar Dene</Button>
+          <Button onClick={() => refetch()} variant="outline" className="border-red-200 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/50">
+            Tekrar Dene
+          </Button>
         </div>
       </div>
     );
   }
 
+  const clientGrowth = analyticsData 
+    ? ((analyticsData.newClientsThisMonth - analyticsData.newClientsLastMonth) / Math.max(1, analyticsData.newClientsLastMonth)) * 100 
+    : 0;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">İstatistikler</h1>
-        <p className="text-gray-600 mt-2">
-          Kullanım alışkanlıklarınızı ve verimlilik metriklerinizi görün
-        </p>
+      {/* Header Section */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight">
+            İstatistikler & Analiz
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">
+            Kliniğinizin büyüme ve performans verilerini inceleyin
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={() => refetch()} 
+            variant="outline" 
+            size="sm"
+            className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Activity className="h-4 w-4 mr-2 text-indigo-500" />}
+            Verileri Yenile
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="besins" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="besins">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-indigo-100 font-medium">Toplam Danışan</CardDescription>
+            <CardTitle className="text-4xl font-bold flex items-center justify-between">
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.totalClients || 0}
+              <Users className="h-8 w-8 text-indigo-200" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-indigo-100 mt-2">
+              {clientGrowth >= 0 ? (
+                <TrendingUp className="h-4 w-4 mr-1 text-green-300" />
+              ) : (
+                <TrendingDown className="h-4 w-4 mr-1 text-red-300" />
+              )}
+              <span>Bu ay <strong className="text-white">+{analyticsData?.newClientsThisMonth || 0}</strong> yeni kayıt</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-500 font-medium">Yazılan Diyet (Bu Ay)</CardDescription>
+            <CardTitle className="text-4xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.thisMonthDiets || 0}
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+                <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Toplam: <strong className="text-slate-700 dark:text-slate-300">{analyticsData?.totalDiets || 0}</strong> diyet
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-slate-500 font-medium">KVKK Onayları (Bu Ay)</CardDescription>
+            <CardTitle className="text-4xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.kvkkConsentsThisMonth || 0}
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Sisteme giriş yapan yeni onaylar
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-orange-50 font-medium">Bekleyen Onaylar</CardDescription>
+            <CardTitle className="text-4xl font-bold flex items-center justify-between">
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.pendingApprovals || 0}
+              <CalendarDays className="h-8 w-8 text-orange-100" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-orange-100 mt-2">
+              Mobil uygulama giriş bekleyenler
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="overview" className="w-full space-y-8">
+        <TabsList className="grid w-full max-w-md grid-cols-2 p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
             <BarChart3 className="h-4 w-4 mr-2" />
-            Besin İstatistikleri
+            Genel Bakış
           </TabsTrigger>
-          <TabsTrigger value="patterns">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Pattern'ler
-          </TabsTrigger>
-          <TabsTrigger value="efficiency">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Verimlilik
+          <TabsTrigger value="foods" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+            <Activity className="h-4 w-4 mr-2" />
+            Besin & Pattern Analizi
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Besin İstatistikleri */}
-        <TabsContent value="besins">
-          <Card>
-            <CardHeader>
-              <CardTitle>📊 En Sık Kullanılan Besinler</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-500">Yükleniyor...</span>
-                </div>
-              ) : analyticsData?.topBesins &&
-                analyticsData.topBesins.length > 0 ? (
-                <div className="space-y-3">
-                  {analyticsData.topBesins.map((besin, index) => (
-                    <div
-                      key={besin.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center font-semibold text-indigo-600">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {besin.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {besin.groupName || "Diğer"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          {besin.usageCount}× kullanıldı
-                        </p>
-                        {(besin.avgMiktar || besin.commonBirim) && (
-                          <p className="text-sm text-gray-600">
-                            {besin.avgMiktar} {besin.commonBirim}
-                          </p>
-                        )}
-                      </div>
+        {/* Tab 1: Genel Bakış */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Monthly Diets Chart */}
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center text-slate-800 dark:text-slate-100">
+                  <FileText className="h-5 w-5 mr-2 text-indigo-500" />
+                  Aylık Yazılan Diyetler
+                </CardTitle>
+                <CardDescription>Son 6 ayın performans grafiği</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  {isLoading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <p>Henüz istatistik bulunmuyor</p>
-                  <p className="text-sm mt-1">
-                    Daha fazla diyet yazdıkça istatistikler oluşacak
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 2: Pattern'ler */}
-        <TabsContent value="patterns">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>🎯 Öğün Pattern'leri</span>
-                <Button
-                  onClick={handleAutoGeneratePresets}
-                  disabled={isGeneratingPresets}
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {isGeneratingPresets ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Oluşturuluyor...
-                    </>
                   ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Otomatik Preset Oluştur
-                    </>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={analyticsData?.monthlyData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorDiets" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                        <RechartsTooltip content={<CustomTooltip />} />
+                        <Area type="monotone" dataKey="diets" name="Diyet" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorDiets)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   )}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-sm text-purple-900">
-                  <strong>💡 Nasıl çalışır?</strong>
-                </p>
-                <p className="text-sm text-purple-800 mt-2">
-                  Sistem son 30 diyetinizi analiz edip benzer öğün
-                  kombinasyonlarını tespit eder ve otomatik preset'ler
-                  oluşturur.
-                </p>
-                <p className="text-sm text-purple-800 mt-2">
-                  En az 5 diyet yazmanız gerekir.
-                </p>
-                <ul className="text-sm text-purple-800 mt-2 ml-4 list-disc">
-                  <li>%70+ benzerlik varsa pattern tespit edilir</li>
-                  <li>Otomatik preset olarak kaydedilir</li>
-                  <li>Diyet yazarken hızlıca kullanabilirsiniz</li>
-                </ul>
-              </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Buraya gelecekte tespit edilen pattern'leri gösterebiliriz */}
-            </CardContent>
-          </Card>
+            {/* Monthly New Clients Chart */}
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center text-slate-800 dark:text-slate-100">
+                  <Users className="h-5 w-5 mr-2 text-emerald-500" />
+                  Yeni Danışan Kazanımı
+                </CardTitle>
+                <CardDescription>Son 6 ayın danışan kayıtları</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  {isLoading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analyticsData?.monthlyData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                        <RechartsTooltip content={<CustomTooltip />} cursor={{fill: '#f1f5f9', opacity: 0.4}} />
+                        <Bar dataKey="clients" name="Yeni Danışan" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        {/* Tab 3: Verimlilik */}
-        <TabsContent value="efficiency">
-          <Card>
-            <CardHeader>
-              <CardTitle>⚡ Verimlilik Metrikleri</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-500">Yükleniyor...</span>
-                </div>
-              ) : analyticsData ? (
-                <div className="space-y-6">
-                  {/* This Month */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-green-900 mb-3">Bu Ay</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-green-800">Toplam Diyet:</span>
-                        <span className="font-semibold text-green-900">
-                          {analyticsData.totals.dietsThisMonth}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-green-800">
-                          Ortalama Süre (tahmini):
-                        </span>
-                        <span className="font-semibold text-green-900">
-                          {analyticsData.efficiency.avgTimeThisMonth} dakika
-                        </span>
-                      </div>
-                    </div>
+        {/* Tab 2: Besinler ve Patternler */}
+        <TabsContent value="foods" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center">
+                  <Activity className="h-5 w-5 mr-2 text-rose-500" />
+                  En Sık Kullanılan Besinler
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
                   </div>
-
-                  {/* Last Month */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Geçen Ay
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">Toplam Diyet:</span>
-                        <span className="font-semibold text-gray-900">
-                          {analyticsData.totals.dietsLastMonth}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-700">Ortalama Süre:</span>
-                        <span className="font-semibold text-gray-900">
-                          {analyticsData.efficiency.avgTimeLastMonth} dakika
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Improvement */}
-                  {analyticsData.efficiency.improvement > 0 && (
-                    <div className="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-4">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-6 w-6 text-indigo-600" />
-                        <div>
-                          <p className="font-semibold text-indigo-900">
-                            📈 İyileşme: %{analyticsData.efficiency.improvement}{" "}
-                            daha hızlı!
-                          </p>
-                          <p className="text-sm text-indigo-700 mt-1">
-                            Akıllı sistem kullanımınız sayesinde daha verimli
-                            çalışıyorsunuz
-                          </p>
+                ) : analyticsData?.topBesins && analyticsData.topBesins.length > 0 ? (
+                  <div className="space-y-4">
+                    {analyticsData.topBesins.map((besin, index) => {
+                      // Calculate percentage for progress bar relative to the top item
+                      const maxUsage = analyticsData.topBesins[0].usageCount;
+                      const percentage = Math.max(5, (besin.usageCount / maxUsage) * 100);
+                      
+                      return (
+                        <div key={besin.id} className="relative">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-400 w-4">{index + 1}.</span>
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{besin.name}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                {besin.groupName || "Diğer"}
+                              </span>
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              {besin.usageCount}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mb-1 overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-rose-400 to-rose-500 h-1.5 rounded-full transition-all duration-1000 ease-out" 
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 text-slate-500">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText className="h-8 w-8 text-slate-300" />
                     </div>
-                  )}
+                    <p className="font-medium">Henüz istatistik bulunmuyor</p>
+                    <p className="text-sm mt-1 text-slate-400">Diyet yazdıkça besin kullanım istatistikleriniz burada belirecek.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  {/* Total Stats */}
-                  <div className="border-t pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <p className="text-2xl font-bold text-purple-600">
-                          {analyticsData.totals.totalDiets}
-                        </p>
-                        <p className="text-sm text-purple-800">Toplam Diyet</p>
-                      </div>
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">
-                          {analyticsData.topBesins.length}
-                        </p>
-                        <p className="text-sm text-blue-800">
-                          Farklı Besin Kullanımı
-                        </p>
-                      </div>
-                    </div>
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60 flex flex-col">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Sparkles className="h-5 w-5 mr-2 text-amber-500" />
+                    Akıllı Pattern Analizi
+                  </div>
+                  <Button
+                    onClick={handleAutoGeneratePresets}
+                    disabled={isGeneratingPresets}
+                    size="sm"
+                    className="bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
+                  >
+                    {isGeneratingPresets ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CardTitle>
+                <CardDescription>Yapay zeka destekli öğün patternleri</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-center">
+                <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-6 text-center">
+                  <div className="w-16 h-16 bg-white dark:bg-slate-900 shadow-sm rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
+                    <Sparkles className="h-8 w-8 text-amber-500" />
+                  </div>
+                  <h3 className="text-amber-900 dark:text-amber-400 font-semibold mb-2">Otomatik Presetler</h3>
+                  <p className="text-sm text-amber-700/80 dark:text-amber-500/80 mb-4">
+                    Sistem son diyetlerinizi analiz eder ve en sık kullandığınız öğün kombinasyonlarını tespit ederek sizin için hazır şablonlar (preset) oluşturur.
+                  </p>
+                  <div className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-100/50 dark:bg-amber-900/50 px-3 py-1.5 rounded-full">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> En az %70 benzerlik arar
                   </div>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
