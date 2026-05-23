@@ -22,8 +22,24 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 215 20.2% 65.1%;
-    --radius: 0.5rem;
+    --ring: 243 75% 59%;
+    --radius: 0.625rem;
+
+    /* Brand tokens — indigo→purple gradient, sofistike tonu */
+    --brand: 243 75% 59%;
+    --brand-foreground: 0 0% 100%;
+    --brand-from: 239 84% 56%;
+    --brand-to: 270 60% 45%;
+    --brand-soft: 243 75% 96%;
+
+    /* Accent tokens */
+    --success: 142 70% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Premium polish */
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.08);
   }
 
   .dark {
@@ -37,15 +53,38 @@
     --popover-foreground: 215 20.2% 65.1%;
     --border: 216 34% 17%;
     --input: 216 34% 17%;
-    --card: 224 71% 4%;
+    --card: 224 47% 7%;
     --card-foreground: 213 31% 91%;
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 1.2%;
     --secondary: 222.2 47.4% 11.2%;
     --secondary-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
+    --destructive: 0 63% 45%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 216 34% 17%;
+    --ring: 243 75% 65%;
+
+    --brand: 243 75% 65%;
+    --brand-foreground: 224 71% 4%;
+    --brand-from: 239 84% 65%;
+    --brand-to: 270 60% 60%;
+    --brand-soft: 243 30% 18%;
+
+    --success: 142 60% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 80% 60%;
+    --warning-foreground: 0 0% 100%;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+  ::selection {
+    background-color: hsl(var(--brand) / 0.2);
+    color: hsl(var(--brand));
   }
 }
 .react-resizable {
@@ -72,7 +111,7 @@ th {
 }
 
 th:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: hsl(var(--accent));
 }
 html {
   transition: font-size 0.3s ease;
@@ -105,7 +144,7 @@ html {
 
 .overflow-y-auto {
   scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -117,6 +156,10 @@ html {
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
+  background-color: hsl(var(--muted-foreground) / 0.4);
   border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.6);
 }

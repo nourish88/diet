@@ -44,25 +44,27 @@ export default function DateRangePicker({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center w-full sm:w-auto">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="w-full md:w-auto justify-start text-left font-normal"
+            className="w-full sm:w-auto justify-start text-left font-normal"
           >
-            <CalendarDays className="mr-2 h-4 w-4" />
-            {dateFrom && dateTo ? (
-              <>
-                {format(dateFrom, "d MMM yyyy", { locale: tr })} -{" "}
-                {format(dateTo, "d MMM yyyy", { locale: tr })}
-              </>
-            ) : (
-              <span>Tarih Aralığı Seç</span>
-            )}
+            <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">
+              {dateFrom && dateTo ? (
+                <>
+                  {format(dateFrom, "d MMM yyyy", { locale: tr })} -{" "}
+                  {format(dateTo, "d MMM yyyy", { locale: tr })}
+                </>
+              ) : (
+                "Tarih Aralığı Seç"
+              )}
+            </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-[calc(100vw-2rem)] sm:w-auto p-0 max-h-[80vh] overflow-y-auto" align="start">
           <div className="p-4 space-y-4">
             <div className="space-y-2">
               <p className="text-sm font-medium">Hızlı Seçim</p>

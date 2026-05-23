@@ -46,7 +46,7 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
             onClick={reset}
-            className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+            className="bg-brand-gradient hover:opacity-90 text-white"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Tekrar Dene

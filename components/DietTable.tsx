@@ -572,7 +572,7 @@ const DietTable = ({
                     ref={provided.innerRef}
                   >
                     <thead>
-                      <tr className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white h-16 shadow-md border-b-2 border-gray-300">
+                      <tr className="bg-brand-gradient text-white h-16 shadow-md border-b-2 border-gray-300">
                         <Resizable
                           width={getColumnWidth("ogun")}
                           height={40}

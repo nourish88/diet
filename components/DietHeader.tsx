@@ -4,7 +4,7 @@ import React from "react";
 const DietHeader = () => {
   return (
     <div
-      className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white rounded-lg shadow-md mb-8 w-full border-2 border-purple-700"
+      className="bg-brand-gradient p-6 text-white rounded-lg shadow-md mb-8 w-full border-2 border-purple-700"
       style={{
         boxShadow:
           "0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.08)",

@@ -166,7 +166,7 @@ export default function IstatistiklerPage() {
       {/* Header Section */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 tracking-tight">
+          <h1 className="text-4xl font-black bg-clip-text text-transparent bg-brand-gradient tracking-tight">
             İstatistikler & Analiz
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">

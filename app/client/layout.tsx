@@ -81,10 +81,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-brand-soft/40 via-background to-background dark:from-brand-soft/20">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Yükleniyor...</p>
         </div>
       </div>
     );
@@ -93,7 +93,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const hideNav = pathname === KVKK_PATH;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-soft/40 via-background to-background dark:from-brand-soft/20">
       {!hideNav && <ClientTopNav />}
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">{children}</main>
     </div>

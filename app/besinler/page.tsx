@@ -207,7 +207,7 @@ export default function BesinlerPage() {
             </Button>
             <Button
               onClick={() => router.push("/besinler/new")}
-              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+              className="bg-brand-gradient hover:opacity-90 text-white"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Yeni Besin Ekle
@@ -255,7 +255,7 @@ export default function BesinlerPage() {
           </p>
           <Button
             onClick={() => router.push("/besinler/new")}
-            className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+            className="bg-brand-gradient hover:opacity-90 text-white"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             Yeni Besin Ekle
@@ -263,7 +263,7 @@ export default function BesinlerPage() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white">
+          <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               Besinler {debouncedSearch ? `• "${debouncedSearch}"` : ""}
             </h2>

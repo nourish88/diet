@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/lib/auth-context";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,7 +37,10 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#3b82f6",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0e1f" },
+  ],
 };
 
 export default function RootLayout({
@@ -46,15 +49,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
-        <AuthProvider>
-          <QueryProvider>
-            <PushNotificationProvider />
-            <ConditionalLayout>{children}</ConditionalLayout>
-          </QueryProvider>
-        </AuthProvider>
-        <Toaster />
+    <html lang="tr" suppressHydrationWarning>
+      <body className={`${inter.className} bg-background text-foreground min-h-screen antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <QueryProvider>
+              <PushNotificationProvider />
+              <ConditionalLayout>{children}</ConditionalLayout>
+            </QueryProvider>
+          </AuthProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

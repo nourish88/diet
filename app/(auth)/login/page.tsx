@@ -22,6 +22,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 interface PhoneLookupClient {
   id: number;
@@ -297,21 +298,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-soft/40 via-background to-background dark:from-brand-soft/20 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-card">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex justify-center mb-4">
-            <img
-              src="/ezgi_evgin-removebg-preview.png"
-              alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
-              className="max-w-[200px] h-auto"
-              style={{ width: "200px", height: "auto" }}
-            />
+            <Logo size="lg" href={null} />
           </div>
-          <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">
+          <CardTitle className="text-3xl font-bold text-center bg-brand-gradient text-transparent bg-clip-text">
             Danışan Girişi
           </CardTitle>
-          <CardDescription className="text-center text-gray-600">
+          <CardDescription className="text-center text-muted-foreground">
             Telefon numaranızla profilinize erişin
           </CardDescription>
         </CardHeader>

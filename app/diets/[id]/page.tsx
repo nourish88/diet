@@ -177,7 +177,7 @@ export default function DietDetailPage() {
           <div className="mt-6">
             <Button
               onClick={() => router.push("/diets")}
-              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+              className="bg-brand-gradient hover:opacity-90 text-white"
             >
               Tüm Programlara Dön
             </Button>
@@ -200,7 +200,7 @@ export default function DietDetailPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white flex justify-between items-center">
+        <div className="bg-brand-gradient px-6 py-4 text-white flex justify-between items-center">
           <div>
             <h2 className="text-xl font-medium">
               Beslenme Programı #{diet.id}

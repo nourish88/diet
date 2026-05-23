@@ -143,7 +143,7 @@ export default function DietsPage() {
       {/* Logo - Show for client role */}
       <div className="flex justify-center mb-6">
         <img
-          src="/ezgi_evgin-removebg-preview.png"
+          src="/ezgi_evgin.png"
           alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
           className="max-w-[150px] h-auto"
           style={{ width: "150px", height: "auto" }}
@@ -155,7 +155,7 @@ export default function DietsPage() {
         </h1>
         <Button
           onClick={() => router.push("/diets/new")}
-          className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+          className="bg-brand-gradient hover:opacity-90 text-white"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
           Yeni Program Ekle
@@ -229,7 +229,7 @@ export default function DietsPage() {
             </p>
             <Button
               onClick={() => router.push("/diets/new")}
-              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+              className="bg-brand-gradient hover:opacity-90 text-white"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Yeni Program Ekle
@@ -238,7 +238,7 @@ export default function DietsPage() {
         )
       ) : (
         <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white">
+          <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               {searchTerm ? "Arama Sonuçları" : "Tüm Beslenme Programları"}
             </h2>

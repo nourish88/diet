@@ -383,7 +383,7 @@ export default function ClientDetailPage() {
           <div className="mt-6">
             <Button
               onClick={() => router.push("/clients")}
-              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+              className="bg-brand-gradient hover:opacity-90 text-white"
             >
               Danışan Listesine Dön
             </Button>
@@ -460,7 +460,7 @@ export default function ClientDetailPage() {
       </Card>
 
       <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white flex justify-between items-center">
+        <div className="bg-brand-gradient px-6 py-4 text-white flex justify-between items-center">
           <div>
             <h2 className="text-xl font-medium">
               {client.name} {client.surname}
@@ -645,7 +645,7 @@ export default function ClientDetailPage() {
               </h3>
               <Button
                 onClick={() => router.push(`/diets/new?clientId=${client.id}`)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+                className="bg-brand-gradient hover:opacity-90 text-white"
                 size="sm"
               >
                 <PlusCircle className="h-4 w-4 mr-2" />

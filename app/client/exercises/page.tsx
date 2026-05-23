@@ -8,6 +8,7 @@ import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/E
 import { Activity, Clock, Footprints, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/lib/api-client";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -64,17 +65,17 @@ export default function ExercisesPage() {
   const stats = getExerciseStats(logs, dateFrom || undefined, dateTo || undefined);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Antrenman Takibi</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Antrenman Takibi</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Egzersiz ve aktivite kayıtlarınızı takip edin
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Yeni Egzersiz Ekle
             </Button>
@@ -97,10 +98,10 @@ export default function ExercisesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Toplam Egzersiz</p>
+                <p className="text-sm text-muted-foreground mb-1">Toplam Egzersiz</p>
                 <p className="text-2xl font-bold">{stats.totalExercises}</p>
               </div>
-              <Activity className="w-8 h-8 text-blue-600" />
+              <Activity className="w-8 h-8 text-brand" />
             </div>
           </CardContent>
         </Card>
@@ -109,7 +110,7 @@ export default function ExercisesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
+                <p className="text-sm text-muted-foreground mb-1">Toplam Süre</p>
                 <p className="text-2xl font-bold">
                   {stats.totalDuration} dk
                 </p>
@@ -123,7 +124,7 @@ export default function ExercisesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
+                <p className="text-sm text-muted-foreground mb-1">Toplam Adım</p>
                 <p className="text-2xl font-bold">
                   {stats.totalSteps.toLocaleString()}
                 </p>
@@ -137,7 +138,7 @@ export default function ExercisesPage() {
       {/* Chart Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Egzersiz Dağılımı</CardTitle>
               <CardDescription>
@@ -156,9 +157,7 @@ export default function ExercisesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-gray-500">Yükleniyor...</p>
-            </div>
+            <Skeleton className="h-64 w-full" />
           ) : (
             <ExerciseChart data={chartData} />
           )}
@@ -173,28 +172,30 @@ export default function ExercisesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">Yükleniyor...</p>
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           ) : logs.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">Henüz egzersiz kaydı bulunmuyor</p>
+              <p className="text-muted-foreground">Henüz egzersiz kaydı bulunmuyor</p>
             </div>
           ) : (
             <div className="space-y-4">
               {logs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <Activity className="w-5 h-5 text-blue-600" />
+                      <Activity className="w-5 h-5 text-brand" />
                       <div>
                         <p className="font-semibold">
                           {log.definition?.name || "Diğer"}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {new Date(log.date).toLocaleDateString("tr-TR", {
                             day: "2-digit",
                             month: "long",
@@ -202,14 +203,14 @@ export default function ExercisesPage() {
                           })}
                         </p>
                         {log.description && (
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-muted-foreground mt-1">
                             {log.description}
                           </p>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                     {log.duration && (
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />

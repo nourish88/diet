@@ -224,7 +224,7 @@ const DietFormBasicFields = ({
           "0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.08)",
       }}
     >
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 border-b border-indigo-800 text-white">
+      <div className="bg-brand-gradient px-6 py-4 border-b border-indigo-800 text-white">
         <h3 className="text-lg font-medium">Diyet Bilgileri</h3>
         <p className="text-sm text-blue-100 mt-1">
           Lütfen beslenme programı için gereken bilgileri doldurunuz

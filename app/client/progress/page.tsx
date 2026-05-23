@@ -8,6 +8,7 @@ import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
 import { Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -72,17 +73,17 @@ export default function ProgressPage() {
   const hasBodyFat = entries.some((e) => e.bodyFat !== null);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gelişim Takibi</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Gelişim Takibi</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Kilo, ölçü ve vücut yağ oranı takibinizi yapın
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Yeni Ölçüm Ekle
             </Button>
@@ -102,7 +103,7 @@ export default function ProgressPage() {
       {/* Chart and Summary Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Gelişim Grafiği</CardTitle>
               <CardDescription>
@@ -121,8 +122,9 @@ export default function ProgressPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-gray-500">Yükleniyor...</p>
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-64 w-full" />
             </div>
           ) : (
             <>
@@ -151,12 +153,14 @@ export default function ProgressPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">Yükleniyor...</p>
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ) : entries.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">Henüz ölçüm kaydı bulunmuyor</p>
+              <p className="text-muted-foreground">Henüz ölçüm kaydı bulunmuyor</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -172,7 +176,7 @@ export default function ProgressPage() {
                 </thead>
                 <tbody>
                   {entries.map((entry) => (
-                    <tr key={entry.id} className="border-b hover:bg-gray-50">
+                    <tr key={entry.id} className="border-b hover:bg-accent">
                       <td className="p-2">
                         {new Date(entry.date).toLocaleDateString("tr-TR")}
                       </td>

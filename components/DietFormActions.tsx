@@ -322,7 +322,7 @@ const DietFormActions = ({
         variant="default"
         onClick={handleSaveAndDownloadPdf}
         disabled={isSavingAndExporting || isSaving || !clientId}
-        className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white border-none"
+        className="bg-brand-gradient hover:opacity-90 text-white border-none"
         title={
           validPhoneNumber
             ? "Diyeti kaydeder, PDF indirir ve WhatsApp'ı önceden doldurulmuş mesajla açar."

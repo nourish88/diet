@@ -412,7 +412,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         <Button
           type="submit"
           disabled={tanitaBlocked || form.formState.isSubmitting}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+          className="w-full bg-brand-gradient hover:opacity-90 text-white"
         >
           {form.formState.isSubmitting
             ? "Kaydediliyor..."

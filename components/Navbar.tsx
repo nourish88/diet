@@ -26,6 +26,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -107,98 +109,76 @@ const Navbar = () => {
   // Don't render navigation items while loading
   if (loading) {
     return (
-      <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
-        <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
-          <Link href="/" className="flex items-center space-x-3">
-            <div className="relative">
-              <img
-                src="/ezgi_evgin.png"
-                alt="Diyet Danışmanlık Logo"
-                className="w-[120px] h-auto"
-                style={{ width: "120px", height: "auto" }}
-              />
-            </div>
-            <div className="hidden md:block">
-              <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
-                Diyet Danışmanlık Hizmetleri
-              </span>
-            </div>
-          </Link>
+      <nav className="bg-card/95 backdrop-blur shadow-sm fixed w-full z-20 top-0 left-0 border-b border-border">
+        <div className="container flex flex-wrap justify-between items-center mx-auto px-4 py-3">
+          <Logo size="md" />
         </div>
       </nav>
     );
   }
 
   return (
-    <nav className="bg-white shadow-md fixed w-full z-20 top-0 left-0 border-b border-gray-200">
-      <div className="container flex flex-wrap justify-between items-center mx-auto p-4">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="relative">
-            <img
-              src={
-                databaseUser?.role === "client"
-                  ? "/ezgi_evgin-removebg-preview.png"
-                  : "/ezgi_evgin.png"
-              }
-              alt="Diyet Danışmanlık Logo"
-              className="w-[120px] h-auto"
-              style={{ width: "120px", height: "auto" }}
-            />
-          </div>
-          <div className="hidden md:block">
-            <span className="self-center text-xl font-semibold whitespace-nowrap bg-gradient-to-r from-indigo-600 to-purple-700 text-transparent bg-clip-text">
-              Diyet Danışmanlık Hizmetleri
-            </span>
-          </div>
-        </Link>
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 lg:hidden z-10"
+          onClick={closeMenu}
+        />
+      )}
+      <nav className="bg-card/95 backdrop-blur shadow-sm fixed w-full z-20 top-0 left-0 border-b border-border">
+        <div className="container flex flex-wrap justify-between items-center mx-auto px-4 py-3">
+          <Logo size="md" />
 
-        <div className="flex items-center space-x-4">
-          {/* User info and logout */}
-          {!loading && databaseUser && (
-            <div className="hidden lg:flex items-center space-x-2">
-              <span className="text-sm text-gray-600">
-                {databaseUser.email}
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Çıkış Yap
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="flex items-center space-x-2">
+            {/* Theme toggle */}
+            <ThemeToggle />
+
+            {/* User info and logout */}
+            {!loading && databaseUser && (
+              <div className="hidden lg:flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">
+                  {databaseUser.email}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <User className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Çıkış Yap
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
+            {/* Mobile menu button */}
+            <div className="flex lg:hidden">
+              <button
+                type="button"
+                className="inline-flex items-center p-2 text-foreground rounded-lg hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                onClick={toggleMenu}
+                aria-controls="navbar-menu"
+                aria-expanded={isOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                {isOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
             </div>
-          )}
-
-          {/* Mobile menu button */}
-          <div className="flex lg:hidden">
-            <button
-              type="button"
-              className="inline-flex items-center p-2 ml-3 text-gray-700 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              onClick={toggleMenu}
-              aria-controls="navbar-menu"
-              aria-expanded={isOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              {isOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
           </div>
-        </div>
 
         <div
           className={`${isOpen ? "block" : "hidden"} w-full lg:block lg:w-auto`}
           id="navbar-menu"
         >
-          <ul className="flex flex-col mt-4 p-4 md:p-0 font-medium lg:flex-row lg:space-x-4 xl:space-x-8 lg:mt-0 lg:border-0 bg-white lg:bg-transparent border-gray-200 rounded-lg border lg:border-none">
+          <ul className="flex flex-col mt-4 p-4 md:p-0 font-medium lg:flex-row lg:space-x-4 xl:space-x-8 lg:mt-0 lg:border-0 bg-card lg:bg-transparent border-border rounded-lg border lg:border-none">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -207,11 +187,10 @@ const Navbar = () => {
                     href={item.href}
                     className={`flex items-center py-2 px-3 rounded-lg transition-colors ${
                       isActive(item.href)
-                        ? "text-white bg-indigo-600 lg:text-indigo-600 lg:bg-transparent"
-                        : "text-gray-700 hover:bg-gray-100 lg:hover:bg-transparent lg:hover:text-indigo-600"
+                        ? "text-brand-foreground bg-brand lg:text-brand lg:bg-transparent"
+                        : "text-foreground hover:bg-accent lg:hover:bg-transparent lg:hover:text-brand"
                     }`}
-                    onClick={(e) => {
-                      console.log("🔗 Navbar link clicked:", item.href);
+                    onClick={() => {
                       closeMenu();
                     }}
                   >
@@ -230,8 +209,8 @@ const Navbar = () => {
                     <button
                       className={`flex items-center py-2 px-3 rounded-lg transition-colors w-full lg:w-auto ${
                         isManagementActive
-                          ? "text-white bg-indigo-600 lg:text-indigo-600 lg:bg-transparent"
-                          : "text-gray-700 hover:bg-gray-100 lg:hover:bg-transparent lg:hover:text-indigo-600"
+                          ? "text-brand-foreground bg-brand lg:text-brand lg:bg-transparent"
+                          : "text-foreground hover:bg-accent lg:hover:bg-transparent lg:hover:text-brand"
                       }`}
                     >
                       <Cog className="w-4 h-4 mr-2" />
@@ -241,7 +220,7 @@ const Navbar = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-56 bg-white shadow-lg border border-gray-200 rounded-lg mt-2"
+                    className="w-56 mt-2"
                   >
                     {managementItems.map((item) => {
                       const Icon = item.icon;
@@ -252,8 +231,8 @@ const Navbar = () => {
                             href={item.href}
                             className={`flex items-center py-2 px-3 rounded-md transition-colors ${
                               isItemActive
-                                ? "bg-indigo-50 text-indigo-700 font-medium"
-                                : "text-gray-700"
+                                ? "bg-brand-soft text-brand font-medium"
+                                : "text-foreground"
                             }`}
                             onClick={() => closeMenu()}
                           >
@@ -273,7 +252,7 @@ const Navbar = () => {
               <li className="lg:hidden">
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center py-2 px-3 rounded-lg text-gray-700 hover:bg-gray-100 w-full text-left"
+                  className="flex items-center py-2 px-3 rounded-lg text-foreground hover:bg-accent w-full text-left transition-colors"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Çıkış Yap
@@ -284,6 +263,7 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+    </>
   );
 };
 

@@ -151,7 +151,7 @@ export default function ClientsPage() {
         </h1>
         <Button
           onClick={() => router.push("/clients/new")}
-          className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white shrink-0 w-fit sm:shrink-0 sm:self-center"
+          className="bg-brand-gradient hover:opacity-90 text-white shrink-0 w-fit sm:shrink-0 sm:self-center"
         >
           <UserPlus className="h-4 w-4 mr-2" />
           Yeni Danışan Ekle
@@ -221,7 +221,7 @@ export default function ClientsPage() {
             </p>
             <Button
               onClick={() => router.push("/clients/new")}
-              className="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+              className="bg-brand-gradient hover:opacity-90 text-white"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Yeni Danışan Ekle
@@ -230,7 +230,7 @@ export default function ClientsPage() {
         )
       ) : (
         <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-6 py-4 text-white">
+          <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               {searchTerm ? "Arama Sonuçları" : "Tüm Danışanlar"}
             </h2>

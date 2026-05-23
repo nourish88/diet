@@ -70,13 +70,13 @@ export default function AccountPage() {
         <CardHeader className="space-y-1 pb-4">
           <div className="flex justify-center mb-4">
             <img
-              src="/ezgi_evgin-removebg-preview.png"
+              src="/ezgi_evgin.png"
               alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
               className="max-w-[200px] h-auto"
               style={{ width: "200px", height: "auto" }}
             />
           </div>
-          <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
+          <CardTitle className="text-3xl font-bold text-center bg-brand-gradient text-transparent bg-clip-text">
             Diyetisyen Girişi
           </CardTitle>
           <CardDescription className="text-center text-gray-600">
@@ -118,7 +118,7 @@ export default function AccountPage() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              className="w-full bg-brand-gradient hover:opacity-90"
               disabled={isLoading}
             >
               {isLoading ? (

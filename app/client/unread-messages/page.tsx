@@ -105,7 +105,7 @@ export default function ClientUnreadMessagesPage() {
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
             <div className="flex justify-center mb-4">
               <img
-                src="/ezgi_evgin-removebg-preview.png"
+                src="/ezgi_evgin.png"
                 alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
                 className="max-w-[150px] h-auto"
                 style={{ width: "150px", height: "auto" }}
