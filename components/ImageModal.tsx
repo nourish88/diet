@@ -41,10 +41,10 @@ export default function ImageModal({
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 bg-white rounded-full hover:bg-gray-100 transition-colors z-10"
+        className="absolute top-4 right-4 p-2 bg-card rounded-full hover:bg-accent transition-colors z-10"
         aria-label="Kapat"
       >
-        <X className="w-6 h-6 text-gray-800" />
+        <X className="w-6 h-6 text-foreground" />
       </button>
 
       <div

@@ -105,12 +105,12 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
         {bannedBesins.map((banned) => (
           <div
             key={banned.id}
-            className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+            className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
           >
             <div>
               <span className="font-medium">{banned.besin.name}</span>
               {banned.reason && (
-                <span className="text-sm text-gray-500 ml-2">
+                <span className="text-sm text-muted-foreground ml-2">
                   ({banned.reason})
                 </span>
               )}

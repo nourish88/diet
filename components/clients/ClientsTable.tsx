@@ -84,7 +84,7 @@ export const ClientsTable = () => {
                   duration: 0,
                 });
               }}
-              className="bg-gray-50 hover:bg-gray-100"
+              className="bg-muted/30 hover:bg-accent"
             >
               İptal
             </Button>
@@ -145,7 +145,7 @@ export const ClientsTable = () => {
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
       <div className="bg-brand-gradient px-6 py-4">
         <div className="flex justify-between items-center">
           <div>
@@ -160,8 +160,8 @@ export const ClientsTable = () => {
                 value={searchTerm}
                 onChange={(value) => setSearchTerm(value)}
                 placeholder="İsim veya telefon ile ara..."
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/60
-                  focus:bg-white/20 focus:border-white/30 hover:bg-white/15"
+                className="bg-card/10 border-white/20 text-white placeholder:text-white/60
+                  focus:bg-card/20 focus:border-white/30 hover:bg-card/15"
               />
             </div>
             <TooltipProvider>
@@ -172,7 +172,7 @@ export const ClientsTable = () => {
                     variant="outline"
                     size="sm"
                     disabled={isRefetching}
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 
+                    className="bg-card/10 border-white/20 text-white hover:bg-card/20 
                       hover:border-white/30 transition-colors"
                   >
                     <RefreshCcw
@@ -191,24 +191,24 @@ export const ClientsTable = () => {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="bg-muted/30">
             <tr>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
               >
                 Ad Soyad
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
               >
                 Telefon
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
               >
                 Kayıt Tarihi
               </th>
@@ -217,21 +217,21 @@ export const ClientsTable = () => {
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-card divide-y divide-border">
             {filteredClients.map((client) => (
               <tr key={client.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-foreground">
                     {client.name} {client.surname}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {client.phoneNumber}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {new Date(client.createdAt).toLocaleDateString("tr-TR")}
                   </div>
                 </td>

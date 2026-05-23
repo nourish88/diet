@@ -19,7 +19,7 @@ export default function RegisterClientPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-gray-600 text-center">
+          <p className="text-sm text-muted-foreground text-center">
             Diyetisyeninizin sisteme kaydettiği telefon numarası ile giriş ekranından devam edin.
           </p>
 

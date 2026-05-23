@@ -124,7 +124,7 @@ const MenuItem = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full rounded-md border border-gray-200 bg-white p-3 shadow-sm transition-all hover:border-blue-200 hover:shadow">
+    <div className="flex flex-col gap-2 w-full rounded-md border border-border bg-card p-3 shadow-sm transition-all hover:border-blue-200 hover:shadow">
       {/* First row: Besin with delete button */}
       <div className="flex gap-2 w-full">
         <div className="flex-1">
@@ -158,7 +158,7 @@ const MenuItem = ({
               }
             }}
             placeholder="Besin adı yazın, Tab ile miktara geçin"
-            className="border-gray-300 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
+            className="border-border shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
           />
         </div>
         <Button
@@ -206,7 +206,7 @@ const MenuItem = ({
                 }
               }}
               placeholder="Miktar (Tab→birim)"
-              className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
+              className="w-full border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-[36px]"
             />
           </div>
         </div>
@@ -217,7 +217,7 @@ const MenuItem = ({
                 variant="outline"
                 role="combobox"
                 aria-expanded={birimOpen}
-                className="w-full justify-between border-gray-300 shadow-sm hover:bg-gray-50 h-[36px]"
+                className="w-full justify-between border-border shadow-sm hover:bg-muted/30 h-[36px]"
               >
                 {birim || "Birim seçiniz"}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

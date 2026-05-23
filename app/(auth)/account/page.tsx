@@ -79,7 +79,7 @@ export default function AccountPage() {
           <CardTitle className="text-3xl font-bold text-center bg-brand-gradient text-transparent bg-clip-text">
             Diyetisyen Girişi
           </CardTitle>
-          <CardDescription className="text-center text-gray-600">
+          <CardDescription className="text-center text-muted-foreground">
             Hesabınıza erişmek için bilgilerinizi girin
           </CardDescription>
         </CardHeader>
@@ -134,7 +134,7 @@ export default function AccountPage() {
               )}
             </Button>
 
-            <div className="mt-4 text-center text-sm text-gray-600">
+            <div className="mt-4 text-center text-sm text-muted-foreground">
               Diyetisyen hesabı oluşturmak için sistem yöneticisi ile iletişime
               geçin.
             </div>
@@ -142,10 +142,10 @@ export default function AccountPage() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
+              <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-400">veya</span>
+              <span className="bg-card px-2 text-muted-foreground/70">veya</span>
             </div>
           </div>
 

@@ -16,7 +16,7 @@ const ClientForm = dynamic(() => import("@/components/ClientForm"), {
   loading: () => (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      <span className="ml-2 text-gray-600">Form yükleniyor...</span>
+      <span className="ml-2 text-muted-foreground">Form yükleniyor...</span>
     </div>
   ),
 });
@@ -197,7 +197,7 @@ export default function EditClientPage() {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-muted-foreground">
             Danışan bilgileri yükleniyor...
           </span>
         </div>
@@ -227,11 +227,11 @@ export default function EditClientPage() {
       </div>
 
       {/* Tanita Integration Section */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
         <h3 className="text-lg font-semibold mb-3">Tanita Entegrasyonu</h3>
         {!client.tanitaMemberId ? (
           <div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               Bu danışanı Tanita veritabanı ile eşleştirin
             </p>
             <Button
@@ -246,7 +246,7 @@ export default function EditClientPage() {
           </div>
         ) : (
           <div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               Bu danışan Tanita ile eşleştirilmiş (ID: {client.tanitaMemberId})
             </p>
             <div className="flex gap-2">

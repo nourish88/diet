@@ -30,11 +30,13 @@ export default function Logo({
 }: LogoProps) {
   const content = (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <img
-        src="/ezgi_evgin.png"
-        alt="Ezgi Evgin Diyet Danışmanlık"
-        className={cn(SIZE_CLASSES[size], "w-auto object-contain")}
-      />
+      <div className="inline-flex items-center justify-center rounded-md p-1 dark:bg-card dark:shadow-sm transition-colors">
+        <img
+          src="/ezgi_evgin.png"
+          alt="Ezgi Evgin Diyet Danışmanlık"
+          className={cn(SIZE_CLASSES[size], "w-auto object-contain")}
+        />
+      </div>
       {showText && (
         <div className="hidden md:block leading-tight">
           <p

@@ -146,7 +146,7 @@ export default function ClientsPage() {
   return (
     <div className="container mx-auto px-4 pt-10 pb-8 sm:pt-12 max-w-7xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center sm:gap-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 shrink-0">
+        <h1 className="text-2xl font-bold text-foreground shrink-0">
           Danışan Yönetimi
         </h1>
         <Button
@@ -162,11 +162,11 @@ export default function ClientsPage() {
       <div className="mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-5 w-5 text-muted-foreground/70" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="block w-full pl-10 pr-10 py-2 border border-border rounded-md leading-5 bg-card placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             placeholder="İsim, soyisim veya telefon ile ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -177,12 +177,12 @@ export default function ClientsPage() {
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
               aria-label="Clear search"
             >
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              <X className="h-5 w-5 text-muted-foreground/70 hover:text-muted-foreground" />
             </button>
           )}
         </div>
         {searchTerm && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             "{searchTerm}" için {total} sonuç bulundu
           </p>
         )}
@@ -191,16 +191,16 @@ export default function ClientsPage() {
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Danışanlar yükleniyor...</span>
+          <span className="ml-2 text-muted-foreground">Danışanlar yükleniyor...</span>
         </div>
       ) : clients.length === 0 ? (
         searchTerm ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+            <Search className="h-12 w-12 text-muted-foreground/70 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Arama sonucu bulunamadı
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               "{searchTerm}" ile eşleşen danışan bulunamadı
             </p>
             <Button
@@ -212,11 +212,11 @@ export default function ClientsPage() {
             </Button>
           </div>
         ) : (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Henüz danışan bulunmuyor
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               İlk danışanınızı ekleyerek başlayın
             </p>
             <Button
@@ -229,7 +229,7 @@ export default function ClientsPage() {
           </div>
         )
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
           <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               {searchTerm ? "Arama Sonuçları" : "Tüm Danışanlar"}
@@ -242,40 +242,40 @@ export default function ClientsPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İsim Soyisim
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Cinsiyet
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Telefon
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Doğum Tarihi
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {clients.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-50">
+                  <tr key={client.id} className="hover:bg-muted/30">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-foreground">
                         {client.name} {client.surname}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.gender === 1 ? "Erkek" : "Kadın"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.phoneNumber}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.birthdate
                         ? format(new Date(client.birthdate), "dd MMMM yyyy", {
                             locale: tr,
@@ -322,7 +322,7 @@ export default function ClientsPage() {
           {isFetchingNextPage && (
             <div className="flex justify-center items-center py-4 border-t">
               <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
-              <span className="ml-2 text-gray-600">
+              <span className="ml-2 text-muted-foreground">
                 Daha fazla yükleniyor...
               </span>
             </div>
@@ -330,8 +330,8 @@ export default function ClientsPage() {
 
           {/* End of list indicator */}
           {!hasMore && clients.length > 0 && (
-            <div className="text-center py-4 border-t bg-gray-50">
-              <p className="text-sm text-gray-500">
+            <div className="text-center py-4 border-t bg-muted/30">
+              <p className="text-sm text-muted-foreground">
                 Tüm danışanlar yüklendi ({total} toplam)
               </p>
             </div>

@@ -152,7 +152,7 @@ const BesinForm = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
       <div className="bg-brand-gradient px-6 py-4 text-white">
         <h2 className="text-lg font-medium">
           {isEdit ? "Besin Düzenle" : "Yeni Besin Ekle"}
@@ -170,7 +170,7 @@ const BesinForm = ({
           <div>
             <label
               htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-foreground mb-1"
             >
               Besin Adı <span className="text-red-500">*</span>
             </label>
@@ -181,7 +181,7 @@ const BesinForm = ({
               required
               value={formData.name}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full p-2 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Besin adını girin"
             />
           </div>
@@ -190,7 +190,7 @@ const BesinForm = ({
           <div>
             <label
               htmlFor="priority"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-foreground mb-1"
             >
               Öncelik
             </label>
@@ -201,10 +201,10 @@ const BesinForm = ({
               min="0"
               value={formData.priority}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full p-2 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Öncelik değeri"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Daha yüksek değerler, listede daha üstte gösterilir
             </p>
           </div>
@@ -213,7 +213,7 @@ const BesinForm = ({
           <div className="md:col-span-2">
             <label
               htmlFor="groupId"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-foreground mb-1"
             >
               Besin Grubu
             </label>
@@ -226,7 +226,7 @@ const BesinForm = ({
                 }));
               }}
             >
-              <SelectTrigger className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+              <SelectTrigger className="w-full p-2 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                 <SelectValue placeholder="Besin grubu seçin" />
               </SelectTrigger>
               <SelectContent>
@@ -242,12 +242,12 @@ const BesinForm = ({
         </div>
 
         {/* Form actions */}
-        <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-end space-x-4 pt-4 border-t border-border">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push("/besinler")}
-            className="border-gray-300"
+            className="border-border"
           >
             İptal
           </Button>

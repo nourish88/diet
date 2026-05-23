@@ -206,7 +206,7 @@ export default function SettingsPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Yükleniyor...</p>
         </div>
       </div>
     );
@@ -215,8 +215,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Ayarlar</h1>
-        <p className="text-gray-600">Bildirim tercihlerinizi yönetin</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Ayarlar</h1>
+        <p className="text-muted-foreground">Bildirim tercihlerinizi yönetin</p>
       </div>
 
       {/* Notification Preferences Card */}
@@ -232,7 +232,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Notification Permission Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
               {notificationPermission === "granted" ? (
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -240,8 +240,8 @@ export default function SettingsPage() {
                 <XCircle className="w-5 h-5 text-red-600" />
               )}
               <div>
-                <p className="font-medium text-gray-900">Bildirim İzni</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-medium text-foreground">Bildirim İzni</p>
+                <p className="text-sm text-muted-foreground">
                   {notificationPermission === "granted"
                     ? "Bildirimler için izin verildi"
                     : notificationPermission === "denied"
@@ -264,8 +264,8 @@ export default function SettingsPage() {
           {/* Meal Reminders Toggle */}
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex-1">
-              <p className="font-medium text-gray-900">Öğün Hatırlatıcıları</p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="font-medium text-foreground">Öğün Hatırlatıcıları</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 Her öğünden 30 dakika önce bildirim alın
               </p>
             </div>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
                 </>
               )}
             </Button>
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className="text-xs text-muted-foreground mt-2 text-center">
               Şu anki hatırlatıcıları manuel olarak kontrol edin
             </p>
           </div>

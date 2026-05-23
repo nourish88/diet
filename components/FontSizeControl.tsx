@@ -8,7 +8,7 @@ const FontSizeControl = () => {
 
   return (
     <div className="flex items-center space-x-2 mb-4">
-      <div className="text-sm text-gray-500">Yazı Boyutu:</div>
+      <div className="text-sm text-muted-foreground">Yazı Boyutu:</div>
       <Button
         variant="outline"
         size="icon"

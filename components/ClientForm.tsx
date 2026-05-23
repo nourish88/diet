@@ -208,14 +208,14 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
     !isEdit && addMode === "tanita" && !selectedTanitaUser;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+    <div className="bg-card rounded-lg shadow-sm p-6 border border-border">
       <h2 className="text-xl font-semibold mb-6">
         {isEdit ? "Danışan Düzenle" : "Yeni Danışan Ekle"}
       </h2>
 
       {!isEdit && (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Ekleme Yöntemi
           </label>
           <div className="flex gap-4">
@@ -261,17 +261,17 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
                   : "Tanita'dan Danışan Seç"}
               </Button>
               {selectedTanitaUser && (
-                <div className="mt-2 p-3 bg-gray-50 rounded-md text-sm">
+                <div className="mt-2 p-3 bg-muted/30 rounded-md text-sm">
                   <div className="font-medium">
                     {selectedTanitaUser.name} {selectedTanitaUser.surname}
                   </div>
                   {selectedTanitaUser.phone && (
-                    <div className="text-gray-600">
+                    <div className="text-muted-foreground">
                       📞 {selectedTanitaUser.phone}
                     </div>
                   )}
                   {selectedTanitaUser.email && (
-                    <div className="text-gray-600">
+                    <div className="text-muted-foreground">
                       ✉️ {selectedTanitaUser.email}
                     </div>
                   )}
@@ -291,7 +291,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               İsim
             </label>
             <Input
@@ -307,7 +307,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Soyisim
             </label>
             <Input
@@ -323,7 +323,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Doğum Tarihi
             </label>
             <Input
@@ -333,7 +333,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
             />
           </div>
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Cinsiyet
             </label>
             <div className="flex space-x-4 mt-2">
@@ -358,7 +358,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
             </div>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Telefon
             </label>
             <Input
@@ -375,7 +375,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
             )}
           </div>
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Yasaklı Besinler
             </label>
             <MultiBesinSelector
@@ -386,7 +386,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground">
             Notlar
           </label>
           <Textarea
@@ -398,7 +398,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground">
             Hastalık
           </label>
           <Textarea

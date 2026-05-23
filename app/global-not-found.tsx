@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils";
 export default function GlobalNotFound() {
   return (
     <html lang="tr">
-      <body className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-2xl bg-white shadow-lg border border-gray-100 p-8 text-center space-y-6">
+      <body className="min-h-screen bg-muted/30 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg rounded-2xl bg-card shadow-lg border border-border p-8 text-center space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               Sayfa bulunamadı
             </h1>
-            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Ulaştığınız sayfa taşınmış veya artık mevcut olmayabilir. Menüden
               başka bir sayfa seçebilir ya da ana sayfaya dönebilirsiniz.
             </p>

@@ -146,7 +146,7 @@ export default function ExerciseForm({ onSuccess }: ExerciseFormProps) {
       <div className="space-y-2">
         <Label htmlFor="exerciseTypeId">Egzersiz Tipi</Label>
         {loadingTypes ? (
-          <p className="text-sm text-gray-500">Yükleniyor...</p>
+          <p className="text-sm text-muted-foreground">Yükleniyor...</p>
         ) : (
           <Select
             value={exerciseTypeId || undefined}

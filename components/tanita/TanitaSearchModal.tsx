@@ -93,7 +93,7 @@ export default function TanitaSearchModal({
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
             <Input
               type="text"
               placeholder="Ara... (en az 2 karakter)"
@@ -108,7 +108,7 @@ export default function TanitaSearchModal({
             {isLoading && (
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-                <span className="ml-2 text-gray-600">Aranıyor...</span>
+                <span className="ml-2 text-muted-foreground">Aranıyor...</span>
               </div>
             )}
 
@@ -119,7 +119,7 @@ export default function TanitaSearchModal({
             )}
 
             {!isLoading && !error && debouncedQuery.trim().length < 2 && (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-muted-foreground">
                 Arama yapmak için en az 2 karakter girin
               </div>
             )}
@@ -129,7 +129,7 @@ export default function TanitaSearchModal({
               debouncedQuery.trim().length >= 2 &&
               searchResults &&
               searchResults.users.length === 0 && (
-                <div className="p-4 text-center text-gray-500">
+                <div className="p-4 text-center text-muted-foreground">
                   Sonuç bulunamadı
                 </div>
               )}
@@ -143,17 +143,17 @@ export default function TanitaSearchModal({
                     <div
                       key={user.id}
                       onClick={() => handleSelect(user)}
-                      className="w-full p-4 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="w-full p-4 text-left hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
                           <User className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">
+                          <div className="font-medium text-foreground">
                             {user.name} {user.surname}
                           </div>
-                          <div className="text-sm text-gray-500 mt-1 space-y-1">
+                          <div className="text-sm text-muted-foreground mt-1 space-y-1">
                             {user.phone && (
                               <div>📞 {user.phone}</div>
                             )}

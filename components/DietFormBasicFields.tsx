@@ -214,11 +214,11 @@ const DietFormBasicFields = ({
   };
 
   const inputBaseClass =
-    "w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3";
+    "w-full h-10 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3";
 
   return (
     <div
-      className="rounded-lg border-2 border-purple-700 bg-white shadow-sm overflow-hidden"
+      className="rounded-lg border-2 border-purple-700 bg-card shadow-sm overflow-hidden"
       style={{
         boxShadow:
           "0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.08)",
@@ -324,7 +324,7 @@ const DietFormBasicFields = ({
                         onClick={() => {
                           setShowCustomSu(false);
                         }}
-                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                        className="px-3 py-1 text-sm bg-accent hover:bg-accent rounded"
                         title="İptal (Esc)"
                       >
                         ✕
@@ -412,7 +412,7 @@ const DietFormBasicFields = ({
                         onClick={() => {
                           setShowCustomFizik(false);
                         }}
-                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                        className="px-3 py-1 text-sm bg-accent hover:bg-accent rounded"
                         title="İptal (Esc)"
                       >
                         ✕
@@ -435,7 +435,7 @@ const DietFormBasicFields = ({
                   <Input
                     {...field}
                     value={diet.Sonuc || ""}
-                    className="flex-1 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
+                    className="flex-1 h-10 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
                     placeholder="Haftalık sonuç notları"
                     onChange={(e) => {
                       setDiet((prevDiet) => ({
@@ -486,7 +486,7 @@ const DietFormBasicFields = ({
                   <Input
                     {...field}
                     value={diet.dietitianNote || ""}
-                    className="flex-1 h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
+                    className="flex-1 h-10 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3"
                     placeholder="Diyetisyen notu..."
                     onChange={(e) => {
                       setDiet((prevDiet) => ({

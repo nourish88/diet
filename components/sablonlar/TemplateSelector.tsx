@@ -49,7 +49,7 @@ export const TemplateSelector = ({
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">📋 Şablon Seç</DialogTitle>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Hazır şablonlardan birini seçerek hızlıca başlayın
           </p>
         </DialogHeader>
@@ -57,13 +57,13 @@ export const TemplateSelector = ({
         <div className="mt-4">
           {isLoading ? (
             <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/70" />
+              <span className="ml-2 text-muted-foreground">
                 Şablonlar yükleniyor...
               </span>
             </div>
           ) : templates.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p>Henüz şablon bulunmuyor</p>
               <p className="text-sm mt-1">
@@ -74,7 +74,7 @@ export const TemplateSelector = ({
             <div className="space-y-4">
               {Object.entries(grouped).map(([category, categoryTemplates]) => (
                 <div key={category}>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">
                     {category}
                   </h3>
                   <div className="space-y-2">
@@ -90,21 +90,21 @@ export const TemplateSelector = ({
                           className={`border rounded-lg p-4 cursor-pointer transition-all ${
                             selectedId === template.id
                               ? "border-indigo-500 bg-indigo-50"
-                              : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+                              : "border-border hover:border-indigo-300 hover:bg-muted/30"
                           }`}
                           onClick={() => setSelectedId(template.id)}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">
+                              <h4 className="font-medium text-foreground">
                                 {template.name}
                               </h4>
                               {template.description && (
-                                <p className="text-sm text-gray-600 mt-1">
+                                <p className="text-sm text-muted-foreground mt-1">
                                   {template.description}
                                 </p>
                               )}
-                              <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                              <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
                                 <span>📋 {template.oguns.length} öğün</span>
                                 <span>🍽️ {totalItems} besin</span>
                               </div>

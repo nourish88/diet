@@ -315,7 +315,7 @@ export function BulkPasteModal({
                 className={`absolute right-2 top-2 p-1.5 rounded-full transition-colors ${
                   isListening
                     ? "bg-red-100 text-red-600 animate-pulse"
-                    : "bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600"
+                    : "bg-accent text-muted-foreground hover:bg-blue-100 hover:text-blue-600"
                 }`}
                 title={isListening ? "Kaydı Durdur" : "Sesli Giriş (Türkçe)"}
               >
@@ -329,7 +329,7 @@ export function BulkPasteModal({
           </div>
 
           {isParsing && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
               Analiz ediliyor...
             </div>
@@ -337,7 +337,7 @@ export function BulkPasteModal({
 
           {parsedItems.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium text-foreground">
                 Algılanan besinler ({validCount}/{parsedItems.length} geçerli):
               </p>
               {parsedItems.map((item, i) => (
@@ -357,19 +357,19 @@ export function BulkPasteModal({
 
                   <div className="flex-1 grid grid-cols-3 gap-1">
                     <input
-                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-white"
+                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-card"
                       value={item.miktar}
                       placeholder="Miktar"
                       onChange={(e) => updateItem(i, "miktar", e.target.value)}
                     />
                     <input
-                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-white"
+                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-card"
                       value={item.birim}
                       placeholder="Birim (gr, adet...)"
                       onChange={(e) => updateItem(i, "birim", e.target.value)}
                     />
                     <input
-                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-white"
+                      className="col-span-1 border rounded px-1 py-0.5 text-xs bg-card"
                       value={item.besin}
                       placeholder="Besin adı"
                       onChange={(e) => updateItem(i, "besin", e.target.value)}
@@ -389,7 +389,7 @@ export function BulkPasteModal({
                   <button
                     type="button"
                     onClick={() => removeItem(i)}
-                    className="text-gray-400 hover:text-red-500"
+                    className="text-muted-foreground/70 hover:text-red-500"
                   >
                     <XCircle className="w-4 h-4" />
                   </button>

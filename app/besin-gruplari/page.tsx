@@ -84,7 +84,7 @@ export default function BesinGruplariPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Besin Grupları</h1>
+        <h1 className="text-2xl font-bold text-foreground">Besin Grupları</h1>
         <div className="flex gap-2">
           <Button
             onClick={() => router.push("/besinler")}
@@ -116,16 +116,16 @@ export default function BesinGruplariPage() {
       ) : isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-muted-foreground">
             Besin grupları yükleniyor...
           </span>
         </div>
       ) : groups.length === 0 ? (
-        <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <h3 className="text-lg font-medium text-gray-700 mb-2">
+        <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Henüz besin grubu bulunmuyor
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-muted-foreground mb-4">
             İlk besin grubunu ekleyerek başlayın
           </p>
           <Button
@@ -137,7 +137,7 @@ export default function BesinGruplariPage() {
           </Button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
           <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">Tüm Besin Grupları</h2>
             <p className="text-sm text-blue-100 mt-1">
@@ -146,42 +146,42 @@ export default function BesinGruplariPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Grup Adı
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Besin Sayısı
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Oluşturulma Tarihi
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {groups.map((group) => (
                   <tr
                     key={group.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <List className="h-4 w-4 text-indigo-500 mr-2" />
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-foreground">
                           {group.description}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {group._count?.besins || 0} besin
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {new Date(group.createdAt).toLocaleDateString("tr-TR")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

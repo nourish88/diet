@@ -503,7 +503,7 @@ export default function ClientMessagesPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Mesajlar yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Mesajlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -518,7 +518,7 @@ export default function ClientMessagesPage() {
       />
 
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-4">
           <Link
             href={`/client/diets/${dietId}`}
             className="flex items-center text-blue-600 hover:text-blue-700 mb-2"
@@ -526,10 +526,10 @@ export default function ClientMessagesPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Diyete Dön
           </Link>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-foreground">
             Diyetisyenimle İletişim
           </h1>
-          <p className="text-sm text-gray-600">Diyet #{dietId}</p>
+          <p className="text-sm text-muted-foreground">Diyet #{dietId}</p>
           <button
             onClick={refreshConversation}
             disabled={isRefreshing}
@@ -551,12 +551,12 @@ export default function ClientMessagesPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="h-[500px] overflow-y-auto p-6">
             {messages.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">Henüz mesaj yok</p>
-                <p className="text-sm text-gray-400 mt-2">
+                <p className="text-muted-foreground">Henüz mesaj yok</p>
+                <p className="text-sm text-muted-foreground/70 mt-2">
                   Diyetisyeninize ilk mesajı gönderin
                 </p>
               </div>
@@ -573,7 +573,7 @@ export default function ClientMessagesPage() {
                     <div key={message.id}>
                       {showDate && (
                         <div className="text-center my-4">
-                          <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
+                          <span className="bg-accent text-muted-foreground text-xs px-3 py-1 rounded-full">
                             {formatDate(message.createdAt)}
                           </span>
                         </div>
@@ -588,11 +588,11 @@ export default function ClientMessagesPage() {
                           className={`max-w-[70%] ${
                             isMe
                               ? "bg-blue-600 text-white rounded-lg rounded-br-none"
-                              : "bg-gray-100 text-gray-900 rounded-lg rounded-bl-none"
+                              : "bg-accent text-foreground rounded-lg rounded-bl-none"
                           } p-4`}
                         >
                           {!isMe && (
-                            <p className="text-xs text-gray-600 mb-1">
+                            <p className="text-xs text-muted-foreground mb-1">
                               Diyetisyen
                             </p>
                           )}
@@ -634,7 +634,7 @@ export default function ClientMessagesPage() {
 
                           <p
                             className={`text-xs mt-2 ${
-                              isMe ? "text-blue-100" : "text-gray-500"
+                              isMe ? "text-blue-100" : "text-muted-foreground"
                             }`}
                           >
                             {formatTime(message.createdAt)}
@@ -649,7 +649,7 @@ export default function ClientMessagesPage() {
             )}
           </div>
 
-          <div className="border-t border-gray-200 p-4">
+          <div className="border-t border-border p-4">
             {selectedOgun && (
               <div className="flex items-center justify-between bg-yellow-50 text-yellow-800 px-3 py-2 rounded-lg mb-3">
                 <span className="text-sm">📍 {selectedOgun.name}</span>
@@ -669,11 +669,11 @@ export default function ClientMessagesPage() {
                     <img
                       src={photo.dataUrl}
                       alt={photo.name || "Seçili görsel"}
-                      className="h-20 w-20 object-cover rounded-lg border border-gray-200"
+                      className="h-20 w-20 object-cover rounded-lg border border-border"
                     />
                     <button
                       onClick={() => removePendingPhoto(photo.id)}
-                      className="absolute -top-2 -right-2 bg-white border border-gray-300 rounded-full p-1 text-gray-600 hover:text-red-600 shadow-sm"
+                      className="absolute -top-2 -right-2 bg-card border border-border rounded-full p-1 text-muted-foreground hover:text-red-600 shadow-sm"
                       title="Görseli kaldır"
                     >
                       <X className="w-4 h-4" />
@@ -687,20 +687,20 @@ export default function ClientMessagesPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowOgunPicker(!showOgunPicker)}
-                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                  className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                   title="Öğün seç"
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
 
                 {showOgunPicker && oguns.length > 0 && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px] z-10">
+                  <div className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-lg shadow-lg py-2 min-w-[200px] z-10">
                     <button
                       onClick={() => {
                         setSelectedOgun(null);
                         setShowOgunPicker(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-muted/30"
                     >
                       ❌ Öğün seçme
                     </button>
@@ -711,7 +711,7 @@ export default function ClientMessagesPage() {
                           setSelectedOgun(ogun);
                           setShowOgunPicker(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-muted/30"
                       >
                         {ogun.name}
                       </button>
@@ -722,7 +722,7 @@ export default function ClientMessagesPage() {
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                 title="Görsel ekle"
               >
                 <Camera className="w-5 h-5" />
@@ -732,7 +732,7 @@ export default function ClientMessagesPage() {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Mesajınızı yazın..."
-                className="flex-1 border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                className="flex-1 border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                 rows={3}
               />
 

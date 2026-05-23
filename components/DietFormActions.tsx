@@ -306,7 +306,7 @@ const DietFormActions = ({
         type="button"
         variant="outline"
         onClick={onAddOgun}
-        className="bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
+        className="bg-card text-foreground border-border hover:bg-accent"
       >
         <Plus className="h-4 w-4 mr-2" />
         Öğün Ekle

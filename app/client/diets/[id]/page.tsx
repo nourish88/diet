@@ -205,7 +205,7 @@ export default function ClientDietDetailPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Diyet yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Diyet yükleniyor...</p>
         </div>
       </div>
     );
@@ -214,7 +214,7 @@ export default function ClientDietDetailPage() {
   if (!diet) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Diyet bulunamadı</p>
+        <p className="text-muted-foreground">Diyet bulunamadı</p>
         <Link
           href="/client/diets"
           className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-700"
@@ -248,7 +248,7 @@ export default function ClientDietDetailPage() {
             </button>
             <DatabasePDFButton
               diet={diet}
-              className="bg-white text-blue-600 hover:bg-blue-50"
+              className="bg-card text-blue-600 hover:bg-blue-50"
               size="sm"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -267,17 +267,17 @@ export default function ClientDietDetailPage() {
       {clientId && (
         <Link
           href={`/client/diets/${dietId}/messages`}
-          className="block bg-white rounded-lg shadow-sm border-l-4 border-blue-600 p-6 hover:shadow-md transition-shadow"
+          className="block bg-card rounded-lg shadow-sm border-l-4 border-blue-600 p-6 hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center space-x-3 mb-2">
                 <MessageCircle className="w-6 h-6 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   Diyetisyenimle İletişim
                 </h3>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 {unreadCount > 0
                   ? `${unreadCount} okunmamış mesajınız var`
                   : "Diyetisyeninize soru sorun ve mesajlaşın"}
@@ -293,8 +293,8 @@ export default function ClientDietDetailPage() {
       )}
 
       {/* Summary */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-xl font-semibold text-foreground mb-4">
           Program Özeti
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -304,8 +304,8 @@ export default function ClientDietDetailPage() {
                 <Target className="w-5 h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">HEDEF</p>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-xs text-muted-foreground font-medium">HEDEF</p>
+                <p className="text-sm font-semibold text-foreground">
                   {diet.hedef}
                 </p>
               </div>
@@ -318,8 +318,8 @@ export default function ClientDietDetailPage() {
                 <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">SONUÇ</p>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-xs text-muted-foreground font-medium">SONUÇ</p>
+                <p className="text-sm font-semibold text-foreground">
                   {diet.sonuc}
                 </p>
               </div>
@@ -332,8 +332,8 @@ export default function ClientDietDetailPage() {
                 <Droplet className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">SU TÜKETİMİ</p>
-                <p className="text-sm font-semibold text-gray-900">{diet.su}</p>
+                <p className="text-xs text-muted-foreground font-medium">SU TÜKETİMİ</p>
+                <p className="text-sm font-semibold text-foreground">{diet.su}</p>
               </div>
             </div>
           )}
@@ -344,10 +344,10 @@ export default function ClientDietDetailPage() {
                 <Activity className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-medium">
+                <p className="text-xs text-muted-foreground font-medium">
                   FİZİKSEL AKTİVİTE
                 </p>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-foreground">
                   {diet.fizik}
                 </p>
               </div>
@@ -370,7 +370,7 @@ export default function ClientDietDetailPage() {
       {showReviewNudge && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <Star className="w-5 h-5 text-amber-500 shrink-0" />
-          <p className="text-sm text-gray-700 flex-1">
+          <p className="text-sm text-foreground flex-1">
             Programınızdan memnun musunuz?{" "}
             <button
               onClick={handleReviewNudgeClick}
@@ -381,14 +381,14 @@ export default function ClientDietDetailPage() {
             ya da{" "}
             <button
               onClick={handleReviewNudgeDone}
-              className="text-gray-500 hover:underline"
+              className="text-muted-foreground hover:underline"
             >
               zaten yaptım
             </button>
           </p>
           <button
             onClick={handleReviewNudgeDismiss}
-            className="p-1 text-gray-300 hover:text-gray-500 transition shrink-0"
+            className="p-1 text-gray-300 hover:text-muted-foreground transition shrink-0"
             aria-label="Kapat"
           >
             <X className="w-4 h-4" />
@@ -397,8 +397,8 @@ export default function ClientDietDetailPage() {
       )}
 
       {/* Meals */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h2 className="text-xl font-semibold text-foreground mb-4">
           Günlük Öğün Programı
         </h2>
         <div className="space-y-3">
@@ -414,7 +414,7 @@ export default function ClientDietDetailPage() {
                 className={`border rounded-lg overflow-hidden transition-all duration-500 ${
                   isHighlighted
                     ? "border-blue-500 shadow-lg ring-2 ring-blue-300 ring-opacity-50"
-                    : "border-gray-200"
+                    : "border-border"
                 }`}
               >
                 <button
@@ -422,38 +422,38 @@ export default function ClientDietDetailPage() {
                   className={`w-full flex items-center justify-between p-4 transition-colors ${
                     isHighlighted
                       ? "bg-blue-50 hover:bg-blue-100"
-                      : "bg-gray-50 hover:bg-gray-100"
+                      : "bg-muted/30 hover:bg-accent"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-blue-600" />
                     <div className="text-left">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-foreground">
                         {ogun.name}
                       </h3>
                       {ogun.time && (
-                        <p className="text-xs text-gray-500">{ogun.time}</p>
+                        <p className="text-xs text-muted-foreground">{ogun.time}</p>
                       )}
                     </div>
                   </div>
                   {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                    <ChevronUp className="w-5 h-5 text-muted-foreground/70" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                    <ChevronDown className="w-5 h-5 text-muted-foreground/70" />
                   )}
                 </button>
 
                 {isExpanded && (
-                  <div className="p-4 bg-white">
+                  <div className="p-4 bg-card">
                     {/* Menu items first */}
                     {ogun.items && ogun.items.length > 0 ? (
                       <ul className="space-y-2 mb-3">
                         {ogun.items.map((item) => (
                           <li
                             key={item.id}
-                            className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                            className="flex items-center justify-between py-2 border-b border-border last:border-0"
                           >
-                            <span className="text-sm text-gray-700">
+                            <span className="text-sm text-foreground">
                               {item.besin.name}
                             </span>
                             <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
@@ -463,13 +463,13 @@ export default function ClientDietDetailPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-gray-500 italic mb-3">
+                      <p className="text-sm text-muted-foreground italic mb-3">
                         Bu öğün için besin eklenmemiş
                       </p>
                     )}
                     {/* Detail after menu items */}
                     {ogun.detail && (
-                      <p className="text-sm text-gray-600 italic">
+                      <p className="text-sm text-muted-foreground italic">
                         {ogun.detail}
                       </p>
                     )}

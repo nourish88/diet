@@ -4,7 +4,7 @@ import { Calendar } from "lucide-react";
 export default function ImportantDatesPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
         <div className="bg-brand-gradient px-6 py-4 text-white">
           <div className="flex items-center">
             <Calendar className="h-6 w-6 mr-2 text-white" />

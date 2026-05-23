@@ -326,7 +326,7 @@ export default function LoginPage() {
                   resetClientFlow();
                 }}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Diyetisyeninizin sisteme kaydettiği telefon numarasını girin.
               </p>
             </div>
@@ -352,7 +352,7 @@ export default function LoginPage() {
 
             {lookupClients.length > 0 && (
               <div className="space-y-3 border border-blue-100 rounded-lg p-3 bg-blue-50/40">
-                <p className="text-sm text-gray-700 font-medium">
+                <p className="text-sm text-foreground font-medium">
                   {lookupClients.length > 1
                     ? "Kim olduğunuzu seçin"
                     : "Profiliniz bulundu"}
@@ -369,14 +369,14 @@ export default function LoginPage() {
                         onClick={() => setSelectedClientId(client.id)}
                         className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
                           isSelected
-                            ? "border-blue-500 bg-white"
-                            : "border-gray-200 bg-white/80 hover:border-blue-300"
+                            ? "border-blue-500 bg-card"
+                            : "border-border bg-card/80 hover:border-blue-300"
                         }`}
                       >
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {client.name} {client.surname}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {formatBirthdate(client.birthdate)}
                         </p>
                       </button>
@@ -418,10 +418,10 @@ export default function LoginPage() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
+              <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-400">veya</span>
+              <span className="bg-card px-2 text-muted-foreground/70">veya</span>
             </div>
           </div>
 

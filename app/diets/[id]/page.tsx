@@ -156,7 +156,7 @@ export default function DietDetailPage() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-muted-foreground">
             Beslenme programı yükleniyor...
           </span>
         </div>
@@ -168,10 +168,10 @@ export default function DietDetailPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center py-16">
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-foreground">
             Beslenme programı bulunamadı
           </h3>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-muted-foreground">
             Aradığınız beslenme programı mevcut değil veya silinmiş olabilir.
           </p>
           <div className="mt-6">
@@ -199,7 +199,7 @@ export default function DietDetailPage() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
+      <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
         <div className="bg-brand-gradient px-6 py-4 text-white flex justify-between items-center">
           <div>
             <h2 className="text-xl font-medium">
@@ -285,7 +285,7 @@ export default function DietDetailPage() {
                 >
                   {diet.client?.name} {diet.client?.surname}
                 </Link>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Diyet Tarihi: {formatDate(diet.tarih)}
                 </p>
               </div>
@@ -298,28 +298,28 @@ export default function DietDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {diet.hedef && (
                   <div className="border-l-4 border-yellow-500 pl-4">
-                    <p className="font-medium text-gray-700">Hedef</p>
-                    <p className="text-gray-600">{diet.hedef}</p>
+                    <p className="font-medium text-foreground">Hedef</p>
+                    <p className="text-muted-foreground">{diet.hedef}</p>
                   </div>
                 )}
                 {diet.sonuc && (
                   <div className="border-l-4 border-green-500 pl-4">
-                    <p className="font-medium text-gray-700">Sonuç</p>
-                    <p className="text-gray-600">{diet.sonuc}</p>
+                    <p className="font-medium text-foreground">Sonuç</p>
+                    <p className="text-muted-foreground">{diet.sonuc}</p>
                   </div>
                 )}
                 {diet.su && (
                   <div className="border-l-4 border-blue-500 pl-4">
-                    <p className="font-medium text-gray-700">Su Tüketimi</p>
-                    <p className="text-gray-600">{diet.su}</p>
+                    <p className="font-medium text-foreground">Su Tüketimi</p>
+                    <p className="text-muted-foreground">{diet.su}</p>
                   </div>
                 )}
                 {diet.fizik && (
                   <div className="border-l-4 border-purple-500 pl-4">
-                    <p className="font-medium text-gray-700">
+                    <p className="font-medium text-foreground">
                       Fiziksel Aktivite
                     </p>
-                    <p className="text-gray-600">{diet.fizik}</p>
+                    <p className="text-muted-foreground">{diet.fizik}</p>
                   </div>
                 )}
               </div>
@@ -333,7 +333,7 @@ export default function DietDetailPage() {
                 Diyetisyen Notu
               </h3>
               <div className="border-l-4 border-indigo-500 pl-4 py-2 bg-indigo-50 rounded-r">
-                <p className="text-gray-700 whitespace-pre-wrap">{diet.dietitianNote}</p>
+                <p className="text-foreground whitespace-pre-wrap">{diet.dietitianNote}</p>
               </div>
             </div>
           )}
@@ -345,14 +345,14 @@ export default function DietDetailPage() {
                 {diet.oguns.map((ogun: any, index: number) => (
                   <div
                     key={index}
-                    className="border border-gray-200 rounded-lg p-4"
+                    className="border border-border rounded-lg p-4"
                   >
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-semibold text-gray-800">
+                      <h4 className="font-semibold text-foreground">
                         {ogun.name || `Öğün ${index + 1}`}
                       </h4>
                       {ogun.time && (
-                        <span className="text-sm text-gray-600 flex items-center">
+                        <span className="text-sm text-muted-foreground flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
                           {ogun.time}
                         </span>
@@ -363,7 +363,7 @@ export default function DietDetailPage() {
                         {ogun.items.map((item: any, itemIndex: number) => (
                           <li
                             key={itemIndex}
-                            className="text-gray-700 flex items-start"
+                            className="text-foreground flex items-start"
                           >
                             <span className="mr-2">•</span>
                             <span>
@@ -379,13 +379,13 @@ export default function DietDetailPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-gray-400 italic">
+                      <p className="text-muted-foreground/70 italic">
                         Bu öğün için besin eklenmemiş
                       </p>
                     )}
                     {ogun.detail && (
                       <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                        <p className="text-sm text-gray-700">
+                        <p className="text-sm text-foreground">
                           <span className="font-medium">Not:</span>{" "}
                           {ogun.detail}
                         </p>
@@ -395,7 +395,7 @@ export default function DietDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 italic">
+              <p className="text-muted-foreground italic">
                 Bu beslenme programında öğün bulunmuyor
               </p>
             )}

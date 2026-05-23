@@ -294,14 +294,14 @@ export const SmartBesinInput = ({
       <>
         {isLoading ? (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500">Aranıyor...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/70" />
+            <span className="ml-2 text-sm text-muted-foreground">Aranıyor...</span>
           </div>
         ) : hasSuggestions ? (
           <>
             {/* Header */}
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
-              <p className="text-xs font-medium text-gray-600">
+            <div className="px-3 py-2 bg-muted/30 border-b border-border">
+              <p className="text-xs font-medium text-muted-foreground">
                 💡 Önerilen ({suggestions.length})
               </p>
             </div>
@@ -313,14 +313,14 @@ export const SmartBesinInput = ({
                 className={`px-3 py-2 cursor-pointer flex items-center justify-between ${
                   index === selectedIndex
                     ? "bg-indigo-50 border-l-2 border-indigo-500"
-                    : "hover:bg-gray-50"
+                    : "hover:bg-muted/30"
                 }`}
                 onClick={() => selectSuggestion(suggestion)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">
+                    <span className="font-medium text-foreground">
                       {suggestion.name}
                     </span>
                     {suggestion.isFrequent && (
@@ -328,13 +328,13 @@ export const SmartBesinInput = ({
                     )}
                   </div>
                   {(suggestion.miktar || suggestion.birim) && (
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {suggestion.miktar} {suggestion.birim}
                     </div>
                   )}
                 </div>
                 {suggestion.usageCount > 0 && (
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-muted-foreground/70">
                     {suggestion.usageCount}× kullanıldı
                   </div>
                 )}
@@ -342,8 +342,8 @@ export const SmartBesinInput = ({
             ))}
 
             {/* Footer hint */}
-            <div className="px-3 py-2 bg-gray-50 border-t border-gray-200">
-              <p className="text-xs text-gray-500">
+            <div className="px-3 py-2 bg-muted/30 border-t border-border">
+              <p className="text-xs text-muted-foreground">
                 ↑↓ Seç · ⏎ Enter/Tab Ekle · ESC Kapat
               </p>
             </div>
@@ -352,7 +352,7 @@ export const SmartBesinInput = ({
           <>
             {/* No suggestions - Show add button only */}
             <div className="px-3 py-3">
-              <p className="text-xs text-gray-600 mb-2">
+              <p className="text-xs text-muted-foreground mb-2">
                 "{inputValue}" için öneri bulunamadı
               </p>
               <button
@@ -405,7 +405,7 @@ export const SmartBesinInput = ({
             createPortal(
               <div
                 ref={suggestionsRef}
-                className="fixed z-[9999] bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto"
+                className="fixed z-[9999] bg-card border border-border rounded-md shadow-lg max-h-64 overflow-y-auto"
                 style={{
                   top: `${dropdownPosition.top}px`,
                   left: `${Math.max(8, dropdownPosition.left)}px`,
@@ -424,7 +424,7 @@ export const SmartBesinInput = ({
             // Desktop: Normal absolute positioning
             <div
               ref={suggestionsRef}
-              className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto"
+              className="absolute z-[9999] w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-64 overflow-y-auto"
             >
               {renderSuggestionsContent()}
             </div>
@@ -444,13 +444,13 @@ export const SmartBesinInput = ({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Besin Adı
               </label>
-              <Input value={inputValue} readOnly className="bg-gray-50" />
+              <Input value={inputValue} readOnly className="bg-muted/30" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Besin Grubu (İsteğe Bağlı)
               </label>
               <Select

@@ -338,14 +338,14 @@ const DietTable = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className={`bg-white border-2 border-purple-700 rounded-lg shadow-md p-4 space-y-3 transition-all duration-300 ${
+                          className={`bg-card border-2 border-purple-700 rounded-lg shadow-md p-4 space-y-3 transition-all duration-300 ${
                             highlightedIndex === index
                               ? "ring-2 ring-indigo-400 animate-bounce"
                               : ""
                           }`}
                         >
                           {/* Ogun Header */}
-                          <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                          <div className="flex items-center justify-between pb-2 border-b border-border">
                             <div className="flex items-center gap-2">
                               <Coffee className="w-5 h-5 text-purple-600" />
                               <Input
@@ -383,7 +383,7 @@ const DietTable = ({
                                   )
                                 }
                                 onBlur={() => onMealTimeBlur?.(index)}
-                                className="w-20 text-sm border-gray-300"
+                                className="w-20 text-sm border-border"
                                 placeholder="Saat"
                                 disabled={effectiveDisabled}
                               />
@@ -417,7 +417,7 @@ const DietTable = ({
                             {ogun.items.map((item, itemIndex) => (
                               <div
                                 key={itemIndex}
-                                className="flex flex-col gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                                className="flex flex-col gap-2 p-2 bg-muted/30 rounded border border-border"
                               >
                                 <div className="flex flex-col gap-2">
                                   <Input
@@ -492,7 +492,7 @@ const DietTable = ({
                                     }
                                   }}
                                   placeholder="Besin ara..."
-                                  className="text-sm border-gray-300"
+                                  className="text-sm border-border"
                                 />
                                 <Button
                                   type="button"
@@ -529,7 +529,7 @@ const DietTable = ({
                               handleOgunChange(index, "detail", e.target.value)
                             }
                             placeholder="Açıklama/Not..."
-                            className="text-sm border-gray-300"
+                            className="text-sm border-border"
                             rows={2}
                             disabled={effectiveDisabled}
                           />
@@ -572,7 +572,7 @@ const DietTable = ({
                     ref={provided.innerRef}
                   >
                     <thead>
-                      <tr className="bg-brand-gradient text-white h-16 shadow-md border-b-2 border-gray-300">
+                      <tr className="bg-brand-gradient text-white h-16 shadow-md border-b-2 border-border">
                         <Resizable
                           width={getColumnWidth("ogun")}
                           height={40}
@@ -581,13 +581,13 @@ const DietTable = ({
                         >
                           <th
                             style={{ width: `${columnWidths.ogun}%` }}
-                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-border/30"
                           >
                             <span className="flex items-center justify-center">
                               <Coffee className="w-5 h-5 mr-2 opacity-80" />
                               <span className="font-semibold">Öğün</span>
                             </span>
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-card/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                           </th>
                         </Resizable>
                         <Resizable
@@ -598,13 +598,13 @@ const DietTable = ({
                         >
                           <th
                             style={{ width: `${columnWidths.saat}%` }}
-                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-border/30"
                           >
                             <span className="flex items-center justify-center">
                               <Clock className="w-5 h-5 mr-2 opacity-80" />
                               <span className="font-semibold">Zaman</span>
                             </span>
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-card/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                           </th>
                         </Resizable>
                         <Resizable
@@ -615,13 +615,13 @@ const DietTable = ({
                         >
                           <th
                             style={{ width: `${columnWidths.menu}%` }}
-                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-border/30"
                           >
                             <span className="flex items-center justify-center">
                               <Menu className="w-5 h-5 mr-2 opacity-80" />
                               <span className="font-semibold">Menü</span>
                             </span>
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-card/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                           </th>
                         </Resizable>
                         <Resizable
@@ -632,13 +632,13 @@ const DietTable = ({
                         >
                           <th
                             style={{ width: `${columnWidths.aciklama}%` }}
-                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-gray-300/30"
+                            className="px-4 font-semibold text-base tracking-wide relative group border-r border-border/30"
                           >
                             <span className="flex items-center justify-center">
                               <FileText className="w-5 h-5 mr-2 opacity-80" />
                               <span className="font-semibold">Açıklama</span>
                             </span>
-                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-white/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-card/70 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                           </th>
                         </Resizable>
                         <th className="px-4 font-semibold text-base tracking-wide no-print relative group">
@@ -648,7 +648,7 @@ const DietTable = ({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200 border-t border-gray-300">
+                    <tbody className="bg-card divide-y divide-border border-t border-border">
                       {diet.Oguns.map((ogun, index) => (
                         <Draggable
                           key={index.toString()}
@@ -660,7 +660,7 @@ const DietTable = ({
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`divide-x divide-gray-300 hover:bg-gray-50/80 cursor-move transition-colors duration-150 ${
+                              className={`divide-x divide-gray-300 hover:bg-muted/30/80 cursor-move transition-colors duration-150 ${
                                 highlightedIndex === index
                                   ? "ring-2 ring-indigo-400 animate-bounce"
                                   : ""
@@ -682,7 +682,7 @@ const DietTable = ({
                                         e.target.value
                                       )
                                     }
-                                    className="w-full h-12 font-bold text-xl border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                    className="w-full h-12 font-bold text-xl border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                   />
                                   <div className="no-print">
                                     <OgunQuickActions
@@ -715,7 +715,7 @@ const DietTable = ({
                                     )
                                   }
                                   onBlur={() => onMealTimeBlur?.(index)}
-                                  className="w-full h-12 font-medium border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                  className="w-full h-12 font-medium border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                   disabled={effectiveDisabled}
                                 />
                               </td>
@@ -759,7 +759,7 @@ const DietTable = ({
                                 <div className="flex flex-col space-y-1 w-full">
                                   <label
                                     htmlFor={`note-${index}`}
-                                    className="text-sm text-gray-700 font-medium"
+                                    className="text-sm text-foreground font-medium"
                                   >
                                     Açıklama
                                   </label>
@@ -820,7 +820,7 @@ const DietTable = ({
                             variant="outline"
                             onClick={onAddOgun}
                             className="
-                            bg-white 
+                            bg-card 
                             text-purple-700 
                             border-2 
                             border-purple-700 

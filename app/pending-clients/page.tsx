@@ -199,11 +199,11 @@ export default function PendingClientsPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
           <Clock className="w-8 h-8 text-blue-600" />
           Mobil Kullanıcı Eşleştirme
         </h1>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           Mobile uygulamadan kayıt olan kullanıcıları mevcut danışanlarınızla
           eşleştirin
         </p>
@@ -230,9 +230,9 @@ export default function PendingClientsPage() {
       {/* Split Layout: Pending Users (Left) | Mapping Interface (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* LEFT: Bekleyen Kayıtlar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Clock className="w-5 h-5" />
               Bekleyen Kayıtlar
               <span className="ml-2 px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -256,40 +256,40 @@ export default function PendingClientsPage() {
           ) : loading ? (
             <div className="p-12 text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Yükleniyor...</p>
+              <p className="mt-4 text-muted-foreground">Yükleniyor...</p>
             </div>
           ) : pendingUsers.length === 0 ? (
             <div className="p-12 text-center">
               <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
+              <p className="text-muted-foreground text-lg">
                 Onay bekleyen kayıt bulunmuyor
               </p>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-muted-foreground/70 text-sm mt-2">
                 Yeni kayıtlar burada görünecektir
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
               {pendingUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="p-4 hover:bg-gray-50 transition-colors"
+                  className="p-4 hover:bg-muted/30 transition-colors"
                 >
                   <div className="flex items-start gap-3 mb-2">
-                    <Mail className="w-5 h-5 text-gray-400 mt-1" />
+                    <Mail className="w-5 h-5 text-muted-foreground/70 mt-1" />
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 break-all">
+                      <p className="font-medium text-foreground break-all">
                         {user.email}
                       </p>
                       {user.referenceCode && (
                         <div className="mt-2 flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Ref:</span>
+                          <span className="text-sm text-muted-foreground">Ref:</span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-mono font-medium bg-blue-100 text-blue-800">
                             {user.referenceCode}
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                         <Calendar className="w-3 h-3" />
                         <span>
                           {new Date(user.createdAt).toLocaleDateString("tr-TR")}
@@ -315,9 +315,9 @@ export default function PendingClientsPage() {
         </div>
 
         {/* RIGHT: Mapping Interface */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <LinkIcon className="w-5 h-5" />
               Danışan Eşleştirme
             </h2>
@@ -326,7 +326,7 @@ export default function PendingClientsPage() {
           <div className="p-6">
             {/* Reference Code Input */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Referans Kodu
               </label>
               <input
@@ -336,57 +336,57 @@ export default function PendingClientsPage() {
                   setReferenceCodeInput(e.target.value.toUpperCase())
                 }
                 placeholder="Örn: REF-A1B2C3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Soldan referans kodunu kopyalayın
               </p>
             </div>
 
             {/* Client Search */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Danışan Ara
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                 <input
                   type="text"
                   value={clientSearchQuery}
                   onChange={(e) => setClientSearchQuery(e.target.value)}
                   placeholder="İsim, soyisim veya telefon..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               </div>
             </div>
 
             {/* Client List */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Danışan Seçin
               </label>
-              <div className="border border-gray-300 rounded-lg max-h-[300px] overflow-y-auto">
+              <div className="border border-border rounded-lg max-h-[300px] overflow-y-auto">
                 {filteredClients.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-muted-foreground">
                     Danışan bulunamadı
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-border">
                     {filteredClients.map((client) => (
                       <button
                         key={client.id}
                         onClick={() => setSelectedClient(client)}
-                        className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
+                        className={`w-full text-left p-3 hover:bg-muted/30 transition-colors ${
                           selectedClient?.id === client.id
                             ? "bg-blue-50 border-l-4 border-blue-500"
                             : ""
                         }`}
                       >
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-foreground">
                           {client.name} {client.surname}
                         </p>
                         {client.phoneNumber && (
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-muted-foreground mt-1">
                             {client.phoneNumber}
                           </p>
                         )}

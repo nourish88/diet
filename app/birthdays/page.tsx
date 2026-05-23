@@ -158,7 +158,7 @@ function BirthdaysContent() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-purple-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Yükleniyor...</span>
+          <span className="ml-2 text-muted-foreground">Yükleniyor...</span>
         </div>
       </div>
     );
@@ -173,8 +173,8 @@ function BirthdaysContent() {
             <Gift className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Doğum Günleri</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-foreground">Doğum Günleri</h1>
+            <p className="text-muted-foreground mt-1">
               Bugün doğum günü olan danışanlarınız
             </p>
           </div>
@@ -185,10 +185,10 @@ function BirthdaysContent() {
       {clients.length === 0 ? (
         <Card className="p-12 text-center">
           <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-foreground mb-2">
             Bugün doğum günü olan danışan bulunmuyor
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Doğum günü olan danışanlar burada görünecek.
           </p>
         </Card>
@@ -206,11 +206,11 @@ function BirthdaysContent() {
                       <Gift className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">
+                      <h3 className="text-lg font-bold text-foreground">
                         {client.name} {client.surname}
                       </h3>
                       {client.birthdate && (
-                        <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                           <Calendar className="w-3 h-3" />
                           {formatBirthdate(client.birthdate)}
                         </p>
@@ -220,7 +220,7 @@ function BirthdaysContent() {
 
                   {client.phoneNumber ? (
                     <>
-                      <p className="text-sm text-gray-600 flex items-center gap-2 mb-4">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2 mb-4">
                         <Phone className="w-4 h-4" />
                         {client.phoneNumber}
                       </p>
@@ -234,9 +234,9 @@ function BirthdaysContent() {
                     </>
                   ) : (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 py-2 px-3 bg-gray-100 rounded-md">
-                        <PhoneMissed className="w-4 h-4 text-gray-400" />
-                        <p className="text-sm text-gray-500">
+                      <div className="flex items-center gap-2 py-2 px-3 bg-accent rounded-md">
+                        <PhoneMissed className="w-4 h-4 text-muted-foreground/70" />
+                        <p className="text-sm text-muted-foreground">
                           Telefon numarası kayıtlı değil
                         </p>
                       </div>
@@ -257,7 +257,7 @@ function BirthdaysContent() {
           </div>
 
           <div className="mt-6 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
-            <p className="text-sm text-gray-700 text-center">
+            <p className="text-sm text-foreground text-center">
               <span className="font-bold text-pink-600">{clients.length}</span>{" "}
               danışanınızın bugün doğum günü! 🎂🎉
             </p>
@@ -276,7 +276,7 @@ function BirthdaysContent() {
             <DialogDescription>
               {modalClient && (
                 <>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-foreground">
                     {modalClient.name} {modalClient.surname}
                   </span>
                   &apos;nın bugün doğum günü! WhatsApp ile kutlamak ister
@@ -328,7 +328,7 @@ function BirthdaysContent() {
 
             <Button
               variant="ghost"
-              className="w-full text-gray-500"
+              className="w-full text-muted-foreground"
               onClick={() => setModalOpen(false)}
             >
               Şimdi Değil
@@ -337,7 +337,7 @@ function BirthdaysContent() {
             {/* Other birthday clients */}
             {otherClients.length > 0 && (
               <div className="border-t pt-3">
-                <p className="text-xs text-gray-500 mb-2 font-medium">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">
                   Bugün ayrıca doğum günü olanlar:
                 </p>
                 <div className="space-y-1">
@@ -351,13 +351,13 @@ function BirthdaysContent() {
                       className="w-full text-left px-3 py-2 rounded-md bg-pink-50 hover:bg-pink-100 border border-pink-200 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-800">
+                        <span className="text-sm font-medium text-foreground">
                           {other.name} {other.surname}
                         </span>
                         {other.phoneNumber ? (
                           <MessageCircle className="w-3.5 h-3.5 text-green-500" />
                         ) : (
-                          <PhoneMissed className="w-3.5 h-3.5 text-gray-400" />
+                          <PhoneMissed className="w-3.5 h-3.5 text-muted-foreground/70" />
                         )}
                       </div>
                     </button>
@@ -379,7 +379,7 @@ function BirthdaysContent() {
             <DialogDescription>
               {phoneModalClient && (
                 <span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-foreground">
                     {phoneModalClient.name} {phoneModalClient.surname}
                   </span>{" "}
                   için telefon numarası girin.

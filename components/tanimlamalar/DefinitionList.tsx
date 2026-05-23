@@ -45,14 +45,14 @@ export const DefinitionList = ({
   };
 
   if (isLoading) {
-    return <div className="text-center py-8 text-gray-500">Yükleniyor...</div>;
+    return <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>;
   }
 
   if (definitions.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-        <p className="text-gray-500">Henüz tanımlama bulunmuyor</p>
-        <p className="text-sm text-gray-400 mt-1">
+      <div className="text-center py-12 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+        <p className="text-muted-foreground">Henüz tanımlama bulunmuyor</p>
+        <p className="text-sm text-muted-foreground/70 mt-1">
           Yukarıdaki formu kullanarak yeni tanımlama ekleyin
         </p>
       </div>
@@ -66,8 +66,8 @@ export const DefinitionList = ({
           key={definition.id}
           className={`flex items-center justify-between p-4 rounded-lg border ${
             definition.isActive
-              ? "bg-white border-gray-200"
-              : "bg-gray-50 border-gray-300 opacity-60"
+              ? "bg-card border-border"
+              : "bg-muted/30 border-border opacity-60"
           }`}
         >
           <div className="flex-1">
@@ -88,7 +88,7 @@ export const DefinitionList = ({
             ) : (
               <p
                 className={`text-sm ${
-                  definition.isActive ? "text-gray-900" : "text-gray-500"
+                  definition.isActive ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {definition.name}
@@ -111,7 +111,7 @@ export const DefinitionList = ({
                   size="sm"
                   variant="ghost"
                   onClick={handleCancelEdit}
-                  className="text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -127,7 +127,7 @@ export const DefinitionList = ({
                   className={`text-xs ${
                     definition.isActive
                       ? "text-green-600 hover:bg-green-50"
-                      : "text-gray-600 hover:bg-gray-100"
+                      : "text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   {definition.isActive ? "Aktif" : "Pasif"}

@@ -21,7 +21,7 @@ const FormFieldWrapper = ({
         <div className="w-32 flex-shrink-0"> {/* Fixed width for label */}
           <label
             htmlFor={name}
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-foreground"
           >
             {label}
           </label>

@@ -18,8 +18,8 @@ interface ExerciseChartProps {
 export default function ExerciseChart({ data }: ExerciseChartProps) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-        <p className="text-gray-500">Henüz egzersiz kaydı bulunmuyor</p>
+      <div className="flex items-center justify-center h-64 bg-muted/30 rounded-lg">
+        <p className="text-muted-foreground">Henüz egzersiz kaydı bulunmuyor</p>
       </div>
     );
   }

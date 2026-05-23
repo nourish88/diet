@@ -7,7 +7,7 @@ export default function FontSizeController() {
   const { increase, decrease } = useFontStore();
 
   return (
-    <div className="fixed bottom-4 right-4 flex gap-2 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg z-50">
+    <div className="fixed bottom-4 right-4 flex gap-2 bg-card/80 backdrop-blur-sm p-2 rounded-lg shadow-lg z-50">
       <Button
         variant="ghost"
         size="icon"

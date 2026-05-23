@@ -84,7 +84,7 @@ export default function ClientUnreadMessagesPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Mesajlar yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Mesajlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function ClientUnreadMessagesPage() {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Anasayfaya Dön
           </Link>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+          <div className="bg-card rounded-2xl shadow-lg border border-border p-6">
             <div className="flex justify-center mb-4">
               <img
                 src="/ezgi_evgin.png"
@@ -111,11 +111,11 @@ export default function ClientUnreadMessagesPage() {
                 style={{ width: "150px", height: "auto" }}
               />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center justify-center">
+            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center justify-center">
               <MessageCircle className="w-7 h-7 mr-3 text-purple-600" />
               Sohbetler
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {conversations.length > 0
                 ? `${conversations.length} konuşmada okunmamış mesaj var`
                 : "Tüm mesajlarınızı okudunuz"}
@@ -125,12 +125,12 @@ export default function ClientUnreadMessagesPage() {
 
         {/* Conversations */}
         {conversations.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 text-center">
+          <div className="bg-card rounded-2xl shadow-lg border border-border p-12 text-center">
             <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-foreground mb-2">
               Okunmamış mesajınız yok
             </h3>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Tüm mesajlarınızı okudunuz. Harika! 🎉
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function ClientUnreadMessagesPage() {
                 <Link
                   key={`${conversation.dietId}`}
                   href={`/client/diets/${conversation.dietId}/messages`}
-                  className="block bg-white rounded-2xl shadow-lg border-2 border-gray-200 hover:border-purple-400 hover:shadow-xl p-6 transition-all group"
+                  className="block bg-card rounded-2xl shadow-lg border-2 border-border hover:border-purple-400 hover:shadow-xl p-6 transition-all group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -153,11 +153,11 @@ export default function ClientUnreadMessagesPage() {
                           <MessageCircle className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900">
+                          <h3 className="text-lg font-bold text-foreground">
                             Diyet #{conversation.dietId}
                           </h3>
                           {conversation.dietDate && (
-                            <div className="flex items-center text-xs text-gray-500">
+                            <div className="flex items-center text-xs text-muted-foreground">
                               <Calendar className="w-3 h-3 mr-1" />
                               {formatDate(conversation.dietDate)}
                             </div>
@@ -168,7 +168,7 @@ export default function ClientUnreadMessagesPage() {
                       {/* Latest Message */}
                       {latestMessage && (
                         <div className="ml-15">
-                          <p className="text-sm text-gray-600 font-medium mb-1">
+                          <p className="text-sm text-muted-foreground font-medium mb-1">
                             Diyetisyen:
                           </p>
                           {latestMessage.ogun && (
@@ -176,10 +176,10 @@ export default function ClientUnreadMessagesPage() {
                               📍 {latestMessage.ogun.name}
                             </span>
                           )}
-                          <p className="text-sm text-gray-700 line-clamp-2 font-medium">
+                          <p className="text-sm text-foreground line-clamp-2 font-medium">
                             {latestMessage.content}
                           </p>
-                          <div className="flex items-center text-xs text-gray-500 mt-2">
+                          <div className="flex items-center text-xs text-muted-foreground mt-2">
                             <Clock className="w-3 h-3 mr-1" />
                             {formatTime(latestMessage.createdAt)}
                           </div>
@@ -192,7 +192,7 @@ export default function ClientUnreadMessagesPage() {
                       <div className="bg-red-500 text-white text-sm font-bold rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
                         {conversation.unreadCount}
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground/70 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
                     </div>
                   </div>
                 </Link>

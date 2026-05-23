@@ -82,7 +82,7 @@ interface AnalyticsData {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-lg shadow-xl">
+      <div className="bg-card/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-lg shadow-xl">
         <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={index} className="flex items-center gap-2 text-sm">
@@ -175,7 +175,7 @@ export default function IstatistiklerPage() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
+            <SelectTrigger className="w-[180px] bg-card/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
               <SelectValue placeholder="Zaman Aralığı" />
             </SelectTrigger>
             <SelectContent>
@@ -189,7 +189,7 @@ export default function IstatistiklerPage() {
             onClick={() => refetch()} 
             variant="outline" 
             size="sm"
-            className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800"
+            className="bg-card/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800"
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Activity className="h-4 w-4 mr-2 text-indigo-500" />}
             Verileri Yenile
@@ -200,7 +200,7 @@ export default function IstatistiklerPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-white overflow-hidden relative">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-card/10 rounded-full blur-xl"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-indigo-100 font-medium">Toplam Danışan</CardDescription>
             <CardTitle className="text-4xl font-bold flex items-center justify-between">
@@ -220,7 +220,7 @@ export default function IstatistiklerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
+        <Card className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-500 font-medium">Yazılan Diyet</CardDescription>
@@ -238,7 +238,7 @@ export default function IstatistiklerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
+        <Card className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-500 font-medium">KVKK Onayları</CardDescription>
@@ -257,7 +257,7 @@ export default function IstatistiklerPage() {
         </Card>
 
         <Card className="border-none shadow-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-6 -top-6 w-32 h-32 bg-card/10 rounded-full blur-2xl"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-orange-50 font-medium">Bekleyen Onaylar</CardDescription>
             <CardTitle className="text-4xl font-bold flex items-center justify-between">
@@ -275,11 +275,11 @@ export default function IstatistiklerPage() {
 
       <Tabs defaultValue="overview" className="w-full space-y-8">
         <TabsList className="grid w-full max-w-md grid-cols-2 p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl">
-          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-card dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
             <BarChart3 className="h-4 w-4 mr-2" />
             Genel Bakış
           </TabsTrigger>
-          <TabsTrigger value="foods" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+          <TabsTrigger value="foods" className="rounded-lg data-[state=active]:bg-card dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
             <Activity className="h-4 w-4 mr-2" />
             Besin & Pattern Analizi
           </TabsTrigger>
@@ -289,7 +289,7 @@ export default function IstatistiklerPage() {
         <TabsContent value="overview" className="space-y-6">
           <div className="flex justify-end mb-2">
             <Select value={chartView} onValueChange={setChartView}>
-              <SelectTrigger className="w-[180px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
+              <SelectTrigger className="w-[180px] bg-card/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
                 <SelectValue placeholder="Grafik Görünümü" />
               </SelectTrigger>
               <SelectContent>
@@ -449,7 +449,7 @@ export default function IstatistiklerPage() {
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-center">
                 <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-6 text-center">
-                  <div className="w-16 h-16 bg-white dark:bg-slate-900 shadow-sm rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
+                  <div className="w-16 h-16 bg-card dark:bg-slate-900 shadow-sm rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
                     <Sparkles className="h-8 w-8 text-amber-500" />
                   </div>
                   <h3 className="text-amber-900 dark:text-amber-400 font-semibold mb-2">Otomatik Presetler</h3>

@@ -17,32 +17,32 @@ export default function GlobalError({
 
   return (
     <html lang="tr">
-      <body className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-2xl bg-white shadow-lg border border-gray-100 p-8 text-center space-y-6">
+      <body className="min-h-screen bg-muted/30 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg rounded-2xl bg-card shadow-lg border border-border p-8 text-center space-y-6">
           <div className="space-y-3">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               Bir sorunla karşılaştık
             </h1>
-            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Beklenmedik bir hata oluştu. Lütfen sayfayı yenilemeyi deneyin ya
               da ana sayfaya geri dönerek işleminizi tekrar başlatın.
             </p>
             </div>
-            <div className="rounded-md bg-gray-50 border border-gray-200 text-left p-4 text-xs text-gray-700 space-y-2">
+            <div className="rounded-md bg-muted/30 border border-border text-left p-4 text-xs text-foreground space-y-2">
               <div>
-                <span className="font-semibold text-gray-900">Mesaj:</span>{" "}
+                <span className="font-semibold text-foreground">Mesaj:</span>{" "}
                 <span>{error.message || "Bilinmeyen hata"}</span>
               </div>
             {error.digest && (
                 <div>
-                  <span className="font-semibold text-gray-900">Hata kodu:</span>{" "}
+                  <span className="font-semibold text-foreground">Hata kodu:</span>{" "}
                   <span>{error.digest}</span>
                 </div>
               )}
               {error.stack && (
                 <details>
-                  <summary className="cursor-pointer text-gray-900">
+                  <summary className="cursor-pointer text-foreground">
                     Ayrıntıları göster
                   </summary>
                   <pre className="mt-2 whitespace-pre-wrap break-words">

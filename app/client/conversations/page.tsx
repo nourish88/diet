@@ -93,7 +93,7 @@ export default function ClientConversationsPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Sohbetler yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Sohbetler yükleniyor...</p>
         </div>
       </div>
     );
@@ -111,7 +111,7 @@ export default function ClientConversationsPage() {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Anasayfaya Dön
           </Link>
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+          <div className="bg-card rounded-2xl shadow-lg border border-border p-6">
             <div className="flex justify-center mb-4">
               <img
                 src="/ezgi_evgin.png"
@@ -120,11 +120,11 @@ export default function ClientConversationsPage() {
                 style={{ width: "150px", height: "auto" }}
               />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center justify-center">
+            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center justify-center">
               <MessageCircle className="w-7 h-7 mr-3 text-purple-600" />
               Sohbetlerim
             </h1>
-            <p className="text-gray-600 text-center">
+            <p className="text-muted-foreground text-center">
               Tüm diyet sohbetlerinizi görüntüleyin
             </p>
           </div>
@@ -134,10 +134,10 @@ export default function ClientConversationsPage() {
         {conversations.length === 0 ? (
           <Card className="p-12 text-center">
             <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-foreground mb-2">
               Henüz sohbet yok
             </h3>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Diyetlerinizle ilgili sohbetler burada görünecek
             </p>
           </Card>
@@ -160,7 +160,7 @@ export default function ClientConversationsPage() {
                   href={`/client/diets/${conversation.dietId}/messages`}
                   className="block"
                 >
-                  <Card className="hover:shadow-xl transition-all border-2 border-gray-200 hover:border-purple-400 cursor-pointer group">
+                  <Card className="hover:shadow-xl transition-all border-2 border-border hover:border-purple-400 cursor-pointer group">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -170,13 +170,13 @@ export default function ClientConversationsPage() {
                               <MessageCircle className="w-6 h-6 text-white" />
                             </div>
                             <div className="flex-1">
-                              <h3 className="text-lg font-bold text-gray-900">
+                              <h3 className="text-lg font-bold text-foreground">
                                 {dietDay && dietMonth
                                   ? `${dietDay} ${dietMonth} tarihli ${conversation.dietId} numaralı diyete ilişkin sohbetler`
                                   : `${conversation.dietId} numaralı diyete ilişkin sohbetler`}
                               </h3>
                               {conversation.dietDate && (
-                                <div className="flex items-center text-xs text-gray-500 mt-1">
+                                <div className="flex items-center text-xs text-muted-foreground mt-1">
                                   <Calendar className="w-3 h-3 mr-1" />
                                   {dietDateFormatted}
                                 </div>
@@ -188,14 +188,14 @@ export default function ClientConversationsPage() {
                           {conversation.lastMessage ? (
                             <div className="ml-[60px] mt-3">
                               <div className="flex items-center justify-between mb-2">
-                                <p className="text-xs text-gray-500 font-medium">
+                                <p className="text-xs text-muted-foreground font-medium">
                                   {conversation.lastMessage.userRole ===
                                   "dietitian"
                                     ? "Diyetisyen"
                                     : "Siz"}
                                   :
                                 </p>
-                                <div className="flex items-center text-xs text-gray-500">
+                                <div className="flex items-center text-xs text-muted-foreground">
                                   <Clock className="w-3 h-3 mr-1" />
                                   {formatTime(conversation.lastMessage.createdAt)}
                                 </div>
@@ -205,13 +205,13 @@ export default function ClientConversationsPage() {
                                   📍 {conversation.lastMessage.ogun.name}
                                 </span>
                               )}
-                              <p className="text-sm text-gray-700 line-clamp-2">
+                              <p className="text-sm text-foreground line-clamp-2">
                                 {conversation.lastMessage.content}
                               </p>
                             </div>
                           ) : (
                             <div className="ml-[60px] mt-3">
-                              <p className="text-sm text-gray-500 italic">
+                              <p className="text-sm text-muted-foreground italic">
                                 Henüz mesaj yok
                               </p>
                             </div>
@@ -220,7 +220,7 @@ export default function ClientConversationsPage() {
                           {/* Message Count */}
                           {conversation.totalMessages > 0 && (
                             <div className="ml-[60px] mt-3">
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-muted-foreground">
                                 Toplam {conversation.totalMessages} mesaj
                               </p>
                             </div>
@@ -234,7 +234,7 @@ export default function ClientConversationsPage() {
                               {conversation.unreadCount}
                             </div>
                           )}
-                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground/70 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
                         </div>
                       </div>
                     </CardContent>

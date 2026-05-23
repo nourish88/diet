@@ -131,8 +131,8 @@ export default function TanimlamalarPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Tanımlamalar</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-foreground">Tanımlamalar</h1>
+        <p className="text-muted-foreground mt-2">
           Su tüketimi ve fiziksel aktivite tanımlamalarını yönetin
         </p>
       </div>
@@ -165,7 +165,7 @@ export default function TanimlamalarPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Yeni Tanımlama Ekle
                 </label>
                 <DefinitionForm
@@ -175,7 +175,7 @@ export default function TanimlamalarPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                   Mevcut Tanımlamalar
                 </label>
                 <DefinitionList
@@ -198,7 +198,7 @@ export default function TanimlamalarPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Yeni Tanımlama Ekle
                 </label>
                 <DefinitionForm
@@ -208,7 +208,7 @@ export default function TanimlamalarPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                   Mevcut Tanımlamalar
                 </label>
                 <DefinitionList

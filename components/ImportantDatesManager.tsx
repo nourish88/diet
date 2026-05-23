@@ -151,7 +151,7 @@ export default function ImportantDatesManager() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Başlık
               </label>
               <Input
@@ -162,12 +162,12 @@ export default function ImportantDatesManager() {
                 placeholder="Önemli tarih başlığını giriniz"
                 disabled={isLoading}
                 required
-                className="border-gray-200 focus:ring-indigo-500 focus:border-indigo-500"
+                className="border-border focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Mesaj
               </label>
               <Textarea
@@ -178,13 +178,13 @@ export default function ImportantDatesManager() {
                 placeholder="Önemli tarih mesajını giriniz"
                 disabled={isLoading}
                 required
-                className="border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 min-h-[100px]"
+                className="border-border focus:ring-indigo-500 focus:border-indigo-500 min-h-[100px]"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Başlangıç Tarihi
                 </label>
                 <DatePicker
@@ -199,7 +199,7 @@ export default function ImportantDatesManager() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Bitiş Tarihi
                 </label>
                 <DatePicker
@@ -227,7 +227,7 @@ export default function ImportantDatesManager() {
                     });
                   }}
                   disabled={isLoading}
-                  className="border-gray-200 hover:bg-gray-50"
+                  className="border-border hover:bg-muted/30"
                 >
                   İptal
                 </Button>
@@ -264,13 +264,13 @@ export default function ImportantDatesManager() {
             {importantDates.map((date) => (
               <div
                 key={date.id}
-                className="border border-gray-200 p-4 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="border border-border p-4 rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium text-gray-900">{date.name}</h4>
-                    <p className="text-sm text-gray-600 mt-1">{date.message}</p>
-                    <p className="text-sm text-gray-500 mt-2">
+                    <h4 className="font-medium text-foreground">{date.name}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{date.message}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
                       {new Date(date.startDate).toLocaleDateString("tr-TR")} -{" "}
                       {new Date(date.endDate).toLocaleDateString("tr-TR")}
                     </p>

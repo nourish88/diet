@@ -43,38 +43,41 @@
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
+    /* Premium dark palette — slate/blue tinted with proper elevation */
+    --background: 222 47% 6%;          /* near-black with cool tint */
+    --foreground: 210 40% 96%;         /* high contrast white */
+    --muted: 217 33% 14%;              /* subtle panel */
+    --muted-foreground: 215 20% 70%;   /* readable secondary text */
+    --accent: 217 33% 20%;             /* hover state */
     --accent-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --card: 224 47% 7%;
-    --card-foreground: 213 31% 91%;
+    --popover: 222 47% 9%;             /* slightly elevated above bg */
+    --popover-foreground: 210 40% 96%;
+    --border: 217 26% 22%;             /* visible but soft */
+    --input: 217 26% 22%;
+    --card: 222 40% 11%;               /* elevated surface, clearly above bg */
+    --card-foreground: 210 40% 96%;
     --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --destructive: 0 63% 45%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 210 40% 98%;
-    --ring: 243 75% 65%;
+    --ring: 243 80% 70%;
 
-    --brand: 243 75% 65%;
-    --brand-foreground: 224 71% 4%;
-    --brand-from: 239 84% 65%;
-    --brand-to: 270 60% 60%;
-    --brand-soft: 243 30% 18%;
+    /* Brand — punchy on dark backgrounds */
+    --brand: 243 85% 72%;
+    --brand-foreground: 222 47% 6%;
+    --brand-from: 239 85% 68%;
+    --brand-to: 270 65% 62%;
+    --brand-soft: 243 50% 22%;         /* visible tinted bg for hover/active */
 
-    --success: 142 60% 50%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 80% 60%;
-    --warning-foreground: 0 0% 100%;
+    --success: 142 65% 55%;
+    --success-foreground: 222 47% 6%;
+    --warning: 38 92% 62%;
+    --warning-foreground: 222 47% 6%;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    /* Dark shadows need glow + depth */
+    --shadow-card: 0 1px 0 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.7);
   }
 }
 

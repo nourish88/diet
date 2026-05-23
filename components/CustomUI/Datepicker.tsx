@@ -62,9 +62,9 @@ const DatePicker = ({
             value={selected ? format(selected, dateFormat) : inputValue}
             onChange={handleInputChange}
             placeholder={placeholder}
-            className="w-full h-10 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
+            className="w-full h-10 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
           />
-          <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" />
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">

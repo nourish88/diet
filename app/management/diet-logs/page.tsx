@@ -198,7 +198,7 @@ export default function DietLogsManagementPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Diyet Formu Loglama Yönetimi</h1>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           Diyet formu aktivitelerini izleyin ve logları görüntüleyin
         </p>
       </div>
@@ -217,7 +217,7 @@ export default function DietLogsManagementPage() {
               <Label htmlFor="logging-toggle" className="text-base">
                 Diyet Formu Loglama
               </Label>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Form açıldığında, danışan seçildiğinde ve tüm değişikliklerde
                 otomatik olarak log oluşturulur
               </p>
@@ -265,7 +265,7 @@ export default function DietLogsManagementPage() {
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
             ) : logs.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 Henüz log kaydı bulunmuyor
               </div>
             ) : (

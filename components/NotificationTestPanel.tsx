@@ -254,7 +254,7 @@ export function NotificationTestPanel({
   const container = (
     <div
       className={cn(
-        "rounded-lg border bg-white shadow-sm",
+        "rounded-lg border bg-card shadow-sm",
         isCompact ? "p-3 sm:p-4" : "p-4 sm:p-5",
         className
       )}
@@ -269,7 +269,7 @@ export function NotificationTestPanel({
           />
           <h3
             className={cn(
-              "font-semibold text-gray-900 truncate",
+              "font-semibold text-foreground truncate",
               isCompact ? "text-sm" : "text-base"
             )}
           >
@@ -281,7 +281,7 @@ export function NotificationTestPanel({
 
       <p
         className={cn(
-          "text-gray-500 mb-4 flex items-start gap-1.5",
+          "text-muted-foreground mb-4 flex items-start gap-1.5",
           isCompact ? "text-xs" : "text-sm"
         )}
       >
@@ -295,14 +295,14 @@ export function NotificationTestPanel({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Diet notification */}
-        <div className="rounded-md border border-gray-200 p-3 flex flex-col">
+        <div className="rounded-md border border-border p-3 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Bell className="h-4 w-4 text-indigo-600" />
-            <span className="text-sm font-medium text-gray-800">
+            <span className="text-sm font-medium text-foreground">
               Diyet bildirimi
             </span>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-muted-foreground mb-3">
             “Yeni diyet programınız hazır” bildirimi gönderir.
           </p>
           <Button
@@ -327,21 +327,21 @@ export function NotificationTestPanel({
             )}
           </Button>
           {dietDisabledHint && (
-            <p className="text-[11px] text-gray-500 mt-2 leading-tight">
+            <p className="text-[11px] text-muted-foreground mt-2 leading-tight">
               {dietDisabledHint}
             </p>
           )}
         </div>
 
         {/* Meal reminder */}
-        <div className="rounded-md border border-gray-200 p-3 flex flex-col">
+        <div className="rounded-md border border-border p-3 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Utensils className="h-4 w-4 text-emerald-600" />
-            <span className="text-sm font-medium text-gray-800">
+            <span className="text-sm font-medium text-foreground">
               Öğün hatırlatıcısı
             </span>
           </div>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             Bir öğün seçin; o öğünün hatırlatıcısı anında gönderilir.
           </p>
           <select
@@ -349,9 +349,9 @@ export function NotificationTestPanel({
             onChange={(e) => setSelectedOgunId(e.target.value)}
             disabled={oguns.length === 0 || !dietId}
             className={cn(
-              "w-full text-sm rounded-md border border-gray-300 px-2 py-2 mb-3 bg-white",
+              "w-full text-sm rounded-md border border-border px-2 py-2 mb-3 bg-card",
               "focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent",
-              "disabled:bg-gray-50 disabled:text-gray-400"
+              "disabled:bg-muted/30 disabled:text-muted-foreground/70"
             )}
             aria-label="Öğün seçin"
           >
@@ -385,7 +385,7 @@ export function NotificationTestPanel({
             )}
           </Button>
           {mealDisabledHint && (
-            <p className="text-[11px] text-gray-500 mt-2 leading-tight">
+            <p className="text-[11px] text-muted-foreground mt-2 leading-tight">
               {mealDisabledHint}
             </p>
           )}
@@ -407,7 +407,7 @@ export function NotificationTestPanel({
 function SubscriptionBadge({ status }: { status: SubscriptionStatus }) {
   if (status.loading) {
     return (
-      <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+      <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-muted-foreground">
         <Loader2 className="h-3 w-3 animate-spin" /> Kontrol ediliyor
       </span>
     );

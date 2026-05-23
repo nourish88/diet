@@ -31,7 +31,7 @@ const FormFieldWrapper = ({
       render={({ field }) => (
         <FormItem className="space-y-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <FormLabel className="flex-shrink-0 sm:w-32 pt-2 sm:pt-0">
-            <span className="font-bold text-xs text-gray-700 whitespace-nowrap">{label}</span>
+            <span className="font-bold text-xs text-foreground whitespace-nowrap">{label}</span>
           </FormLabel>
           <div className="flex-1 min-w-0">
             <FormControl>

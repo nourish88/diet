@@ -39,11 +39,11 @@ export default function BildirimLoglariPage() {
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <BellRing className="h-8 w-8 text-indigo-600" />
             Bildirim Geçmişi
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-muted-foreground mt-2">
             Son 3 güne ait öğün hatırlatıcısı ve test bildirimlerinin gönderim durumları (Eski kayıtlar otomatik silinir).
           </p>
         </div>
@@ -54,7 +54,7 @@ export default function BildirimLoglariPage() {
       </div>
 
       <Card>
-        <CardHeader className="bg-gray-50 border-b">
+        <CardHeader className="bg-muted/30 border-b">
           <CardTitle className="text-lg">Gönderilen Bildirimler</CardTitle>
           <CardDescription>Bildirimlerin cihazlara ulaşıp ulaşmadığını gösterir.</CardDescription>
         </CardHeader>
@@ -62,24 +62,24 @@ export default function BildirimLoglariPage() {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-4" />
-              <p className="text-gray-500">Loglar yükleniyor...</p>
+              <p className="text-muted-foreground">Loglar yükleniyor...</p>
             </div>
           ) : isError ? (
             <div className="text-center py-16 px-4">
               <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Hata Oluştu</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Hata Oluştu</h3>
               <p className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Veriler alınamadı.'}</p>
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center py-16 px-4 bg-gray-50">
-              <Info className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Henüz Kayıt Yok</h3>
-              <p className="text-gray-500">Son 3 gün içinde gönderilmiş bir bildirim bulunamadı.</p>
+            <div className="text-center py-16 px-4 bg-muted/30">
+              <Info className="h-12 w-12 text-muted-foreground/70 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Henüz Kayıt Yok</h3>
+              <p className="text-muted-foreground">Son 3 gün içinde gönderilmiş bir bildirim bulunamadı.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-white border-b text-gray-500 uppercase text-xs">
+                <thead className="bg-card border-b text-muted-foreground uppercase text-xs">
                   <tr>
                     <th className="px-6 py-4 font-medium">Tarih / Saat</th>
                     <th className="px-6 py-4 font-medium">Danışan</th>
@@ -90,17 +90,17 @@ export default function BildirimLoglariPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                    <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
                         {format(new Date(log.sentAt), "dd MMM yyyy, HH:mm", { locale: tr })}
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-900">
+                      <td className="px-6 py-4 font-medium text-foreground">
                         {log.client.name} {log.client.surname}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-6 py-4 text-muted-foreground">
                         {log.ogun ? `${log.ogun.name} (${log.ogun.time})` : '-'}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
+                      <td className="px-6 py-4 text-muted-foreground">
                         {log.type === "meal_reminder" ? "Otomatik Öğün" : log.type === "manual_test" ? "Manuel Test" : log.type}
                       </td>
                       <td className="px-6 py-4">

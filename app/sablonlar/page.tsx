@@ -92,10 +92,10 @@ export default function SablonlarPage() {
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground">
               Diyet Şablonları
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               Hazır şablonlarla hızlıca diyet oluşturun
             </p>
           </div>
@@ -107,7 +107,7 @@ export default function SablonlarPage() {
             Yeni Şablon Oluştur
           </Button>
         </div>
-        <p className="text-sm text-gray-500 mt-3">
+        <p className="text-sm text-muted-foreground mt-3">
           💡 İpucu: Diyet yazarken "📋 Şablon Olarak Kaydet" butonunu kullanın
         </p>
       </div>
@@ -133,15 +133,15 @@ export default function SablonlarPage() {
         ) : isLoading ? (
           <div className="flex justify-center items-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <span className="ml-2 text-gray-600">Şablonlar yükleniyor...</span>
+            <span className="ml-2 text-muted-foreground">Şablonlar yükleniyor...</span>
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
             <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Henüz şablon bulunmuyor
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-muted-foreground mb-6">
               Bir diyet yazıp "Şablon Olarak Kaydet" ile ilk şablonunuzu
               oluşturabilirsiniz
             </p>

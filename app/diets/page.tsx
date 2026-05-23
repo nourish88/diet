@@ -150,7 +150,7 @@ export default function DietsPage() {
         />
       </div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-2xl font-bold text-foreground">
           Beslenme Programları
         </h1>
         <Button
@@ -166,11 +166,11 @@ export default function DietsPage() {
       <div className="mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-5 w-5 text-muted-foreground/70" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="block w-full pl-10 pr-10 py-2 border border-border rounded-md leading-5 bg-card placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             placeholder="Danışan adı, ID veya tarih ile ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -181,12 +181,12 @@ export default function DietsPage() {
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
               aria-label="Clear search"
             >
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              <X className="h-5 w-5 text-muted-foreground/70 hover:text-muted-foreground" />
             </button>
           )}
         </div>
         {searchTerm && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             "{searchTerm}" için {total} sonuç bulundu
           </p>
         )}
@@ -195,18 +195,18 @@ export default function DietsPage() {
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-muted-foreground">
             Beslenme programları yükleniyor...
           </span>
         </div>
       ) : diets.length === 0 ? (
         searchTerm ? (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <Search className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+            <Search className="h-12 w-12 text-muted-foreground/70 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Arama sonucu bulunamadı
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               "{searchTerm}" ile eşleşen beslenme programı veya danışan
               bulunamadı
             </p>
@@ -219,12 +219,12 @@ export default function DietsPage() {
             </Button>
           </div>
         ) : (
-          <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
+          <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+            <ClipboardList className="h-12 w-12 text-muted-foreground/70 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Henüz beslenme programı bulunmuyor
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               İlk beslenme programınızı oluşturun
             </p>
             <Button
@@ -237,7 +237,7 @@ export default function DietsPage() {
           </div>
         )
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
           <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               {searchTerm ? "Arama Sonuçları" : "Tüm Beslenme Programları"}
@@ -250,40 +250,40 @@ export default function DietsPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Danışan
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Program Tarihi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Oluşturulma Tarihi
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {diets.map((diet) => (
                   <tr
                     key={diet.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-foreground">
                         #{diet.id}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Users className="h-5 w-5 text-indigo-500 mr-2" />
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-foreground">
                           <Link
                             href={`/clients/${diet.client.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
@@ -294,12 +294,12 @@ export default function DietsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4 mr-1 text-muted-foreground/70" />
                         {formatDate(diet.tarih)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatDate(diet.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -325,7 +325,7 @@ export default function DietsPage() {
           {isFetchingNextPage && (
             <div className="flex justify-center items-center py-4 border-t">
               <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
-              <span className="ml-2 text-gray-600">
+              <span className="ml-2 text-muted-foreground">
                 Daha fazla yükleniyor...
               </span>
             </div>
@@ -333,8 +333,8 @@ export default function DietsPage() {
 
           {/* End of list indicator */}
           {!hasMore && diets.length > 0 && (
-            <div className="text-center py-4 border-t bg-gray-50">
-              <p className="text-sm text-gray-500">
+            <div className="text-center py-4 border-t bg-muted/30">
+              <p className="text-sm text-muted-foreground">
                 Tüm beslenme programları yüklendi ({total} toplam)
               </p>
             </div>

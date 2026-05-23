@@ -181,14 +181,14 @@ export default function BesinlerPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Besin Yönetimi</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Besin Yönetimi</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Toplam {total} besin • Gösterilen {besinler.length}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -231,7 +231,7 @@ export default function BesinlerPage() {
       {isInitialLoading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">Besinler yükleniyor...</span>
+          <span className="ml-2 text-muted-foreground">Besinler yükleniyor...</span>
         </div>
       ) : isError ? (
         <div className="text-center py-16 bg-red-50 border border-red-200 rounded-lg">
@@ -246,11 +246,11 @@ export default function BesinlerPage() {
           <Button onClick={handleManualRefresh}>Tekrar Dene</Button>
         </div>
       ) : isEmpty ? (
-        <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <h3 className="text-lg font-medium text-gray-700 mb-2">
+        <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Sonuç bulunamadı
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-muted-foreground mb-4">
             Farklı bir arama deneyebilir veya yeni bir besin ekleyebilirsiniz.
           </p>
           <Button
@@ -262,7 +262,7 @@ export default function BesinlerPage() {
           </Button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
           <div className="bg-brand-gradient px-6 py-4 text-white">
             <h2 className="text-lg font-medium">
               Besinler {debouncedSearch ? `• "${debouncedSearch}"` : ""}
@@ -275,38 +275,38 @@ export default function BesinlerPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/30 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Besin Adı
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Öncelik
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Grup
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {besinler.map((besin) => (
                   <tr
                     key={besin.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Coffee className="h-4 w-4 text-indigo-500 mr-2" />
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-foreground">
                           {besin.name}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {besin.priority ?? "—"}
                       </div>
                     </td>
@@ -319,7 +319,7 @@ export default function BesinlerPage() {
                           {besin.besinGroup.name}
                         </Badge>
                       ) : (
-                        <span className="text-sm text-gray-400">Grup yok</span>
+                        <span className="text-sm text-muted-foreground/70">Grup yok</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

@@ -484,7 +484,7 @@ export default function ClientMessagesPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Mesajlar yükleniyor...</p>
+          <p className="text-muted-foreground">Mesajlar yükleniyor...</p>
         </div>
       </div>
     );
@@ -498,9 +498,9 @@ export default function ClientMessagesPage() {
         onClose={() => setSelectedImage(null)}
       />
       
-      <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex flex-col h-screen bg-muted/30">
         {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+      <div className="bg-card border-b border-border px-6 py-4 shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -512,10 +512,10 @@ export default function ClientMessagesPage() {
             Geri
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               {clientName} ile İletişim
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Diyet #{dietId} • {messages.length} mesaj
             </p>
           </div>
@@ -543,7 +543,7 @@ export default function ClientMessagesPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground/70">
             <MessageCircle className="h-16 w-16 mb-4" />
             <p className="text-lg font-semibold">Henüz mesaj yok</p>
             <p className="text-sm">Danışanınızla iletişime geçin</p>
@@ -560,7 +560,7 @@ export default function ClientMessagesPage() {
               <div key={message.id}>
                 {showDate && (
                   <div className="flex justify-center my-4">
-                    <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                    <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full">
                       {formatDate(message.createdAt)}
                     </span>
                   </div>
@@ -576,11 +576,11 @@ export default function ClientMessagesPage() {
                     className={`max-w-[70%] rounded-2xl px-4 py-3 ${
                       isMe
                         ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-900 border border-gray-200"
+                        : "bg-card text-foreground border border-border"
                     }`}
                   >
                     {!isMe && (
-                      <p className="text-xs font-semibold mb-1 text-gray-500">
+                      <p className="text-xs font-semibold mb-1 text-muted-foreground">
                         {clientName}
                       </p>
                     )}
@@ -628,7 +628,7 @@ export default function ClientMessagesPage() {
 
                     <p
                       className={`text-xs mt-1 ${
-                        isMe ? "text-blue-100" : "text-gray-500"
+                        isMe ? "text-blue-100" : "text-muted-foreground"
                       }`}
                     >
                       {formatTime(message.createdAt)}
@@ -643,7 +643,7 @@ export default function ClientMessagesPage() {
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 shadow-lg">
+      <div className="bg-card border-t border-border px-6 py-4 shadow-lg">
         <div className="flex gap-3 items-end">
           <Textarea
             placeholder="Mesajınızı yazın..."
@@ -670,7 +670,7 @@ export default function ClientMessagesPage() {
             )}
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           Enter ile gönderin • Shift+Enter ile yeni satır
         </p>
       </div>

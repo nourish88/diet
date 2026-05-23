@@ -62,7 +62,7 @@ export default function ClientKvkkOnayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="max-h-48 overflow-y-auto rounded-lg border bg-white/80 p-4 text-sm text-gray-700 space-y-3">
+          <div className="max-h-48 overflow-y-auto rounded-lg border bg-card/80 p-4 text-sm text-foreground space-y-3">
             {KVKK_PORTAL_SUMMARY_PARAGRAPHS.map((p, i) => (
               <p key={i}>{p}</p>
             ))}
@@ -84,7 +84,7 @@ export default function ClientKvkkOnayPage() {
               type="checkbox"
               checked={accepted}
               onChange={(e) => setAccepted(e.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-1 h-4 w-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500"
             />
             <Label htmlFor="kvkk-accept" className="text-sm leading-snug cursor-pointer font-normal">
               Aydınlatma metnini okudum; sağlık ve beslenme verilerimin

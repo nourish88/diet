@@ -888,7 +888,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 <button
                   type="button"
                   onClick={() => { setShowDraftPrompt(false); clearDraft(); }}
-                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs"
+                  className="px-3 py-1 bg-muted text-foreground rounded hover:bg-gray-300 text-xs"
                 >
                   Yoksay
                 </button>
@@ -898,16 +898,16 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             {/* Progress indicator (Madde 1-F) */}
             {selectedClientId && totalMeals > 0 && (
               <div className="no-print space-y-1">
-                <div className="flex justify-between items-center text-xs text-gray-500">
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
                   <span>
-                    Dolu öğün: <span className="font-semibold text-gray-700">{filledMeals}/{totalMeals}</span>
+                    Dolu öğün: <span className="font-semibold text-foreground">{filledMeals}/{totalMeals}</span>
                   </span>
                   <span className={progressPercent === 100 ? "text-green-600 font-semibold" : ""}>
                     {progressPercent}%
                     {progressPercent === 100 && " ✓ Tüm öğünler dolu"}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                   <div
                     className="h-1.5 rounded-full transition-all duration-300"
                     style={{

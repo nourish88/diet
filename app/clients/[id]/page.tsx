@@ -362,7 +362,7 @@ export default function ClientDetailPage() {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-2 text-gray-600">
+          <span className="ml-2 text-muted-foreground">
             Danışan bilgileri yükleniyor...
           </span>
         </div>
@@ -374,10 +374,10 @@ export default function ClientDetailPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="text-center py-16">
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-foreground">
             Danışan bulunamadı
           </h3>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-muted-foreground">
             Aradığınız danışan mevcut değil veya silinmiş olabilir.
           </p>
           <div className="mt-6">
@@ -419,18 +419,18 @@ export default function ClientDetailPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-foreground">
             {client.kvkkPortalConsentAt && client.kvkkPortalConsentVersion ? (
               <>
                 <p>
-                  <span className="font-medium text-gray-900">Son onay: </span>
+                  <span className="font-medium text-foreground">Son onay: </span>
                   {format(parseISO(client.kvkkPortalConsentAt), "d MMMM yyyy HH:mm", {
                     locale: tr,
                   })}
                 </p>
-                <p className="text-gray-600 mt-1">
+                <p className="text-muted-foreground mt-1">
                   Sürüm:{" "}
-                  <code className="text-xs bg-gray-100 px-1 rounded">
+                  <code className="text-xs bg-accent px-1 rounded">
                     {client.kvkkPortalConsentVersion}
                   </code>
                 </p>
@@ -459,7 +459,7 @@ export default function ClientDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
+      <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
         <div className="bg-brand-gradient px-6 py-4 text-white flex justify-between items-center">
           <div>
             <h2 className="text-xl font-medium">
@@ -472,7 +472,7 @@ export default function ClientDetailPage() {
           <Button
             onClick={() => router.push(`/clients/${client.id}/edit`)}
             variant="outline"
-            className="bg-white text-indigo-700 hover:bg-indigo-50"
+            className="bg-card text-indigo-700 hover:bg-indigo-50"
           >
             <Pencil className="h-4 w-4 mr-2" />
             Düzenle
@@ -483,17 +483,17 @@ export default function ClientDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Client basic information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-800 border-b pb-2">
+              <h3 className="text-lg font-medium text-foreground border-b pb-2">
                 Kişisel Bilgiler
               </h3>
 
               <div className="flex items-start">
                 <CalendarRange className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-sm font-medium text-muted-foreground">
                     Doğum Tarihi
                   </div>
-                  <div className="text-gray-800">
+                  <div className="text-foreground">
                     {formatDate(client.birthdate)}
                   </div>
                 </div>
@@ -503,10 +503,10 @@ export default function ClientDetailPage() {
               <div className="flex items-start">
                 <FileText className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-sm font-medium text-muted-foreground">
                     Hastalık
                   </div>
-                  <div className="text-gray-800">
+                  <div className="text-foreground">
                     {client.illness || "Belirtilmemiş"}
                   </div>
                 </div>
@@ -515,10 +515,10 @@ export default function ClientDetailPage() {
               <div className="flex items-start">
                 <Phone className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-sm font-medium text-muted-foreground">
                     Telefon
                   </div>
-                  <div className="text-gray-800">
+                  <div className="text-foreground">
                     {client.phoneNumber || "Belirtilmemiş"}
                   </div>
                 </div>
@@ -528,10 +528,10 @@ export default function ClientDetailPage() {
               <div className="flex items-start">
                 <Mail className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-sm font-medium text-muted-foreground">
                     E-posta
                   </div>
-                  <div className="text-gray-800">
+                  <div className="text-foreground">
                     {client.user?.email || "E-posta ilişkilendirilmemiş"}
                   </div>
                   {!client.user?.email && (
@@ -546,13 +546,13 @@ export default function ClientDetailPage() {
               <div className="flex items-start">
                 <Phone className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-600">
+                  <div className="text-sm font-medium text-muted-foreground">
                     Telefon Giriş Eşleşmesi
                   </div>
-                  <div className="text-gray-800">
+                  <div className="text-foreground">
                     {client.phoneAuth?.phoneNormalized || "Telefon eşleşmesi yok"}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     {client.user?.email
                       ? `Aktif eşleşen hesap: ${client.user.email}`
                       : "Henüz danışan hesabı ile eşleşmemiş"}
@@ -564,8 +564,8 @@ export default function ClientDetailPage() {
               <div className="flex items-start gap-2">
                 <User className="h-5 w-5 text-indigo-500 mt-1" />
                 <div>
-                  <h4 className="font-medium text-gray-700">Cinsiyet</h4>
-                  <p className="text-gray-600">
+                  <h4 className="font-medium text-foreground">Cinsiyet</h4>
+                  <p className="text-muted-foreground">
                     {client.gender === 1 || client.gender === "1"
                       ? "Erkek"
                       : client.gender === 2 || client.gender === "2"
@@ -577,7 +577,7 @@ export default function ClientDetailPage() {
 
               {/* Unlink Button - Only show if client has userId */}
               {client.userId && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 pt-4 border-t border-border">
                   <Button
                     variant="destructive"
                     onClick={() => setShowUnlinkDialog(true)}
@@ -586,7 +586,7 @@ export default function ClientDetailPage() {
                     <Unlink className="h-4 w-4 mr-2" />
                     İlişki Kaldır
                   </Button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     İlişki kaldırıldıktan sonra danışan tekrar telefon ile giriş
                     yaparak eşleşebilir.
                   </p>
@@ -596,12 +596,12 @@ export default function ClientDetailPage() {
 
             {/* Client notes */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-800 border-b pb-2">
+              <h3 className="text-lg font-medium text-foreground border-b pb-2">
                 Notlar
               </h3>
               <div className="flex items-start">
                 <FileText className="h-5 w-5 text-indigo-500 mt-0.5 mr-3 flex-shrink-0" />
-                <div className="text-gray-800 whitespace-pre-wrap">
+                <div className="text-foreground whitespace-pre-wrap">
                   {client.notes || "Herhangi bir not bulunmuyor."}
                 </div>
               </div>
@@ -609,7 +609,7 @@ export default function ClientDetailPage() {
 
             {/* Add Banned Foods section */}
             <div className="col-span-full mt-4">
-              <h4 className="font-medium text-gray-700 mb-3">
+              <h4 className="font-medium text-foreground mb-3">
                 Yasaklı Besinler
               </h4>
               {client.bannedFoods && client.bannedFoods.length > 0 ? (
@@ -631,15 +631,15 @@ export default function ClientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-600">Yasaklı besin bulunmamaktadır</p>
+                <p className="text-muted-foreground">Yasaklı besin bulunmamaktadır</p>
               )}
             </div>
           </div>
 
           {/* Client diet history */}
           <div className="mt-8">
-            <div className="border-b border-gray-200 pb-2 mb-4 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-800 flex items-center">
+            <div className="border-b border-border pb-2 mb-4 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-foreground flex items-center">
                 <ClipboardList className="h-5 w-5 text-indigo-500 mr-2" />
                 Beslenme Programları
               </h3>
@@ -658,7 +658,7 @@ export default function ClientDetailPage() {
                 {client.diets.map((diet) => (
                   <div
                     key={diet.id}
-                    className="border border-gray-200 rounded-md p-4 hover:bg-gray-50 transition-colors"
+                    className="border border-border rounded-md p-4 hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex justify-between items-center">
                       <div
@@ -668,7 +668,7 @@ export default function ClientDetailPage() {
                         <div className="font-medium">
                           Beslenme Programı #{diet.id}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           Oluşturulma: {formatDate(diet.createdAt)}
                         </div>
                       </div>
@@ -705,7 +705,7 @@ export default function ClientDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 italic">Henüz diyet bulunmuyor.</p>
+              <p className="text-muted-foreground italic">Henüz diyet bulunmuyor.</p>
             )}
           </div>
 
@@ -751,7 +751,7 @@ export default function ClientDetailPage() {
               <TanitaProgressChart data={tanitaMeasurements} />
             ) : (
               <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">
+                <p className="text-muted-foreground">
                   Henüz Tanita ölçüm verisi bulunmuyor. Ölçümleri çekmek için
                   "Ölçümleri Çek" butonunu kullanın.
                 </p>
@@ -803,7 +803,7 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <div className="flex items-center justify-center h-64">
-              <p className="text-gray-500">Henüz gelişim verisi bulunmuyor</p>
+              <p className="text-muted-foreground">Henüz gelişim verisi bulunmuyor</p>
             </div>
           )}
         </CardContent>
@@ -837,7 +837,7 @@ export default function ClientDetailPage() {
               {exerciseStats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">
+                    <p className="text-sm text-muted-foreground mb-1">
                       Toplam Egzersiz
                     </p>
                     <p className="text-2xl font-bold">
@@ -845,13 +845,13 @@ export default function ClientDetailPage() {
                     </p>
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Toplam Süre</p>
+                    <p className="text-sm text-muted-foreground mb-1">Toplam Süre</p>
                     <p className="text-2xl font-bold">
                       {exerciseStats.totalDuration} dk
                     </p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Toplam Adım</p>
+                    <p className="text-sm text-muted-foreground mb-1">Toplam Adım</p>
                     <p className="text-2xl font-bold">
                       {exerciseStats.totalSteps.toLocaleString()}
                     </p>
@@ -862,7 +862,7 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <div className="flex items-center justify-center h-64">
-              <p className="text-gray-500">Henüz egzersiz kaydı bulunmuyor</p>
+              <p className="text-muted-foreground">Henüz egzersiz kaydı bulunmuyor</p>
             </div>
           )}
         </CardContent>

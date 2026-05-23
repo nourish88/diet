@@ -86,7 +86,7 @@ export default function ClientDietsPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Diyetleriniz yükleniyor...</p>
+          <p className="mt-4 text-muted-foreground">Diyetleriniz yükleniyor...</p>
         </div>
       </div>
     );
@@ -94,13 +94,13 @@ export default function ClientDietsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+      <div className="bg-card rounded-2xl shadow-lg border border-border p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground">
               Beslenme Programlarım
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               {clientName
                 ? `${clientName} için`
                 : "Kişisel beslenme programlarınız"}
@@ -114,7 +114,7 @@ export default function ClientDietsPage() {
             {isFetching ? "Yenileniyor..." : "Listeyi Yenile"}
           </button>
         </div>
-        <p className="text-gray-600 mt-4">
+        <p className="text-muted-foreground mt-4">
           {diets.length > 0
             ? `${diets.length} beslenme programınız bulunuyor`
             : "Henüz beslenme programınız bulunmuyor"}
@@ -122,12 +122,12 @@ export default function ClientDietsPage() {
       </div>
 
       {diets.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12 text-center">
+        <div className="bg-card rounded-2xl shadow-lg border border-border p-12 text-center">
           <UtensilsCrossed className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-foreground mb-2">
             Henüz beslenme programınız yok
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Diyetisyeniniz size bir program hazırladığında burada görünecektir
           </p>
         </div>
@@ -141,8 +141,8 @@ export default function ClientDietsPage() {
               <Link
                 key={diet.id}
                 href={`/client/diets/${diet.id}`}
-                className={`bg-white rounded-2xl shadow-lg border-2 ${
-                  index === 0 ? "border-blue-500" : "border-gray-200"
+                className={`bg-card rounded-2xl shadow-lg border-2 ${
+                  index === 0 ? "border-blue-500" : "border-border"
                 } p-6 hover:shadow-xl hover:border-blue-400 transition-all group`}
               >
                 {status && (
@@ -164,11 +164,11 @@ export default function ClientDietsPage() {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-foreground mb-1">
                         Beslenme Programı #{diet.id}
                       </h3>
 
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1.5" />
                           {formatDate(diet.tarih)}
@@ -204,7 +204,7 @@ export default function ClientDietsPage() {
                         {unreadCount}
                       </div>
                     )}
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/70 group-hover:text-blue-600 transition-colors" />
                   </div>
                 </div>
               </Link>

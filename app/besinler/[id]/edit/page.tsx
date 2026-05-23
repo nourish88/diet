@@ -127,9 +127,9 @@ export default function EditBesinPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center h-64 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50">
+        <div className="flex justify-center items-center h-64 rounded-lg border-2 border-dashed border-border bg-muted/30">
           <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-          <span className="ml-3 text-gray-600">Besin bilgileri yükleniyor...</span>
+          <span className="ml-3 text-muted-foreground">Besin bilgileri yükleniyor...</span>
         </div>
       ) : errorMessage ? (
         <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">

@@ -104,7 +104,7 @@ const BesinGroupForm = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden">
       <div className="bg-brand-gradient px-6 py-4 text-white">
         <h2 className="text-lg font-medium">
           {isEdit ? "Besin Grubu Düzenle" : "Yeni Besin Grubu Ekle"}
@@ -120,7 +120,7 @@ const BesinGroupForm = ({
         <div>
           <label
             htmlFor="description"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-foreground mb-1"
           >
             Grup Adı <span className="text-red-500">*</span>
           </label>
@@ -131,21 +131,21 @@ const BesinGroupForm = ({
             required
             value={formData.description}
             onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className="w-full p-2 border border-border rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="Besin grubu adını girin"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Örnek: Süt Ürünleri, Meyveler, Sebzeler, Tahıllar
           </p>
         </div>
 
         {/* Form actions */}
-        <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-end space-x-4 pt-4 border-t border-border">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push("/besin-gruplari")}
-            className="border-gray-300"
+            className="border-border"
           >
             İptal
           </Button>

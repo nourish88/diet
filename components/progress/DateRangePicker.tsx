@@ -111,7 +111,7 @@ export default function DateRangePicker({
               <p className="text-sm font-medium mb-2">Özel Tarih Aralığı</p>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-gray-500 mb-2 block">
+                  <label className="text-xs text-muted-foreground mb-2 block">
                     Başlangıç
                   </label>
                   <Calendar
@@ -127,7 +127,7 @@ export default function DateRangePicker({
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-2 block">Bitiş</label>
+                  <label className="text-xs text-muted-foreground mb-2 block">Bitiş</label>
                   <Calendar
                     mode="single"
                     selected={dateTo || undefined}

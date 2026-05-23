@@ -91,7 +91,7 @@ export default function ClientKvkkAuditPage() {
         </CardHeader>
         <CardContent>
           {isLoading && (
-            <div className="flex items-center justify-center py-12 text-gray-600">
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mr-2" />
               Yükleniyor…
             </div>
@@ -102,7 +102,7 @@ export default function ClientKvkkAuditPage() {
             </p>
           )}
           {!isLoading && data && data.length === 0 && (
-            <p className="text-center text-gray-600 py-8">
+            <p className="text-center text-muted-foreground py-8">
               Henüz kayıtlı portal onayı yok.
             </p>
           )}
