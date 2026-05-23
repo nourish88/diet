@@ -524,7 +524,7 @@ export default function ClientMessagesPage() {
 
       {realtimeError && (
         <div className="px-6 pt-3">
-          <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-sm px-4 py-3">
+          <div className="rounded-md border border-warning/30 bg-warning/10 text-foreground text-sm px-4 py-3">
             <p>{realtimeError}</p>
             <button
               onClick={() =>
@@ -590,7 +590,7 @@ export default function ClientMessagesPage() {
                         className={`text-xs px-2 py-1 rounded mb-2 inline-block ${
                           isMe
                             ? "bg-blue-500 text-white"
-                            : "bg-yellow-100 text-yellow-800"
+                            : "bg-yellow-100 text-foreground"
                         }`}
                       >
                         📍 {message.ogun.name}

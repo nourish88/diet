@@ -116,7 +116,7 @@ export default function DietsPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center py-16">
-          <p className="text-red-600 mb-4">
+          <p className="text-destructive mb-4">
             Beslenme programları yüklenirken bir hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
           </p>
           <Button onClick={() => refetch()}>Tekrar Dene</Button>
@@ -140,22 +140,18 @@ export default function DietsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Logo - Show for client role */}
-      <div className="flex justify-center mb-6">
-        <img
-          src="/ezgi_evgin.png"
-          alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
-          className="max-w-[150px] h-auto"
-          style={{ width: "150px", height: "auto" }}
-        />
-      </div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          Beslenme Programları
-        </h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Beslenme Programları
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Danışanlarınız için oluşturduğunuz programlar
+          </p>
+        </div>
         <Button
           onClick={() => router.push("/diets/new")}
-          className="bg-brand-gradient hover:opacity-90 text-white"
+          className="bg-brand-gradient hover:opacity-90 text-white w-full sm:w-auto"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
           Yeni Program Ekle
@@ -194,7 +190,7 @@ export default function DietsPage() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">
             Beslenme programları yükleniyor...
           </span>
@@ -213,7 +209,7 @@ export default function DietsPage() {
             <Button
               onClick={clearSearch}
               variant="outline"
-              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              className="border-indigo-600 text-brand hover:bg-brand-soft"
             >
               Aramayı Temizle
             </Button>
@@ -286,7 +282,7 @@ export default function DietsPage() {
                         <div className="text-sm font-medium text-foreground">
                           <Link
                             href={`/clients/${diet.client.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-brand hover:text-indigo-900"
                           >
                             {diet.client.name} {diet.client.surname}
                           </Link>
@@ -306,7 +302,7 @@ export default function DietsPage() {
                       <div className="flex justify-end space-x-2">
                         <Link
                           href={`/diets/${diet.id}`}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md transition-colors"
+                          className="text-brand hover:text-indigo-900 bg-brand-soft px-3 py-1 rounded-md transition-colors"
                         >
                           Görüntüle
                         </Link>
@@ -324,7 +320,7 @@ export default function DietsPage() {
           {/* Loading more indicator */}
           {isFetchingNextPage && (
             <div className="flex justify-center items-center py-4 border-t">
-              <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+              <Loader2 className="h-6 w-6 text-brand animate-spin" />
               <span className="ml-2 text-muted-foreground">
                 Daha fazla yükleniyor...
               </span>

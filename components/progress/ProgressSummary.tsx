@@ -10,9 +10,9 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
   const getWeightIcon = () => {
     if (summary.weightChange === null) return null;
     if (summary.weightChange < 0) {
-      return <TrendingDown className="w-5 h-5 text-green-600" />;
+      return <TrendingDown className="w-5 h-5 text-success" />;
     } else if (summary.weightChange > 0) {
-      return <TrendingUp className="w-5 h-5 text-red-600" />;
+      return <TrendingUp className="w-5 h-5 text-destructive" />;
     } else {
       return <Minus className="w-5 h-5 text-muted-foreground" />;
     }
@@ -20,8 +20,8 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
 
   const getWeightColor = () => {
     if (summary.weightChange === null) return "bg-accent";
-    if (summary.weightChange < 0) return "bg-green-50 border-green-200";
-    if (summary.weightChange > 0) return "bg-red-50 border-red-200";
+    if (summary.weightChange < 0) return "bg-success/10 border-success/30";
+    if (summary.weightChange > 0) return "bg-destructive/10 border-destructive/30";
     return "bg-muted/30 border-border";
   };
 
@@ -53,9 +53,9 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
             <p
               className={`text-2xl font-bold ${
                 summary.weightChange < 0
-                  ? "text-green-600"
+                  ? "text-success"
                   : summary.weightChange > 0
-                  ? "text-red-600"
+                  ? "text-destructive"
                   : "text-muted-foreground"
               }`}
             >
@@ -71,9 +71,9 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
             <p
               className={`text-2xl font-bold ${
                 summary.waistChange < 0
-                  ? "text-green-600"
+                  ? "text-success"
                   : summary.waistChange > 0
-                  ? "text-red-600"
+                  ? "text-destructive"
                   : "text-muted-foreground"
               }`}
             >
@@ -89,9 +89,9 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
             <p
               className={`text-2xl font-bold ${
                 summary.hipChange < 0
-                  ? "text-green-600"
+                  ? "text-success"
                   : summary.hipChange > 0
-                  ? "text-red-600"
+                  ? "text-destructive"
                   : "text-muted-foreground"
               }`}
             >
@@ -107,9 +107,9 @@ export default function ProgressSummary({ summary }: ProgressSummaryProps) {
             <p
               className={`text-2xl font-bold ${
                 summary.bodyFatChange < 0
-                  ? "text-green-600"
+                  ? "text-success"
                   : summary.bodyFatChange > 0
-                  ? "text-red-600"
+                  ? "text-destructive"
                   : "text-muted-foreground"
               }`}
             >

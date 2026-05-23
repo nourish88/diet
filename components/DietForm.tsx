@@ -874,21 +874,21 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
             {/* Draft restore prompt (Madde 1-G) */}
             {showDraftPrompt && (
-              <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm no-print">
-                <span className="text-amber-800 flex-1">
+              <div className="flex items-center gap-3 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm no-print">
+                <span className="text-foreground flex-1">
                   Kaydedilmemiş bir diyet taslağı var. Kaldığın yerden devam et mi?
                 </span>
                 <button
                   type="button"
                   onClick={restoreDraft}
-                  className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-medium"
+                  className="px-3 py-1 bg-warning text-warning-foreground rounded hover:opacity-90 text-xs font-medium transition-opacity"
                 >
                   Devam Et
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowDraftPrompt(false); clearDraft(); }}
-                  className="px-3 py-1 bg-muted text-foreground rounded hover:bg-gray-300 text-xs"
+                  className="px-3 py-1 bg-muted text-foreground rounded hover:bg-accent text-xs transition-colors"
                 >
                   Yoksay
                 </button>
@@ -902,7 +902,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   <span>
                     Dolu öğün: <span className="font-semibold text-foreground">{filledMeals}/{totalMeals}</span>
                   </span>
-                  <span className={progressPercent === 100 ? "text-green-600 font-semibold" : ""}>
+                  <span className={progressPercent === 100 ? "text-success font-semibold" : ""}>
                     {progressPercent}%
                     {progressPercent === 100 && " ✓ Tüm öğünler dolu"}
                   </span>
@@ -935,7 +935,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   type="button"
                   variant="outline"
                   onClick={() => setShowTemplateSelector(true)}
-                  className="w-full border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                  className="w-full border-2 border-dashed border-brand/40 text-brand hover:bg-brand-soft hover:border-brand transition-colors"
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   📋 Şablondan Başla
@@ -993,8 +993,8 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
             {/* Show a message when no client is selected */}
             {isFormDisabled && (
-              <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
-                <p className="text-yellow-700">
+              <div className="text-center p-4 bg-warning/10 border border-warning/30 rounded-md mb-4">
+                <p className="text-foreground">
                   Lütfen diyet programı oluşturmak için önce bir danışan seçin
                 </p>
               </div>

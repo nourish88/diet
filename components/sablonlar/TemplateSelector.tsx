@@ -64,7 +64,7 @@ export const TemplateSelector = ({
             </div>
           ) : templates.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
               <p>Henüz şablon bulunmuyor</p>
               <p className="text-sm mt-1">
                 İlk şablonunuzu "/sablonlar" sayfasından oluşturabilirsiniz
@@ -89,8 +89,8 @@ export const TemplateSelector = ({
                           key={template.id}
                           className={`border rounded-lg p-4 cursor-pointer transition-all ${
                             selectedId === template.id
-                              ? "border-indigo-500 bg-indigo-50"
-                              : "border-border hover:border-indigo-300 hover:bg-muted/30"
+                              ? "border-indigo-500 bg-brand-soft"
+                              : "border-border hover:border-brand/40 hover:bg-muted/30"
                           }`}
                           onClick={() => setSelectedId(template.id)}
                         >

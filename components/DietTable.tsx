@@ -395,7 +395,7 @@ const DietTable = ({
                                 disabled={
                                   effectiveDisabled || ogun.items.length < 2
                                 }
-                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 px-2"
+                                className="text-brand border-indigo-200 hover:bg-brand-soft px-2"
                               >
                                 <ArrowDownUp className="w-4 h-4" />
                               </Button>
@@ -405,7 +405,7 @@ const DietTable = ({
                                 size="sm"
                                 onClick={() => handleRemoveOgun(index)}
                                 disabled={effectiveDisabled}
-                                className="text-red-600 hover:text-red-700"
+                                className="text-destructive hover:text-destructive"
                               >
                                 <Trash className="w-4 h-4" />
                               </Button>
@@ -502,7 +502,7 @@ const DietTable = ({
                                     handleDeleteMenuItem(index, itemIndex)
                                   }
                                   disabled={effectiveDisabled}
-                                  className="self-start text-red-600 hover:text-red-700 text-xs"
+                                  className="self-start text-destructive hover:text-destructive text-xs"
                                 >
                                   <Trash className="w-3 h-3 mr-1" />
                                   Sil
@@ -788,7 +788,7 @@ const DietTable = ({
                                     size="sm"
                                     onClick={() => handleSortMenuItems(index)}
                                     disabled={disabled || ogun.items.length < 2}
-                                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                    className="text-brand border-indigo-200 hover:bg-brand-soft"
                                   >
                                     <ArrowDownUp className="w-4 h-4 mr-1" />
                                     Öncelik Sırala

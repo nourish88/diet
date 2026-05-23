@@ -98,7 +98,7 @@ export default function EditBesinPage() {
       <div className="mb-6 flex items-center justify-between">
         <Link
           href="/besinler"
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Besin Listesine Dön
@@ -110,7 +110,7 @@ export default function EditBesinPage() {
           size="sm"
           onClick={handleRefresh}
           disabled={isFetching || isLoading || !!errorMessage}
-          className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+          className="border-indigo-600 text-brand hover:bg-brand-soft"
         >
           {isFetching ? (
             <>
@@ -128,20 +128,20 @@ export default function EditBesinPage() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64 rounded-lg border-2 border-dashed border-border bg-muted/30">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-3 text-muted-foreground">Besin bilgileri yükleniyor...</span>
         </div>
       ) : errorMessage ? (
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-          <h2 className="text-lg font-semibold text-red-700 mb-2">
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-6 text-center">
+          <h2 className="text-lg font-semibold text-destructive mb-2">
             Bir şeyler yolunda gitmedi
           </h2>
-          <p className="text-red-600 mb-4">{errorMessage}</p>
+          <p className="text-destructive mb-4">{errorMessage}</p>
           <div className="flex justify-center gap-3">
             <Button
               variant="outline"
               onClick={() => router.push("/besinler")}
-              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              className="border-indigo-600 text-brand hover:bg-brand-soft"
             >
               Listeye Dön
             </Button>

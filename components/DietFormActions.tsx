@@ -386,7 +386,7 @@ const DietFormActions = ({
         variant="outline"
         onClick={handleSaveToDatabase}
         disabled={isSaving || isSavingAndExporting || !clientId}
-        className="border-green-600 text-green-700 hover:bg-green-50"
+        className="border-green-600 text-success hover:bg-success/10"
         title="Diyeti kaydeder ancak PDF üretmez (taslak/güncelleme için)"
       >
         {isSaving ? (
@@ -407,7 +407,7 @@ const DietFormActions = ({
         variant="outline"
         onClick={handleSaveAsTemplate}
         disabled={isSavingTemplate}
-        className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+        className="border-indigo-600 text-brand hover:bg-brand-soft"
       >
         {isSavingTemplate ? (
           <>

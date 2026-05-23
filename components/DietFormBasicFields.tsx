@@ -540,8 +540,8 @@ const DietFormBasicFields = ({
         )}
 
         {importantDate && (
-          <div className="mt-5 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <p className="text-sm text-amber-700 mb-2">
+          <div className="mt-5 p-4 bg-warning/10 rounded-lg border border-warning/30">
+            <p className="text-sm text-foreground mb-2">
               {importantDate.name} zamanı! Kutlama eklemek ister misiniz?
             </p>
             <p className="text-xs text-amber-600 mb-3 italic">

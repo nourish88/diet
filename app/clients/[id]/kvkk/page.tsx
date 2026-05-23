@@ -61,7 +61,7 @@ export default function ClientKvkkAuditPage() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <Link
           href={`/clients/${clientId}`}
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Danışan detayına dön
@@ -81,7 +81,7 @@ export default function ClientKvkkAuditPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-indigo-600" />
+            <Shield className="h-6 w-6 text-brand" />
             <CardTitle>KVKK / portal açık rıza kayıtları</CardTitle>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -97,7 +97,7 @@ export default function ClientKvkkAuditPage() {
             </div>
           )}
           {error && (
-            <p className="text-red-600 text-center py-8">
+            <p className="text-destructive text-center py-8">
               Kayıtlar yüklenemedi. Yetkinizi kontrol edin.
             </p>
           )}

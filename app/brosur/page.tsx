@@ -38,7 +38,7 @@ export default function BrosurPage() {
               </div>
 
               {/* Title */}
-              <h2 className="text-2xl font-bold text-indigo-600 text-center mb-2">
+              <h2 className="text-2xl font-bold text-brand text-center mb-2">
                 Danışan Portalını Telefona Kurun
               </h2>
               <p className="text-sm text-muted-foreground text-center mb-6">
@@ -62,7 +62,7 @@ export default function BrosurPage() {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-semibold text-indigo-600 mb-1">
+                    <p className="text-sm font-semibold text-brand mb-1">
                       iOS (iPhone/iPad):
                     </p>
                     <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
@@ -75,7 +75,7 @@ export default function BrosurPage() {
                     </ul>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-indigo-600 mb-1">
+                    <p className="text-sm font-semibold text-brand mb-1">
                       Android:
                     </p>
                     <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
@@ -128,7 +128,7 @@ export default function BrosurPage() {
               </div>
 
               {/* Important Info */}
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+              <div className="bg-brand-soft border border-indigo-200 rounded-lg p-4">
                 <p className="text-xs font-semibold text-indigo-900 mb-2">
                   Önemli Bilgi
                 </p>

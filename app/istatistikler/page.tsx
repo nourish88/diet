@@ -143,13 +143,13 @@ export default function IstatistiklerPage() {
   if (isError) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center p-8 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-100 dark:border-red-900/30 max-w-md">
+        <div className="text-center p-8 bg-destructive/10 dark:bg-red-950/20 rounded-2xl border border-red-100 dark:border-red-900/30 max-w-md">
           <Activity className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-red-900 dark:text-red-400 mb-2">Bağlantı Hatası</h3>
-          <p className="text-red-600 dark:text-red-500/80 mb-6">
+          <p className="text-destructive dark:text-red-500/80 mb-6">
             {error instanceof Error ? error.message : 'İstatistikler yüklenirken bir sorun oluştu.'}
           </p>
-          <Button onClick={() => refetch()} variant="outline" className="border-red-200 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/50">
+          <Button onClick={() => refetch()} variant="outline" className="border-destructive/30 hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/50">
             Tekrar Dene
           </Button>
         </div>
@@ -448,12 +448,12 @@ export default function IstatistiklerPage() {
                 <CardDescription>Yapay zeka destekli öğün patternleri</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-center">
-                <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-6 text-center">
+                <div className="bg-warning/10/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-6 text-center">
                   <div className="w-16 h-16 bg-card dark:bg-slate-900 shadow-sm rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
                     <Sparkles className="h-8 w-8 text-amber-500" />
                   </div>
                   <h3 className="text-amber-900 dark:text-amber-400 font-semibold mb-2">Otomatik Presetler</h3>
-                  <p className="text-sm text-amber-700/80 dark:text-amber-500/80 mb-4">
+                  <p className="text-sm text-foreground/80 dark:text-amber-500/80 mb-4">
                     Sistem son diyetlerinizi analiz eder ve en sık kullandığınız öğün kombinasyonlarını tespit ederek sizin için hazır şablonlar (preset) oluşturur.
                   </p>
                   <div className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-100/50 dark:bg-amber-900/50 px-3 py-1.5 rounded-full">

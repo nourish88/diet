@@ -122,8 +122,8 @@ export default function SablonlarPage() {
         </TabsList>
 
         {isError ? (
-          <div className="text-center py-16 bg-red-50 rounded-lg border-2 border-red-200">
-            <p className="text-red-600 mb-4">
+          <div className="text-center py-16 bg-destructive/10 rounded-lg border-2 border-destructive/30">
+            <p className="text-destructive mb-4">
               Şablonlar yüklenirken bir hata oluştu.
             </p>
             <Button onClick={() => refetch()} variant="outline">
@@ -132,12 +132,12 @@ export default function SablonlarPage() {
           </div>
         ) : isLoading ? (
           <div className="flex justify-center items-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
             <span className="ml-2 text-muted-foreground">Şablonlar yükleniyor...</span>
           </div>
         ) : filteredTemplates.length === 0 ? (
           <div className="text-center py-16 bg-muted/30 rounded-lg border-2 border-dashed border-border">
-            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+            <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="text-lg font-medium text-foreground mb-2">
               Henüz şablon bulunmuyor
             </h3>

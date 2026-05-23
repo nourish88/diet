@@ -40,7 +40,7 @@ export default function BildirimLoglariPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <BellRing className="h-8 w-8 text-indigo-600" />
+            <BellRing className="h-8 w-8 text-brand" />
             Bildirim Geçmişi
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -61,14 +61,14 @@ export default function BildirimLoglariPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-4" />
+              <Loader2 className="h-8 w-8 text-brand animate-spin mb-4" />
               <p className="text-muted-foreground">Loglar yükleniyor...</p>
             </div>
           ) : isError ? (
             <div className="text-center py-16 px-4">
               <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">Hata Oluştu</h3>
-              <p className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Veriler alınamadı.'}</p>
+              <p className="text-destructive mb-4">{error instanceof Error ? error.message : 'Veriler alınamadı.'}</p>
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-16 px-4 bg-muted/30">
@@ -111,11 +111,11 @@ export default function BildirimLoglariPage() {
                           </span>
                         ) : (
                           <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 w-fit">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30 w-fit">
                               <AlertCircle className="h-3.5 w-3.5" />
                               Hata
                             </span>
-                            <span className="text-[10px] text-red-600 max-w-[200px] truncate" title={log.errorMessage || "Bilinmeyen hata"}>
+                            <span className="text-[10px] text-destructive max-w-[200px] truncate" title={log.errorMessage || "Bilinmeyen hata"}>
                               {log.errorMessage || "Bilinmeyen hata"}
                             </span>
                           </div>

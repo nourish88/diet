@@ -89,7 +89,7 @@ export default function BesinGruplariPage() {
           <Button
             onClick={() => router.push("/besinler")}
             variant="outline"
-            className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+            className="border-indigo-600 text-brand hover:bg-brand-soft"
           >
             <Coffee className="h-4 w-4 mr-2" />
             Besinler
@@ -105,8 +105,8 @@ export default function BesinGruplariPage() {
       </div>
 
       {isError ? (
-        <div className="text-center py-16 bg-red-50 rounded-lg border-2 border-red-200">
-          <p className="text-red-600 mb-4">
+        <div className="text-center py-16 bg-destructive/10 rounded-lg border-2 border-destructive/30">
+          <p className="text-destructive mb-4">
             Besin grupları yüklenirken bir hata oluştu.
           </p>
           <Button onClick={() => refetch()} variant="outline">
@@ -115,7 +115,7 @@ export default function BesinGruplariPage() {
         </div>
       ) : isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">
             Besin grupları yükleniyor...
           </span>
@@ -202,7 +202,7 @@ export default function BesinGruplariPage() {
                           disabled={isDeleting === group.id}
                           size="sm"
                           variant="outline"
-                          className="h-8 text-red-600 hover:text-red-900 bg-red-50 border-red-200"
+                          className="h-8 text-destructive hover:text-red-900 bg-destructive/10 border-destructive/30"
                         >
                           {isDeleting === group.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />

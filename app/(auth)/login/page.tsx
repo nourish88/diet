@@ -427,7 +427,7 @@ export default function LoginPage() {
 
           <Link
             href="/account"
-            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg border-2 border-indigo-200 text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-sm font-medium"
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg border-2 border-indigo-200 text-brand hover:border-indigo-400 hover:bg-brand-soft transition-all text-sm font-medium"
           >
             <Stethoscope className="w-4 h-4" />
             Diyetisyen girişi için tıklayın

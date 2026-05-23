@@ -200,7 +200,7 @@ export default function BesinlerPage() {
             <Button
               onClick={() => router.push("/besin-gruplari")}
               variant="outline"
-              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              className="border-indigo-600 text-brand hover:bg-brand-soft"
             >
               <List className="h-4 w-4 mr-2" />
               Besin Grupları
@@ -230,15 +230,15 @@ export default function BesinlerPage() {
 
       {isInitialLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">Besinler yükleniyor...</span>
         </div>
       ) : isError ? (
-        <div className="text-center py-16 bg-red-50 border border-red-200 rounded-lg">
-          <h3 className="text-lg font-medium text-red-700 mb-2">
+        <div className="text-center py-16 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <h3 className="text-lg font-medium text-destructive mb-2">
             Bir hata meydana geldi
           </h3>
-          <p className="text-red-600 mb-4">
+          <p className="text-destructive mb-4">
             {error instanceof Error
               ? error.message
               : "Lütfen daha sonra tekrar deneyin."}
@@ -329,7 +329,7 @@ export default function BesinlerPage() {
                             router.push(`/besinler/${besin.id}/edit`)
                           }
                           variant="outline"
-                          className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                          className="text-brand border-indigo-200 hover:bg-brand-soft"
                         >
                           Düzenle
                         </Button>

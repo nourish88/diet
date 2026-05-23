@@ -102,38 +102,34 @@ export default function ClientConversationsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header with Back Button */}
+        {/* Header */}
         <div className="mb-6">
           <Link
             href="/client"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4 font-medium"
+            className="inline-flex items-center text-brand hover:text-brand/80 mb-4 font-medium transition-colors"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Anasayfaya Dön
           </Link>
-          <div className="bg-card rounded-2xl shadow-lg border border-border p-6">
-            <div className="flex justify-center mb-4">
-              <img
-                src="/ezgi_evgin.png"
-                alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
-                className="max-w-[150px] h-auto"
-                style={{ width: "150px", height: "auto" }}
-              />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5 text-brand" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center justify-center">
-              <MessageCircle className="w-7 h-7 mr-3 text-purple-600" />
-              Sohbetlerim
-            </h1>
-            <p className="text-muted-foreground text-center">
-              Tüm diyet sohbetlerinizi görüntüleyin
-            </p>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                Sohbetlerim
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Tüm diyet sohbetlerinizi görüntüleyin
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Conversations */}
         {conversations.length === 0 ? (
           <Card className="p-12 text-center">
-            <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <MessageCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
               Henüz sohbet yok
             </h3>
@@ -201,7 +197,7 @@ export default function ClientConversationsPage() {
                                 </div>
                               </div>
                               {conversation.lastMessage.ogun && (
-                                <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mb-2">
+                                <span className="inline-block bg-yellow-100 text-foreground text-xs px-2 py-1 rounded-full mb-2">
                                   📍 {conversation.lastMessage.ogun.name}
                                 </span>
                               )}

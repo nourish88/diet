@@ -78,7 +78,7 @@ export default function ClientKvkkOnayPage() {
             <ExternalLink className="w-4 h-4" />
           </a>
 
-          <div className="flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50/80 p-3">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-100 bg-warning/10/80 p-3">
             <input
               id="kvkk-accept"
               type="checkbox"
@@ -95,7 +95,7 @@ export default function ClientKvkkOnayPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 text-center" role="alert">
+            <p className="text-sm text-destructive text-center" role="alert">
               {error}
             </p>
           )}

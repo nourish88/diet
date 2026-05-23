@@ -120,7 +120,7 @@ export const BannedBesinManager = ({ clientId, bannedBesins, onUpdate }: BannedB
               size="sm"
               onClick={() => handleRemove(banned.besin.id)}
               disabled={loading}
-              className="hover:bg-red-50 hover:text-red-600 text-red-500"
+              className="hover:bg-destructive/10 hover:text-destructive text-red-500"
             >
               <X className="w-5 h-5" />
             </Button>

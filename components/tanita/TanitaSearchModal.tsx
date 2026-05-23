@@ -107,13 +107,13 @@ export default function TanitaSearchModal({
           <div className="flex-1 overflow-y-auto border rounded-md">
             {isLoading && (
               <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-brand" />
                 <span className="ml-2 text-muted-foreground">Aranıyor...</span>
               </div>
             )}
 
             {error && (
-              <div className="p-4 text-center text-red-600">
+              <div className="p-4 text-center text-destructive">
                 Arama sırasında bir hata oluştu
               </div>
             )}
@@ -147,7 +147,7 @@ export default function TanitaSearchModal({
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-indigo-600" />
+                          <User className="h-5 w-5 text-brand" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-foreground">

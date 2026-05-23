@@ -254,8 +254,8 @@ export default function Home() {
             {/* Toplam Diyet */}
             <div className="bg-card rounded-xl shadow-md p-4 md:p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-center mb-3 md:mb-4">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-green-50 rounded-full flex items-center justify-center">
-                  <ClipboardList className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-success/10 rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5 md:w-6 md:h-6 text-success" />
                 </div>
               </div>
               <div className="text-center">
@@ -434,7 +434,7 @@ export default function Home() {
                       </div>
                       <div className="flex items-start gap-2">
                         {conversation.messages[0].ogun && (
-                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                          <span className="bg-yellow-100 text-foreground text-xs px-2 py-1 rounded">
                             📍 {conversation.messages[0].ogun.name}
                           </span>
                         )}
@@ -492,7 +492,7 @@ export default function Home() {
               <Button
                 onClick={() => router.push("/clients")}
                 variant="outline"
-                className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                className="flex-1 border-indigo-600 text-brand hover:bg-brand-soft"
               >
                 <Users className="w-4 h-4 mr-2" />
                 Danışanları Görüntüle
@@ -535,7 +535,7 @@ export default function Home() {
               <Button
                 onClick={() => router.push("/diets")}
                 variant="outline"
-                className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                className="flex-1 border-indigo-600 text-brand hover:bg-brand-soft"
               >
                 <ClipboardList className="w-4 h-4 mr-2" />
                 Programları Görüntüle
@@ -568,7 +568,7 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-xl font-medium text-foreground flex items-center mb-4">
-                  <Coffee className="w-5 h-5 mr-2 text-indigo-600" />
+                  <Coffee className="w-5 h-5 mr-2 text-brand" />
                   Besinler
                 </h3>
                 <div className="space-y-4 mb-6">
@@ -587,7 +587,7 @@ export default function Home() {
                   <Button
                     onClick={() => router.push("/besinler")}
                     variant="outline"
-                    className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                    className="flex-1 border-indigo-600 text-brand hover:bg-brand-soft"
                   >
                     <Coffee className="w-4 h-4 mr-2" />
                     Besinleri Görüntüle
@@ -604,7 +604,7 @@ export default function Home() {
 
               <div>
                 <h3 className="text-xl font-medium text-foreground flex items-center mb-4">
-                  <List className="w-5 h-5 mr-2 text-indigo-600" />
+                  <List className="w-5 h-5 mr-2 text-brand" />
                   Besin Grupları
                 </h3>
                 <div className="space-y-4 mb-6">
@@ -623,7 +623,7 @@ export default function Home() {
                   <Button
                     onClick={() => router.push("/besin-gruplari")}
                     variant="outline"
-                    className="flex-1 border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+                    className="flex-1 border-indigo-600 text-brand hover:bg-brand-soft"
                   >
                     <List className="w-4 h-4 mr-2" />
                     Grupları Görüntüle

@@ -134,7 +134,7 @@ export default function ClientsPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center py-16">
-          <p className="text-red-600 mb-4">
+          <p className="text-destructive mb-4">
             Danışanlar yüklenirken bir hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
           </p>
           <Button onClick={() => refetch()}>Tekrar Dene</Button>
@@ -144,14 +144,19 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-10 pb-8 sm:pt-12 max-w-7xl">
-      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center sm:gap-6 mb-6">
-        <h1 className="text-2xl font-bold text-foreground shrink-0">
-          Danışan Yönetimi
-        </h1>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Danışan Yönetimi
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Tüm danışanlarınızı görüntüleyin ve yönetin
+          </p>
+        </div>
         <Button
           onClick={() => router.push("/clients/new")}
-          className="bg-brand-gradient hover:opacity-90 text-white shrink-0 w-fit sm:shrink-0 sm:self-center"
+          className="bg-brand-gradient hover:opacity-90 text-white w-full sm:w-auto"
         >
           <UserPlus className="h-4 w-4 mr-2" />
           Yeni Danışan Ekle
@@ -190,7 +195,7 @@ export default function ClientsPage() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">Danışanlar yükleniyor...</span>
         </div>
       ) : clients.length === 0 ? (
@@ -206,7 +211,7 @@ export default function ClientsPage() {
             <Button
               onClick={() => setSearchTerm("")}
               variant="outline"
-              className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+              className="border-indigo-600 text-brand hover:bg-brand-soft"
             >
               Aramayı Temizle
             </Button>
@@ -286,7 +291,7 @@ export default function ClientsPage() {
                       <div className="flex justify-end gap-2">
                         <Link
                           href={`/clients/${client.id}`}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-md transition-colors"
+                          className="text-brand hover:text-indigo-900 bg-brand-soft p-2 rounded-md transition-colors"
                         >
                           Detay
                         </Link>
@@ -299,7 +304,7 @@ export default function ClientsPage() {
                         <button
                           onClick={() => handleDeleteClient(client.id)}
                           disabled={isDeleting === client.id}
-                          className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-md transition-colors disabled:opacity-50"
+                          className="text-destructive hover:text-red-900 bg-destructive/10 p-2 rounded-md transition-colors disabled:opacity-50"
                         >
                           {isDeleting === client.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -321,7 +326,7 @@ export default function ClientsPage() {
           {/* Loading more indicator */}
           {isFetchingNextPage && (
             <div className="flex justify-center items-center py-4 border-t">
-              <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+              <Loader2 className="h-6 w-6 text-brand animate-spin" />
               <span className="ml-2 text-muted-foreground">
                 Daha fazla yükleniyor...
               </span>

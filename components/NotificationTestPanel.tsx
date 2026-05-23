@@ -263,7 +263,7 @@ export function NotificationTestPanel({
         <div className="flex items-center gap-2 min-w-0">
           <BellRing
             className={cn(
-              "shrink-0 text-indigo-600",
+              "shrink-0 text-brand",
               isCompact ? "h-4 w-4" : "h-5 w-5"
             )}
           />
@@ -297,7 +297,7 @@ export function NotificationTestPanel({
         {/* Diet notification */}
         <div className="rounded-md border border-border p-3 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
-            <Bell className="h-4 w-4 text-indigo-600" />
+            <Bell className="h-4 w-4 text-brand" />
             <span className="text-sm font-medium text-foreground">
               Diyet bildirimi
             </span>
@@ -415,7 +415,7 @@ function SubscriptionBadge({ status }: { status: SubscriptionStatus }) {
   if (status.error) {
     return (
       <span
-        className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700"
+        className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive"
         title={status.error}
       >
         <AlertCircle className="h-3 w-3" /> Hata
@@ -424,7 +424,7 @@ function SubscriptionBadge({ status }: { status: SubscriptionStatus }) {
   }
   if (status.subscriptionCount === 0) {
     return (
-      <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+      <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 text-foreground">
         <AlertCircle className="h-3 w-3" /> Abonelik yok
       </span>
     );

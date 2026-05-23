@@ -312,7 +312,7 @@ export const SmartBesinInput = ({
                 key={suggestion.id}
                 className={`px-3 py-2 cursor-pointer flex items-center justify-between ${
                   index === selectedIndex
-                    ? "bg-indigo-50 border-l-2 border-indigo-500"
+                    ? "bg-brand-soft border-l-2 border-indigo-500"
                     : "hover:bg-muted/30"
                 }`}
                 onClick={() => selectSuggestion(suggestion)}

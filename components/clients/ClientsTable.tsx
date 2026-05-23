@@ -70,7 +70,7 @@ export const ClientsTable = () => {
                 {client.name} {client.surname} isimli danışanı silmek
                 istediğinize emin misiniz?
               </p>
-              <p className="mt-1 text-sm text-amber-800">
+              <p className="mt-1 text-sm text-foreground">
                 Bu işlem geri alınamaz ve danışana ait tüm veriler silinecektir.
               </p>
             </div>
@@ -261,7 +261,7 @@ export const ClientsTable = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2 text-green-600 hover:text-green-900 bg-green-50 border-green-200"
+                              className="h-8 px-2 text-success hover:text-green-900 bg-success/10 border-success/30"
                             >
                               <ClipboardList className="h-4 w-4" />
                             </Button>
@@ -278,7 +278,7 @@ export const ClientsTable = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2 text-amber-600 hover:text-amber-900 bg-amber-50 border-amber-200"
+                              className="h-8 px-2 text-amber-600 hover:text-amber-900 bg-warning/10 border-warning/30"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -302,7 +302,7 @@ export const ClientsTable = () => {
                               })
                             }
                             disabled={isDeleting === client.id}
-                            className="h-8 px-2 text-red-600 hover:text-red-900 bg-red-50 border-red-200"
+                            className="h-8 px-2 text-destructive hover:text-red-900 bg-destructive/10 border-destructive/30"
                           >
                             {isDeleting === client.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

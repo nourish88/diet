@@ -36,14 +36,14 @@ const ClientWarnings = ({ illness, bannedFoods }: ClientWarningsProps) => {
 
       {/* Banned Foods Warning */}
       {bannedFoods?.length > 0 && (
-        <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-md">
+        <div className="p-4 bg-warning/10 border-l-4 border-yellow-400 rounded-md">
           <div className="flex">
             <AlertCircle className="h-5 w-5 text-yellow-400 mr-2" />
             <div>
-              <h4 className="text-sm font-medium text-yellow-800">
+              <h4 className="text-sm font-medium text-foreground">
                 Yasaklı Besinler
               </h4>
-              <ul className="mt-2 text-sm text-yellow-700">
+              <ul className="mt-2 text-sm text-foreground">
                 {bannedFoods.map((food, index) => (
                   <li key={index}>
                     {food.besin.name}

@@ -165,7 +165,7 @@ const MenuItem = ({
           type="button"
           variant="ghost"
           onClick={() => onDelete(index)}
-          className="px-3 hover:bg-red-50 hover:text-red-600"
+          className="px-3 hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash className="h-4 w-4" />
         </Button>

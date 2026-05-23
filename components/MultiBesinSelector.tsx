@@ -132,7 +132,7 @@ const MultiBesinSelector = ({
 
   if (error) {
     return (
-      <div className="p-4 border border-red-300 bg-red-50 rounded-md">
+      <div className="p-4 border border-red-300 bg-destructive/10 rounded-md">
         <div className="flex items-center text-red-500 mb-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -148,10 +148,10 @@ const MultiBesinSelector = ({
           </svg>
           <span className="font-medium">Hata</span>
         </div>
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-2 px-3 py-1 bg-red-100 text-red-600 text-sm rounded hover:bg-red-200 transition-colors"
+          className="mt-2 px-3 py-1 bg-red-100 text-destructive text-sm rounded hover:bg-red-200 transition-colors"
         >
           Yeniden Dene
         </button>
@@ -162,8 +162,8 @@ const MultiBesinSelector = ({
 
   if (besins.length === 0) {
     return (
-      <div className="p-4 border border-yellow-300 bg-yellow-50 rounded-md">
-        <div className="flex items-center text-yellow-700 mb-2">
+      <div className="p-4 border border-yellow-300 bg-warning/10 rounded-md">
+        <div className="flex items-center text-foreground mb-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5 mr-2"

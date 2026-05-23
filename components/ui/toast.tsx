@@ -30,7 +30,7 @@ const toastVariants = cva(
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
         deleteAlert:
-          "bg-red-50 border-2 border-red-200 text-foreground fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
+          "bg-destructive/10 border-2 border-destructive/30 text-foreground fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
       },
     },
     defaultVariants: {
@@ -43,7 +43,7 @@ const variantClasses = {
   default: "bg-card border-l-4 border-green-500 text-foreground",
   destructive: "bg-card border-l-4 border-red-500 text-foreground",
   deleteAlert:
-    "bg-red-50 border-2 border-red-200 text-foreground fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
+    "bg-destructive/10 border-2 border-destructive/30 text-foreground fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 !bottom-auto !right-auto min-w-[400px] max-w-[90vw]",
 };
 
 const Toast = React.forwardRef<

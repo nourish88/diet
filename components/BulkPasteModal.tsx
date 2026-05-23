@@ -314,7 +314,7 @@ export function BulkPasteModal({
                 onClick={isListening ? stopListening : startListening}
                 className={`absolute right-2 top-2 p-1.5 rounded-full transition-colors ${
                   isListening
-                    ? "bg-red-100 text-red-600 animate-pulse"
+                    ? "bg-red-100 text-destructive animate-pulse"
                     : "bg-accent text-muted-foreground hover:bg-blue-100 hover:text-blue-600"
                 }`}
                 title={isListening ? "Kaydı Durdur" : "Sesli Giriş (Türkçe)"}
@@ -345,8 +345,8 @@ export function BulkPasteModal({
                   key={i}
                   className={`flex items-center gap-2 p-2 rounded-md border text-sm ${
                     item.miktar && item.birim
-                      ? "border-green-200 bg-green-50"
-                      : "border-amber-200 bg-amber-50"
+                      ? "border-success/30 bg-success/10"
+                      : "border-warning/30 bg-warning/10"
                   }`}
                 >
                   {item.miktar && item.birim ? (

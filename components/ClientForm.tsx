@@ -278,7 +278,7 @@ const ClientForm = ({ initialData, onSuccess, isEdit }: ClientFormProps) => {
                 </div>
               )}
               {tanitaBlocked && (
-                <p className="text-sm text-amber-700 mt-2">
+                <p className="text-sm text-foreground mt-2">
                   Kaydetmeden önce Tanita&apos;dan bir danışan seçin; ardından
                   telefonu gerekirse formda düzenleyin.
                 </p>

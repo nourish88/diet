@@ -24,7 +24,7 @@ export default function Error({
       <div className="text-center bg-card rounded-2xl shadow-lg p-8 max-w-md mx-4">
         <div className="flex justify-center mb-4">
           <div className="rounded-full bg-red-100 p-3">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+            <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
         </div>
         <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -54,7 +54,7 @@ export default function Error({
           <Button
             asChild
             variant="outline"
-            className="border-indigo-600 text-indigo-600 hover:bg-indigo-50"
+            className="border-indigo-600 text-brand hover:bg-brand-soft"
           >
             <Link href="/">
               <Home className="h-4 w-4 mr-2" />

@@ -315,7 +315,7 @@ export default function ClientDietDetailPage() {
           {diet.sonuc && (
             <div className="flex items-start space-x-3">
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="w-5 h-5 text-green-600" />
+                <TrendingUp className="w-5 h-5 text-success" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium">SONUÇ</p>
@@ -368,7 +368,7 @@ export default function ClientDietDetailPage() {
 
       {/* Review nudge — shown once after viewing a diet */}
       {showReviewNudge && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-3 bg-warning/10 border border-warning/30 rounded-xl px-4 py-3">
           <Star className="w-5 h-5 text-amber-500 shrink-0" />
           <p className="text-sm text-foreground flex-1">
             Programınızdan memnun musunuz?{" "}
@@ -388,7 +388,7 @@ export default function ClientDietDetailPage() {
           </p>
           <button
             onClick={handleReviewNudgeDismiss}
-            className="p-1 text-gray-300 hover:text-muted-foreground transition shrink-0"
+            className="p-1 text-muted-foreground/50 hover:text-muted-foreground transition shrink-0"
             aria-label="Kapat"
           >
             <X className="w-4 h-4" />

@@ -214,8 +214,8 @@ export default function PendingClientsPage() {
         <div
           className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
             message.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-success/10 text-success border border-success/30"
+              : "bg-destructive/10 text-destructive border border-destructive/30"
           }`}
         >
           {message.type === "success" ? (
@@ -243,7 +243,7 @@ export default function PendingClientsPage() {
 
           {isErrorPending ? (
             <div className="p-12 text-center">
-              <p className="text-red-600 mb-4">
+              <p className="text-destructive mb-4">
                 Bekleyen kayıtlar yüklenirken bir hata oluştu.
               </p>
               <button
@@ -260,7 +260,7 @@ export default function PendingClientsPage() {
             </div>
           ) : pendingUsers.length === 0 ? (
             <div className="p-12 text-center">
-              <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
               <p className="text-muted-foreground text-lg">
                 Onay bekleyen kayıt bulunmuyor
               </p>
@@ -302,7 +302,7 @@ export default function PendingClientsPage() {
                     <button
                       onClick={() => handleReject(user.id)}
                       disabled={processingId === user.id}
-                      className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-destructive/10 hover:bg-red-100 text-destructive rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <XCircle className="w-4 h-4" />
                       Reddet

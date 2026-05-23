@@ -174,11 +174,11 @@ export default function EditClientPage() {
   if (isError) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-          <h2 className="text-lg font-semibold text-red-700 mb-2">
+        <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-6 text-center">
+          <h2 className="text-lg font-semibold text-destructive mb-2">
             Bir şeyler yolunda gitmedi
           </h2>
-          <p className="text-red-600 mb-4">
+          <p className="text-destructive mb-4">
             {error instanceof Error ? error.message : "Danışan bilgileri yüklenirken bir hata oluştu"}
           </p>
           <button
@@ -196,7 +196,7 @@ export default function EditClientPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">
             Danışan bilgileri yükleniyor...
           </span>
@@ -219,7 +219,7 @@ export default function EditClientPage() {
       <div className="mb-6">
         <Link
           href={`/clients/${clientId}`}
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Danışan Detaylarına Dön

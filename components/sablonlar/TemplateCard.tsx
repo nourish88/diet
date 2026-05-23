@@ -32,7 +32,7 @@ export const TemplateCard = ({
               {template.name}
             </CardTitle>
             {template.category && (
-              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded">
+              <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-indigo-100 text-brand rounded">
                 {template.category}
               </span>
             )}
@@ -85,7 +85,7 @@ export const TemplateCard = ({
                   onDelete(template.id);
                 }
               }}
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              className="border-red-300 text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

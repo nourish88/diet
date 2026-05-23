@@ -168,7 +168,7 @@ export const OgunQuickActions = ({
         variant="outline"
         onClick={handleSaveAsPreset}
         disabled={isSaving || ogunItems.length === 0}
-        className="text-xs border-green-300 text-green-600 hover:bg-green-50"
+        className="text-xs border-green-300 text-success hover:bg-success/10"
         aria-label={compact ? "Preset kaydet" : undefined}
       >
         <Save className={`h-3 w-3 ${compact ? "" : "mr-1"}`} />

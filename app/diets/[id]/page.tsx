@@ -155,7 +155,7 @@ export default function DietDetailPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">
             Beslenme programı yükleniyor...
           </span>
@@ -192,7 +192,7 @@ export default function DietDetailPage() {
       <div className="mb-6">
         <Link
           href="/diets"
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Tüm Beslenme Programlarına Dön
@@ -281,7 +281,7 @@ export default function DietDetailPage() {
               <div className="border-l-4 border-indigo-500 pl-4">
                 <Link
                   href={`/clients/${diet.client?.id}`}
-                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                  className="text-brand hover:text-indigo-800 font-medium"
                 >
                   {diet.client?.name} {diet.client?.surname}
                 </Link>
@@ -332,7 +332,7 @@ export default function DietDetailPage() {
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Diyetisyen Notu
               </h3>
-              <div className="border-l-4 border-indigo-500 pl-4 py-2 bg-indigo-50 rounded-r">
+              <div className="border-l-4 border-indigo-500 pl-4 py-2 bg-brand-soft rounded-r">
                 <p className="text-foreground whitespace-pre-wrap">{diet.dietitianNote}</p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function DietDetailPage() {
                       </p>
                     )}
                     {ogun.detail && (
-                      <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                      <div className="mt-3 p-3 bg-warning/10 border-l-4 border-yellow-400 rounded">
                         <p className="text-sm text-foreground">
                           <span className="font-medium">Not:</span>{" "}
                           {ogun.detail}

@@ -103,7 +103,7 @@ export const DefinitionList = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => handleSaveEdit(definition.id)}
-                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                  className="text-success hover:text-success hover:bg-success/10"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -126,7 +126,7 @@ export const DefinitionList = ({
                   }
                   className={`text-xs ${
                     definition.isActive
-                      ? "text-green-600 hover:bg-green-50"
+                      ? "text-success hover:bg-success/10"
                       : "text-muted-foreground hover:bg-accent"
                   }`}
                 >
@@ -152,7 +152,7 @@ export const DefinitionList = ({
                       onDelete(definition.id);
                     }
                   }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

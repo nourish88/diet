@@ -361,7 +361,7 @@ export default function ClientDetailPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <span className="ml-2 text-muted-foreground">
             Danışan bilgileri yükleniyor...
           </span>
@@ -400,7 +400,7 @@ export default function ClientDetailPage() {
       <div className="mb-6">
         <Link
           href="/clients"
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Danışan Listesine Dön
@@ -410,7 +410,7 @@ export default function ClientDetailPage() {
       <Card className="mb-6 border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="h-5 w-5 text-indigo-600" />
+            <Shield className="h-5 w-5 text-brand" />
             KVKK / portal açık rıza
           </CardTitle>
           <CardDescription>
@@ -436,7 +436,7 @@ export default function ClientDetailPage() {
                 </p>
               </>
             ) : (
-              <p className="text-amber-800">
+              <p className="text-foreground">
                 Henüz portal üzerinden onay kaydı yok (danışan giriş yaptığında
                 istenecek).
               </p>
@@ -472,7 +472,7 @@ export default function ClientDetailPage() {
           <Button
             onClick={() => router.push(`/clients/${client.id}/edit`)}
             variant="outline"
-            className="bg-card text-indigo-700 hover:bg-indigo-50"
+            className="bg-card text-brand hover:bg-brand-soft"
           >
             <Pencil className="h-4 w-4 mr-2" />
             Düzenle
@@ -617,13 +617,13 @@ export default function ClientDetailPage() {
                   {client.bannedFoods.map((banned) => (
                     <div
                       key={banned.besin.id}
-                      className="p-3 bg-red-50 border border-red-100 rounded-lg"
+                      className="p-3 bg-destructive/10 border border-red-100 rounded-lg"
                     >
-                      <p className="font-medium text-red-700">
+                      <p className="font-medium text-destructive">
                         {banned.besin.name}
                       </p>
                       {banned.reason && (
-                        <p className="text-sm text-red-600 mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           Sebep: {banned.reason}
                         </p>
                       )}
@@ -674,7 +674,7 @@ export default function ClientDetailPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         {diet.tarih && (
-                          <div className="text-sm text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                          <div className="text-sm text-brand bg-brand-soft px-3 py-1 rounded-full">
                             Program Tarihi: {formatDate(diet.tarih)}
                           </div>
                         )}
@@ -735,7 +735,7 @@ export default function ClientDetailPage() {
         <Card className="mb-8">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <TrendingUp className="h-5 w-5 text-brand" />
               <CardTitle>Kilo ve Vücut Kompozisyonu (Tanita)</CardTitle>
             </div>
             <CardDescription>
@@ -745,7 +745,7 @@ export default function ClientDetailPage() {
           <CardContent>
             {tanitaLoading ? (
               <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+                <Loader2 className="h-8 w-8 text-brand animate-spin" />
               </div>
             ) : tanitaMeasurements && tanitaMeasurements.length > 0 ? (
               <TanitaProgressChart data={tanitaMeasurements} />
@@ -766,7 +766,7 @@ export default function ClientDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <TrendingUp className="h-5 w-5 text-brand" />
               <CardTitle>Gelişim Takibi</CardTitle>
             </div>
             <DateRangePicker
@@ -782,7 +782,7 @@ export default function ClientDetailPage() {
         <CardContent>
           {progressLoading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+              <Loader2 className="h-8 w-8 text-brand animate-spin" />
             </div>
           ) : progressData && progressData.length > 0 ? (
             <>
@@ -814,7 +814,7 @@ export default function ClientDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-indigo-600" />
+              <Activity className="h-5 w-5 text-brand" />
               <CardTitle>Antrenman Takibi</CardTitle>
             </div>
             <DateRangePicker
@@ -830,7 +830,7 @@ export default function ClientDetailPage() {
         <CardContent>
           {exerciseLoading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+              <Loader2 className="h-8 w-8 text-brand animate-spin" />
             </div>
           ) : exerciseData && exerciseData.length > 0 ? (
             <>
@@ -844,7 +844,7 @@ export default function ClientDetailPage() {
                       {exerciseStats.totalExercises}
                     </p>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="bg-success/10 p-4 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Toplam Süre</p>
                     <p className="text-2xl font-bold">
                       {exerciseStats.totalDuration} dk

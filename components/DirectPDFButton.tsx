@@ -233,7 +233,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
       duration: 3000,
       action: (
         <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
-          <Check className="h-4 w-4 text-green-600" />
+          <Check className="h-4 w-4 text-success" />
         </div>
       ),
     });
@@ -287,7 +287,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
         duration: 5000,
         action: (
           <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center">
-            <X className="h-4 w-4 text-red-600" />
+            <X className="h-4 w-4 text-destructive" />
           </div>
         ),
       });

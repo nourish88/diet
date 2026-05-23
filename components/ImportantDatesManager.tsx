@@ -280,7 +280,7 @@ export default function ImportantDatesManager() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(date)}
-                      className="h-8 border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700"
+                      className="h-8 border-indigo-200 bg-brand-soft text-brand hover:bg-indigo-100 hover:text-brand"
                     >
                       <Pencil className="h-3.5 w-3.5 mr-1" />
                       Düzenle
@@ -290,7 +290,7 @@ export default function ImportantDatesManager() {
                       size="sm"
                       onClick={() => handleDelete(date.id)}
                       disabled={isDeleting === date.id}
-                      className="h-8 border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                      className="h-8 border-destructive/30 bg-destructive/10 text-destructive hover:bg-red-100 hover:text-destructive"
                     >
                       {isDeleting === date.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

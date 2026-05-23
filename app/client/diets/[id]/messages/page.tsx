@@ -540,7 +540,7 @@ export default function ClientMessagesPage() {
         </div>
 
         {realtimeError && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-lg">
+          <div className="bg-warning/10 border border-warning/30 text-foreground text-sm px-4 py-3 rounded-lg">
             <p>{realtimeError}</p>
             <button
               onClick={refreshIncrementalMessages}
@@ -598,7 +598,7 @@ export default function ClientMessagesPage() {
                           )}
 
                           {message.ogun && (
-                            <div className="mb-2 inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                            <div className="mb-2 inline-block bg-yellow-100 text-foreground text-xs px-2 py-1 rounded">
                               📍 {message.ogun.name}
                             </div>
                           )}
@@ -651,11 +651,11 @@ export default function ClientMessagesPage() {
 
           <div className="border-t border-border p-4">
             {selectedOgun && (
-              <div className="flex items-center justify-between bg-yellow-50 text-yellow-800 px-3 py-2 rounded-lg mb-3">
+              <div className="flex items-center justify-between bg-warning/10 text-foreground px-3 py-2 rounded-lg mb-3">
                 <span className="text-sm">📍 {selectedOgun.name}</span>
                 <button
                   onClick={() => setSelectedOgun(null)}
-                  className="text-yellow-600 hover:text-yellow-800"
+                  className="text-yellow-600 hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -673,7 +673,7 @@ export default function ClientMessagesPage() {
                     />
                     <button
                       onClick={() => removePendingPhoto(photo.id)}
-                      className="absolute -top-2 -right-2 bg-card border border-border rounded-full p-1 text-muted-foreground hover:text-red-600 shadow-sm"
+                      className="absolute -top-2 -right-2 bg-card border border-border rounded-full p-1 text-muted-foreground hover:text-destructive shadow-sm"
                       title="Görseli kaldır"
                     >
                       <X className="w-4 h-4" />

@@ -184,7 +184,7 @@ function BirthdaysContent() {
       {/* Client Cards */}
       {clients.length === 0 ? (
         <Card className="p-12 text-center">
-          <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <Calendar className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-foreground mb-2">
             Bugün doğum günü olan danışan bulunmuyor
           </h3>
@@ -307,8 +307,8 @@ function BirthdaysContent() {
               </Button>
             ) : (
               <div className="space-y-2">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
-                  <p className="text-sm text-amber-700 flex items-center gap-2">
+                <div className="p-3 bg-warning/10 border border-warning/30 rounded-md">
+                  <p className="text-sm text-foreground flex items-center gap-2">
                     <PhoneMissed className="w-4 h-4" />
                     Telefon numarası kayıtlı değil.
                   </p>

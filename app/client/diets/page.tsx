@@ -123,7 +123,7 @@ export default function ClientDietsPage() {
 
       {diets.length === 0 ? (
         <div className="bg-card rounded-2xl shadow-lg border border-border p-12 text-center">
-          <UtensilsCrossed className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <UtensilsCrossed className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-foreground mb-2">
             Henüz beslenme programınız yok
           </h3>
@@ -180,7 +180,7 @@ export default function ClientDietsPage() {
                         </div>
 
                         {unreadCount > 0 && (
-                          <div className="flex items-center text-red-600">
+                          <div className="flex items-center text-destructive">
                             <MessageCircle className="w-4 h-4 mr-1.5" />
                             <span className="font-semibold">
                               {unreadCount} yeni mesaj
@@ -190,7 +190,7 @@ export default function ClientDietsPage() {
                       </div>
 
                       {diet.hedef && (
-                        <div className="mt-2 inline-flex items-center px-3 py-1 bg-yellow-50 text-yellow-800 rounded-full text-xs font-medium">
+                        <div className="mt-2 inline-flex items-center px-3 py-1 bg-warning/10 text-foreground rounded-full text-xs font-medium">
                           <Sparkles className="w-3 h-3 mr-1.5" />
                           {diet.hedef}
                         </div>

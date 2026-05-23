@@ -64,7 +64,7 @@ export default function RegisterPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <Shield className="h-12 w-12 mx-auto text-red-500 mb-4" />
-            <CardTitle className="text-2xl text-red-600">
+            <CardTitle className="text-2xl text-destructive">
               Erişim Reddedildi
             </CardTitle>
             <CardDescription>

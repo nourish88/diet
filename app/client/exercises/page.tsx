@@ -115,7 +115,7 @@ export default function ExercisesPage() {
                   {stats.totalDuration} dk
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-green-600" />
+              <Clock className="w-8 h-8 text-success" />
             </div>
           </CardContent>
         </Card>

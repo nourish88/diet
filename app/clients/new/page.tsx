@@ -29,7 +29,7 @@ export default function NewClientPage() {
       <div className="mb-6">
         <Link
           href="/clients"
-          className="text-indigo-600 hover:text-indigo-800 flex items-center"
+          className="text-brand hover:text-indigo-800 flex items-center"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Danışan Listesine Dön
