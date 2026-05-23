@@ -11,7 +11,7 @@ import PushNotificationProvider from "@/components/providers/PushNotificationPro
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Diyet Danışmanlık Hizmetleri",
+  title: "Diyetisyen Ezgi Evgin Aktaş",
   description: "Profesyonel diyet ve beslenme danışmanlığı hizmetleri",
   icons: {
     icon: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Diyet",
+    title: "Diyetisyen Ezgi Evgin Aktaş",
   },
   other: {
     "mobile-web-app-capable": "yes",

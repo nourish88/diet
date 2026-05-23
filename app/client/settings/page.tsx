@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Loader2, Bell, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { setupPushNotificationsForUser } from "@/components/providers/PushNotificationProvider";
+import { setupPushNotificationsForUser } from "@/lib/push-notifications";
 
 interface NotificationPreference {
   id: number;

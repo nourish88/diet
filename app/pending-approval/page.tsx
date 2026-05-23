@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Clock, CheckCircle, LogOut, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
+import { removePushNotificationsForCurrentBrowser } from "@/lib/push-notifications";
 
 export default function PendingApprovalPage() {
   const router = useRouter();
@@ -46,6 +47,7 @@ export default function PendingApprovalPage() {
 
   const handleLogout = async () => {
     const supabase = createClient();
+    await removePushNotificationsForCurrentBrowser();
     await supabase.auth.signOut();
     router.push("/login");
   };

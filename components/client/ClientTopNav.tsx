@@ -1,21 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LogOut, Home, Settings, TrendingUp, Activity } from "lucide-react";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import { useAuth } from "@/lib/auth-context";
 
 export default function ClientTopNav() {
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const supabase = createClient();
+  const { signOut } = useAuth();
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      await supabase.auth.signOut();
-      router.push("/login");
+      await signOut();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -94,6 +91,5 @@ export default function ClientTopNav() {
     </header>
   );
 }
-
 
 

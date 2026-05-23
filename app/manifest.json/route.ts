@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const manifest = {
-    name: "Diyet Danışmanlık Hizmetleri",
-    short_name: "Diyet",
+    name: "Diyetisyen Ezgi Evgin Aktaş",
+    short_name: "Diyetisyen Ezgi",
     description: "Profesyonel diyet ve beslenme danışmanlığı hizmetleri",
     start_url: "/",
     display: "standalone",
@@ -35,4 +35,3 @@ export async function GET() {
     },
   });
 }
-

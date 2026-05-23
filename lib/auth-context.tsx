@@ -13,6 +13,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "./supabase-browser";
 import { useRouter } from "next/navigation";
 import { apiClient, type ApiError } from "./api-client";
+import { removePushNotificationsForCurrentBrowser } from "@/lib/push-notifications";
 
 interface AuthError {
   message?: string;
@@ -422,6 +423,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    await removePushNotificationsForCurrentBrowser();
     await supabase.auth.signOut();
     setDatabaseUser(null);
     router.push("/login");
