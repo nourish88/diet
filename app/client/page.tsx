@@ -23,6 +23,39 @@ interface UnreadData {
 }
 
 const WELCOME_DISMISS_KEY = "client_welcome_dismissed_v1";
+const REVIEW_DONE_KEY = "client_review_done";
+const REVIEW_DISMISSED_KEY = "client_review_dismissed_at";
+const FIRST_VISIT_KEY = "client_first_visit";
+// Show review prompt after 7 days, re-show after 30 days if only dismissed
+const REVIEW_SHOW_AFTER_DAYS = 7;
+const REVIEW_RESHOW_AFTER_DAYS = 30;
+
+function shouldShowReviewPrompt(): boolean {
+  try {
+    if (localStorage.getItem(REVIEW_DONE_KEY)) return false;
+
+    const firstVisit = localStorage.getItem(FIRST_VISIT_KEY);
+    if (!firstVisit) {
+      localStorage.setItem(FIRST_VISIT_KEY, Date.now().toString());
+      return false;
+    }
+
+    const daysSinceFirstVisit =
+      (Date.now() - parseInt(firstVisit)) / (1000 * 60 * 60 * 24);
+    if (daysSinceFirstVisit < REVIEW_SHOW_AFTER_DAYS) return false;
+
+    const dismissed = localStorage.getItem(REVIEW_DISMISSED_KEY);
+    if (dismissed) {
+      const daysSinceDismiss =
+        (Date.now() - parseInt(dismissed)) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismiss < REVIEW_RESHOW_AFTER_DAYS) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export default function ClientDashboard() {
   const DIETITIAN_WEBSITE_URL =
@@ -40,11 +73,15 @@ export default function ClientDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [showWelcomeTip, setShowWelcomeTip] = useState(false);
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
 
   useEffect(() => {
     try {
-      if (typeof window !== "undefined" && !localStorage.getItem(WELCOME_DISMISS_KEY)) {
-        setShowWelcomeTip(true);
+      if (typeof window !== "undefined") {
+        if (!localStorage.getItem(WELCOME_DISMISS_KEY)) {
+          setShowWelcomeTip(true);
+        }
+        setShowReviewPrompt(shouldShowReviewPrompt());
       }
     } catch {
       /* ignore */
@@ -54,7 +91,6 @@ export default function ClientDashboard() {
   useEffect(() => {
     loadData();
 
-    // Refresh unread messages every 30 seconds
     const interval = setInterval(() => {
       loadUnreadMessages();
     }, 30000);
@@ -62,7 +98,6 @@ export default function ClientDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Check for meal reminders when dashboard loads
   useEffect(() => {
     const checkMealReminders = async () => {
       try {
@@ -71,11 +106,8 @@ export default function ClientDashboard() {
           data: { session },
         } = await supabase.auth.getSession();
 
-        if (!session) {
-          return;
-        }
+        if (!session) return;
 
-        // Only check if notifications are permitted and a push subscription exists
         if (typeof window !== "undefined" && "Notification" in window) {
           if (Notification.permission === "granted") {
             try {
@@ -95,12 +127,10 @@ export default function ClientDashboard() {
           }
         }
       } catch (error) {
-        // Silently fail - reminders are also handled by cron job
         console.debug("Meal reminder check failed:", error);
       }
     };
 
-    // Check reminders after a short delay to not block page load
     const timeout = setTimeout(checkMealReminders, 2000);
     return () => clearTimeout(timeout);
   }, []);
@@ -117,7 +147,6 @@ export default function ClientDashboard() {
         return;
       }
 
-      // Use already-synced auth context to avoid extra roundtrip
       const client = (databaseUser as any)?.client;
       setUserName((client?.name as string) || "Danışan");
 
@@ -133,12 +162,10 @@ export default function ClientDashboard() {
 
   const loadUnreadMessages = async (clientId?: number) => {
     try {
-      // Get client ID if not provided
       if (!clientId) {
         const client = (databaseUser as any)?.client;
         clientId = client?.id as number | undefined;
       }
-
       if (!clientId) return;
 
       const data = await apiClient.get<{
@@ -158,6 +185,28 @@ export default function ClientDashboard() {
     await signOut();
   };
 
+  const handleReviewClick = () => {
+    try {
+      localStorage.setItem(REVIEW_DONE_KEY, "clicked");
+    } catch {}
+    setShowReviewPrompt(false);
+    window.open(GOOGLE_REVIEW_URL, "_blank", "noopener,noreferrer");
+  };
+
+  const handleReviewDone = () => {
+    try {
+      localStorage.setItem(REVIEW_DONE_KEY, "self_reported");
+    } catch {}
+    setShowReviewPrompt(false);
+  };
+
+  const handleReviewDismiss = () => {
+    try {
+      localStorage.setItem(REVIEW_DISMISSED_KEY, Date.now().toString());
+    } catch {}
+    setShowReviewPrompt(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -170,215 +219,225 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <img
-            src="/ezgi_evgin-removebg-preview.png"
-            alt="Ezgi Evgin Beslenme ve Diyet Danışmanlığı"
-            className="max-w-[180px] h-auto"
-            style={{ width: "180px", height: "auto" }}
-          />
-        </div>
-
-        {showWelcomeTip && (
-          <div className="relative mb-8 rounded-2xl border border-blue-200 bg-white/90 p-4 md:p-5 shadow-sm text-left">
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  localStorage.setItem(WELCOME_DISMISS_KEY, "1");
-                } catch {
-                  /* ignore */
-                }
-                setShowWelcomeTip(false);
-              }}
-              className="absolute top-3 right-3 p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-              aria-label="Kapat"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <p className="text-sm font-semibold text-gray-900 pr-10 mb-3">
-              Hızlı başlangıç
-            </p>
-            <ul className="text-sm text-gray-700 space-y-2 mb-4 list-disc list-inside">
-              <li>
-                <strong>Diyetlerim:</strong> güncel planlarınız ve geçmiş kayıtlar
-              </li>
-              <li>
-                <strong>Sohbetlerim:</strong> diyetisyeninizle mesajlaşma
-              </li>
-              <li className="flex flex-wrap items-center gap-1">
-                <Bell className="w-4 h-4 inline text-blue-600 shrink-0" />
-                <span>
-                  Bildirimler için{" "}
-                  <Link
-                    href="/client/settings"
-                    className="text-blue-600 font-medium hover:underline"
-                  >
-                    ayarlara
-                  </Link>{" "}
-                  göz atın (PWA: ana ekrana ekleyebilirsiniz)
-                </span>
-              </li>
-            </ul>
-          </div>
-        )}
-
-        {/* Welcome Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Hoş Geldiniz, {userName}! 👋
-          </h1>
-          <p className="text-lg text-gray-600">
-            Beslenme programlarınıza göz atın ve diyetisyeninizle iletişime
-            geçin
-          </p>
-        </div>
-
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Diets Card */}
-          <Link
-            href="/client/diets"
-            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-500 p-8 transition-all transform hover:scale-105 cursor-pointer group"
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:shadow-lg transition-shadow">
-                <UtensilsCrossed className="w-10 h-10 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Diyetlerim
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Beslenme programlarınızı görüntüleyin
-              </p>
-              <div className="flex items-center text-blue-600 font-medium">
-                Görüntüle
-                <ChevronRight className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          </Link>
-
-          {/* Messages Card */}
-          <Link
-            href="/client/conversations"
-            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-purple-500 p-8 transition-all transform hover:scale-105 cursor-pointer group relative"
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:shadow-lg transition-shadow relative">
-                <MessageCircle className="w-10 h-10 text-white" />
-                {unreadData.totalUnread > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center border-4 border-white shadow-lg">
-                    {unreadData.totalUnread}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Sohbetlerim
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {unreadData.totalUnread > 0
-                  ? `${unreadData.totalUnread} yeni mesajınız var`
-                  : "Tüm sohbetlerinizi görüntüleyin"}
-              </p>
-              <div className="flex items-center text-purple-600 font-medium">
-                Görüntüle
-                <ChevronRight className="w-5 h-5 ml-1 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="mb-3 text-center">
-          <p className="text-sm font-semibold text-gray-700">Web ve Yorum</p>
-          <p className="text-xs text-gray-500">
-            Web sitemizi inceleyin, deneyiminizi Google&apos;da paylaşarak daha
-            fazla danışana yol gösterin.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <a
-            href={DIETITIAN_WEBSITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-400 p-5 transition-all group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-blue-700" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    Web Sitemizi İnceleyin
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Programlar, içerikler ve danışmanlık detayları
-                  </p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-blue-600" />
-            </div>
-          </a>
-
-          <a
-            href={GOOGLE_REVIEW_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-amber-400 p-5 transition-all group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <Star className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    Google&apos;da Bizi Değerlendirin
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Yorumunuz, doğru diyetisyen arayanlara destek olur
-                  </p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-amber-600" />
-            </div>
-          </a>
-        </div>
-
-        <p className="text-center text-xs text-gray-500 mb-8">
-          30 saniyede web sitemizi gezebilir, 1-2 cümle yorumunuzla bize katkı
-          sağlayabilirsiniz.
-        </p>
-
-        {/* Logout Card */}
-        <div className="max-w-md mx-auto">
+    <div className="space-y-6">
+      {/* Welcome tip */}
+      {showWelcomeTip && (
+        <div className="relative rounded-2xl border border-blue-200 bg-white/90 p-4 shadow-sm text-left">
           <button
-            onClick={handleLogout}
-            className="w-full bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-red-500 p-6 transition-all hover:shadow-xl group"
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem(WELCOME_DISMISS_KEY, "1");
+              } catch {}
+              setShowWelcomeTip(false);
+            }}
+            className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+            aria-label="Kapat"
           >
-            <div className="flex items-center justify-center space-x-3">
-              <LogOut className="w-6 h-6 text-red-600 group-hover:scale-110 transition-transform" />
-              <span className="text-lg font-semibold text-red-600">
-                Çıkış Yap
-              </span>
-            </div>
+            <X className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Help Section */}
-        <div className="mt-12 bg-white/50 backdrop-blur-sm rounded-2xl border border-blue-200 p-6 text-center">
-          <p className="text-sm text-gray-700">
-            <span className="font-semibold">
-              💡 Yardıma mı ihtiyacınız var?
-            </span>
-            <br />
-            Diyetisyeninizle sohbet bölümünden iletişime geçebilirsiniz
+          <p className="text-sm font-semibold text-gray-900 pr-8 mb-2">
+            Hızlı başlangıç
           </p>
+          <ul className="text-sm text-gray-600 space-y-1.5 mb-3 list-disc list-inside">
+            <li>
+              <strong>Diyetlerim:</strong> güncel planlarınız ve geçmiş kayıtlar
+            </li>
+            <li>
+              <strong>Sohbetlerim:</strong> diyetisyeninizle mesajlaşma
+            </li>
+            <li className="flex flex-wrap items-center gap-1">
+              <Bell className="w-3.5 h-3.5 inline text-blue-600 shrink-0" />
+              <span>
+                Bildirimler için{" "}
+                <Link
+                  href="/client/settings"
+                  className="text-blue-600 font-medium hover:underline"
+                >
+                  ayarlara
+                </Link>{" "}
+                göz atın
+              </span>
+            </li>
+          </ul>
         </div>
+      )}
+
+      {/* Welcome header */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Hoş Geldiniz, {userName}!
+        </h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          Beslenme programlarınıza göz atın ve diyetisyeninizle iletişime geçin
+        </p>
+      </div>
+
+      {/* Main action cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Diets Card */}
+        <Link
+          href="/client/diets"
+          className="bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-md p-6 transition-all cursor-pointer group"
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4">
+              <UtensilsCrossed className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              Diyetlerim
+            </h3>
+            <p className="text-gray-500 text-sm mb-4">
+              Beslenme programlarınızı görüntüleyin
+            </p>
+            <div className="flex items-center text-blue-600 font-medium text-sm">
+              Görüntüle
+              <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
+
+        {/* Messages Card */}
+        <Link
+          href="/client/conversations"
+          className="bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-indigo-400 hover:shadow-md p-6 transition-all cursor-pointer group relative"
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4 relative">
+              <MessageCircle className="w-8 h-8 text-white" />
+              {unreadData.totalUnread > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow">
+                  {unreadData.totalUnread > 9 ? "9+" : unreadData.totalUnread}
+                </span>
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              Sohbetlerim
+            </h3>
+            <p className="text-gray-500 text-sm mb-4">
+              {unreadData.totalUnread > 0
+                ? `${unreadData.totalUnread} yeni mesajınız var`
+                : "Tüm sohbetlerinizi görüntüleyin"}
+            </p>
+            <div className="flex items-center text-indigo-600 font-medium text-sm">
+              Görüntüle
+              <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Milestone review prompt — shown after 7 days */}
+      {showReviewPrompt && (
+        <div className="relative bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+          <button
+            type="button"
+            onClick={handleReviewDismiss}
+            className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:bg-amber-100 transition"
+            aria-label="Kapat"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-start gap-4 pr-6">
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+              <Star className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-gray-900 mb-0.5">
+                Deneyiminizi paylaşır mısınız?
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Doğru diyetisyeni arayan birileri için Google yorumunuz çok
+                değerli olur. 1-2 cümle yeterli!
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleReviewClick}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition"
+                >
+                  <Star className="w-3.5 h-3.5" />
+                  Google&apos;da Değerlendir
+                </button>
+                <button
+                  onClick={handleReviewDone}
+                  className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl border border-gray-200 transition"
+                >
+                  Yorumumu zaten yaptım
+                </button>
+                <button
+                  onClick={handleReviewDismiss}
+                  className="px-4 py-2 text-gray-400 hover:text-gray-600 text-sm transition"
+                >
+                  Daha sonra
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Web & Google review quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <a
+          href={DIETITIAN_WEBSITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-sm p-4 transition group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Globe className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Web Sitemiz
+                </p>
+                <p className="text-xs text-gray-400">
+                  Programlar ve danışmanlık bilgileri
+                </p>
+              </div>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-500 transition" />
+          </div>
+        </a>
+
+        <a
+          href={GOOGLE_REVIEW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleReviewClick}
+          className="bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-sm p-4 transition group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                <Star className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Google Yorumu
+                </p>
+                <p className="text-xs text-gray-400">
+                  Deneyiminizi paylaşın
+                </p>
+              </div>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-amber-500 transition" />
+          </div>
+        </a>
+      </div>
+
+      {/* Logout */}
+      <div className="flex justify-center pt-2 pb-4">
+        <button
+          onClick={handleLogout}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-red-600 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-xl transition"
+        >
+          <LogOut className="w-4 h-4" />
+          Çıkış Yap
+        </button>
       </div>
     </div>
   );

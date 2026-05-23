@@ -17,31 +17,54 @@ export async function GET(request: NextRequest) {
 
     const dietitianId = auth.user.id;
 
-    // Dates for this month and last month
+    const searchParams = request.nextUrl.searchParams;
+    const timeRange = searchParams.get("timeRange") || "current_month";
+    const chartView = searchParams.get("chartView") || "monthly";
+
     const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    let periodStart: Date;
+    let periodEnd = now;
+    let prevPeriodStart: Date;
+    let prevPeriodEnd: Date;
+
+    if (timeRange === "24h") {
+      periodStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      prevPeriodStart = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+      prevPeriodEnd = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    } else if (timeRange === "7d") {
+      periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      prevPeriodStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      prevPeriodEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (timeRange === "30d") {
+      periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      prevPeriodStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      prevPeriodEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else {
+      // current_month
+      periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      prevPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    }
 
     // Promises for concurrent execution
     const [
       totalClients,
       totalDiets,
-      thisMonthDiets,
-      lastMonthDiets,
-      newClientsThisMonth,
-      newClientsLastMonth,
+      periodDietsCount,
+      prevPeriodDietsCount,
+      newClientsPeriodCount,
+      newClientsPrevPeriodCount,
       pendingApprovals,
-      kvkkConsentsThisMonth,
+      kvkkConsentsPeriodCount,
     ] = await Promise.all([
       prisma.client.count({ where: { dietitianId } }),
       prisma.diet.count({ where: { dietitianId } }),
-      prisma.diet.count({ where: { dietitianId, createdAt: { gte: thisMonthStart } } }),
-      prisma.diet.count({ where: { dietitianId, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
-      prisma.client.count({ where: { dietitianId, createdAt: { gte: thisMonthStart } } }),
-      prisma.client.count({ where: { dietitianId, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } } }),
+      prisma.diet.count({ where: { dietitianId, createdAt: { gte: periodStart, lte: periodEnd } } }),
+      prisma.diet.count({ where: { dietitianId, createdAt: { gte: prevPeriodStart, lte: prevPeriodEnd } } }),
+      prisma.client.count({ where: { dietitianId, createdAt: { gte: periodStart, lte: periodEnd } } }),
+      prisma.client.count({ where: { dietitianId, createdAt: { gte: prevPeriodStart, lte: prevPeriodEnd } } }),
       prisma.user.count({ where: { role: "client", isApproved: false } }),
-      prisma.client.count({ where: { dietitianId, kvkkPortalConsentAt: { gte: thisMonthStart } } }),
+      prisma.client.count({ where: { dietitianId, kvkkPortalConsentAt: { gte: periodStart, lte: periodEnd } } }),
     ]);
 
     // Top besins (raw query)
@@ -56,42 +79,72 @@ export async function GET(request: NextRequest) {
       INNER JOIN "MenuItem" mi ON mi."besinId" = b.id
       INNER JOIN "Ogun" o ON mi."ogunId" = o.id
       INNER JOIN "Diet" d ON o."dietId" = d.id
-      WHERE d."dietitianId" = ${dietitianId}
+      WHERE d."dietitianId" = ${dietitianId} AND d."createdAt" >= ${periodStart}
       GROUP BY b.id, b.name, bg.name
       ORDER BY "usageCount" DESC
       LIMIT 10
     `;
 
-    // Monthly data for the last 6 months
-    const monthlyData: { month: string; diets: number; clients: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-      
-      const monthName = monthStart.toLocaleString('tr-TR', { month: 'short' });
-      
-      const [dietsCount, clientsCount] = await Promise.all([
-        prisma.diet.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
-        prisma.client.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
-      ]);
-      
-      monthlyData.push({
-        month: monthName,
-        diets: dietsCount,
-        clients: clientsCount,
-      });
+    // Chart data based on chartView
+    const chartData: { period: string; diets: number; clients: number }[] = [];
+    
+    if (chartView === "weekly") {
+      // Last 8 weeks
+      for (let i = 7; i >= 0; i--) {
+        const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7));
+        const weekStart = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate() - 6);
+        weekStart.setHours(0, 0, 0, 0);
+        weekEnd.setHours(23, 59, 59, 999);
+        
+        const weekName = `${weekStart.getDate()} ${weekStart.toLocaleString('tr-TR', { month: 'short' })}`;
+        
+        const [dietsCount, clientsCount] = await Promise.all([
+          prisma.diet.count({ where: { dietitianId, createdAt: { gte: weekStart, lte: weekEnd } } }),
+          prisma.client.count({ where: { dietitianId, createdAt: { gte: weekStart, lte: weekEnd } } }),
+        ]);
+        
+        chartData.push({
+          period: weekName,
+          diets: dietsCount,
+          clients: clientsCount,
+        });
+      }
+    } else {
+      // Monthly data for the last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+        
+        const monthName = monthStart.toLocaleString('tr-TR', { month: 'short' });
+        
+        const [dietsCount, clientsCount] = await Promise.all([
+          prisma.diet.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
+          prisma.client.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
+        ]);
+        
+        chartData.push({
+          period: monthName,
+          diets: dietsCount,
+          clients: clientsCount,
+        });
+      }
     }
 
     return addCorsHeaders(
       NextResponse.json({
         totalClients,
         totalDiets,
-        thisMonthDiets,
+        thisMonthDiets: periodDietsCount, // keep existing names for backward compatibility if needed, but we'll update frontend
+        periodDiets: periodDietsCount,
         pendingApprovals,
-        newClientsThisMonth,
-        newClientsLastMonth,
-        kvkkConsentsThisMonth,
-        monthlyData,
+        newClientsThisMonth: newClientsPeriodCount,
+        newClientsPeriod: newClientsPeriodCount,
+        newClientsLastMonth: newClientsPrevPeriodCount,
+        newClientsPrevPeriod: newClientsPrevPeriodCount,
+        kvkkConsentsThisMonth: kvkkConsentsPeriodCount,
+        kvkkConsentsPeriod: kvkkConsentsPeriodCount,
+        monthlyData: chartData, // keep for backward compatibility, mapped to chartData
+        chartData,
         
         topBesins: topBesins.map((b) => ({
           id: b.id,
@@ -101,8 +154,10 @@ export async function GET(request: NextRequest) {
         })),
         totals: {
           totalDiets,
-          dietsThisMonth: thisMonthDiets,
-          dietsLastMonth: lastMonthDiets,
+          dietsThisMonth: periodDietsCount,
+          dietsLastMonth: prevPeriodDietsCount,
+          dietsPeriod: periodDietsCount,
+          dietsPrevPeriod: prevPeriodDietsCount,
         },
         efficiency: {
           avgTimeThisMonth: 0, 

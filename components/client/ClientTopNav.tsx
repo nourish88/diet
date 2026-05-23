@@ -4,10 +4,12 @@ import Link from "next/link";
 import { LogOut, Home, Settings, TrendingUp, Activity } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { usePathname } from "next/navigation";
 
 export default function ClientTopNav() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { signOut } = useAuth();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
@@ -20,69 +22,70 @@ export default function ClientTopNav() {
     }
   };
 
+  const navLink = (href: string, icon: React.ReactNode, label: string) => {
+    const isActive = pathname === href || (pathname?.startsWith(href + "/") ?? false);
+    return (
+      <Link
+        href={href}
+        title={label}
+        className={`inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium rounded-lg transition ${
+          isActive
+            ? "text-blue-700 bg-blue-50"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        }`}
+      >
+        {icon}
+        <span className="hidden md:inline ml-1.5">{label}</span>
+      </Link>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/client" className="flex items-center space-x-3">
+        <div className="flex items-center justify-between h-14">
+          <Link href="/client" className="flex items-center space-x-2.5">
             <img
               src="/ezgi_evgin-removebg-preview.png"
               alt="Logo"
-              className="h-10 w-auto object-contain"
+              className="h-9 w-auto object-contain"
             />
-            {/* Hide title text on mobile/PWA (screens smaller than md) */}
             <div className="hidden md:block">
-              <p className="text-sm font-semibold text-gray-800">
+              <p className="text-sm font-semibold text-gray-800 leading-tight">
                 Ezgi Evgin Beslenme
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400 leading-tight">
                 Online Danışan Portalı
               </p>
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-1 md:space-x-2">
-            <Link
-              href="/client"
-              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
-              title="Anasayfa"
-            >
-              <Home className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Anasayfa</span>
-            </Link>
-            <Link
-              href="/client/progress"
-              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition"
-              title="Gelişim Takibi"
-            >
-              <TrendingUp className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Gelişim</span>
-            </Link>
-            <Link
-              href="/client/exercises"
-              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition"
-              title="Antrenman Takibi"
-            >
-              <Activity className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Antrenman</span>
-            </Link>
-            <Link
-              href="/client/settings"
-              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition"
-              title="Ayarlar"
-            >
-              <Settings className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Ayarlar</span>
-            </Link>
+          <nav className="flex items-center gap-0.5 md:gap-1">
+            {navLink("/client", <Home className="w-4 h-4" />, "Anasayfa")}
+            {navLink(
+              "/client/progress",
+              <TrendingUp className="w-4 h-4" />,
+              "Gelişim"
+            )}
+            {navLink(
+              "/client/exercises",
+              <Activity className="w-4 h-4" />,
+              "Antrenman"
+            )}
+            {navLink(
+              "/client/settings",
+              <Settings className="w-4 h-4" />,
+              "Ayarlar"
+            )}
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50"
               title={isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              className="inline-flex items-center px-2 md:px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
             >
-              <LogOut className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">
-              {isLoggingOut ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline ml-1.5">
+                {isLoggingOut ? "Çıkılıyor..." : "Çıkış"}
               </span>
             </button>
           </nav>
@@ -91,5 +94,3 @@ export default function ClientTopNav() {
     </header>
   );
 }
-
-

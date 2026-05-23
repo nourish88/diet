@@ -5,6 +5,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -44,25 +51,26 @@ interface BesinStat {
 }
 
 interface MonthlyData {
-  month: string;
+  period: string;
   diets: number;
   clients: number;
+  month?: string; // backwards compatibility if needed
 }
 
 interface AnalyticsData {
   topBesins: BesinStat[];
   totalClients: number;
   totalDiets: number;
-  thisMonthDiets: number;
+  periodDiets: number;
   pendingApprovals: number;
-  newClientsThisMonth: number;
-  newClientsLastMonth: number;
-  kvkkConsentsThisMonth: number;
-  monthlyData: MonthlyData[];
+  newClientsPeriod: number;
+  newClientsPrevPeriod: number;
+  kvkkConsentsPeriod: number;
+  chartData: MonthlyData[];
   totals: {
     totalDiets: number;
-    dietsThisMonth: number;
-    dietsLastMonth: number;
+    dietsPeriod: number;
+    dietsPrevPeriod: number;
   };
   efficiency: {
     avgTimeThisMonth: number;
@@ -91,6 +99,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function IstatistiklerPage() {
   const [isGeneratingPresets, setIsGeneratingPresets] = useState(false);
+  const [timeRange, setTimeRange] = useState("current_month");
+  const [chartView, setChartView] = useState("monthly");
   const { toast } = useToast();
 
   const {
@@ -100,9 +110,9 @@ export default function IstatistiklerPage() {
     error,
     refetch,
   } = useQuery<AnalyticsData>({
-    queryKey: ['analytics', 'stats'],
+    queryKey: ['analytics', 'stats', timeRange, chartView],
     queryFn: async () => {
-      return apiClient.get<AnalyticsData>("/analytics/stats");
+      return apiClient.get<AnalyticsData>(`/analytics/stats?timeRange=${timeRange}&chartView=${chartView}`);
     },
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -148,7 +158,7 @@ export default function IstatistiklerPage() {
   }
 
   const clientGrowth = analyticsData 
-    ? ((analyticsData.newClientsThisMonth - analyticsData.newClientsLastMonth) / Math.max(1, analyticsData.newClientsLastMonth)) * 100 
+    ? ((analyticsData.newClientsPeriod - analyticsData.newClientsPrevPeriod) / Math.max(1, analyticsData.newClientsPrevPeriod)) * 100 
     : 0;
 
   return (
@@ -164,6 +174,17 @@ export default function IstatistiklerPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[180px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
+              <SelectValue placeholder="Zaman Aralığı" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current_month">İçinde Bulunulan Ay</SelectItem>
+              <SelectItem value="24h">Son 24 Saat</SelectItem>
+              <SelectItem value="7d">Son 7 Gün</SelectItem>
+              <SelectItem value="30d">Son 30 Gün</SelectItem>
+            </SelectContent>
+          </Select>
           <Button 
             onClick={() => refetch()} 
             variant="outline" 
@@ -194,7 +215,7 @@ export default function IstatistiklerPage() {
               ) : (
                 <TrendingDown className="h-4 w-4 mr-1 text-red-300" />
               )}
-              <span>Bu ay <strong className="text-white">+{analyticsData?.newClientsThisMonth || 0}</strong> yeni kayıt</span>
+              <span>Seçili dönemde <strong className="text-white">+{analyticsData?.newClientsPeriod || 0}</strong> yeni kayıt</span>
             </div>
           </CardContent>
         </Card>
@@ -202,9 +223,9 @@ export default function IstatistiklerPage() {
         <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
-            <CardDescription className="text-slate-500 font-medium">Yazılan Diyet (Bu Ay)</CardDescription>
+            <CardDescription className="text-slate-500 font-medium">Yazılan Diyet</CardDescription>
             <CardTitle className="text-4xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.thisMonthDiets || 0}
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.periodDiets || 0}
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
                 <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -220,9 +241,9 @@ export default function IstatistiklerPage() {
         <Card className="border-none shadow-lg bg-white dark:bg-slate-900 relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
-            <CardDescription className="text-slate-500 font-medium">KVKK Onayları (Bu Ay)</CardDescription>
+            <CardDescription className="text-slate-500 font-medium">KVKK Onayları</CardDescription>
             <CardTitle className="text-4xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.kvkkConsentsThisMonth || 0}
+              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.kvkkConsentsPeriod || 0}
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                 <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
@@ -266,15 +287,26 @@ export default function IstatistiklerPage() {
 
         {/* Tab 1: Genel Bakış */}
         <TabsContent value="overview" className="space-y-6">
+          <div className="flex justify-end mb-2">
+            <Select value={chartView} onValueChange={setChartView}>
+              <SelectTrigger className="w-[180px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-slate-800">
+                <SelectValue placeholder="Grafik Görünümü" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Aylık Analiz</SelectItem>
+                <SelectItem value="weekly">Haftalık Analiz</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Monthly Diets Chart */}
             <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center text-slate-800 dark:text-slate-100">
                   <FileText className="h-5 w-5 mr-2 text-indigo-500" />
-                  Aylık Yazılan Diyetler
+                  Yazılan Diyetler
                 </CardTitle>
-                <CardDescription>Son 6 ayın performans grafiği</CardDescription>
+                <CardDescription>Performans grafiği</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
@@ -284,7 +316,7 @@ export default function IstatistiklerPage() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={analyticsData?.monthlyData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <AreaChart data={analyticsData?.chartData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorDiets" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -292,7 +324,7 @@ export default function IstatistiklerPage() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                        <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                         <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                         <RechartsTooltip content={<CustomTooltip />} />
                         <Area type="monotone" dataKey="diets" name="Diyet" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorDiets)" />
@@ -310,7 +342,7 @@ export default function IstatistiklerPage() {
                   <Users className="h-5 w-5 mr-2 text-emerald-500" />
                   Yeni Danışan Kazanımı
                 </CardTitle>
-                <CardDescription>Son 6 ayın danışan kayıtları</CardDescription>
+                <CardDescription>Danışan kayıtları grafiği</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
@@ -320,9 +352,9 @@ export default function IstatistiklerPage() {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analyticsData?.monthlyData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <BarChart data={analyticsData?.chartData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                        <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                         <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                         <RechartsTooltip content={<CustomTooltip />} cursor={{fill: '#f1f5f9', opacity: 0.4}} />
                         <Bar dataKey="clients" name="Yeni Danışan" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />

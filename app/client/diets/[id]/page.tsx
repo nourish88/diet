@@ -14,7 +14,15 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
+  Star,
+  X,
 } from "lucide-react";
+
+const REVIEW_DONE_KEY = "client_review_done";
+const REVIEW_NUDGE_DISMISSED_KEY = "client_review_nudge_diet_dismissed";
+
+const GOOGLE_REVIEW_URL =
+  "https://www.google.com/maps/place/Diyetisyen+Ezgi+Evgin/@39.9669753,32.6332346,17z/data=!3m1!4b1!4m6!3m5!1s0x14d330d2f71d4659:0x83b8bf59458d8408!8m2!3d39.9669753!4d32.6358095!16s%2Fg%2F11dymr8nhs?entry=ttu&g_ep=EgoyMDI2MDQwMS4wIKXMDSoASAFQAw%3D%3D";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import DatabasePDFButton from "@/components/DatabasePDFButton";
@@ -57,6 +65,31 @@ export default function ClientDietDetailPage() {
   const [expandedOguns, setExpandedOguns] = useState<Record<number, boolean>>({});
   const [highlightedOgunId, setHighlightedOgunId] = useState<number | null>(null);
   const ogunRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [showReviewNudge, setShowReviewNudge] = useState(false);
+
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem(REVIEW_DONE_KEY);
+      const dismissed = localStorage.getItem(REVIEW_NUDGE_DISMISSED_KEY);
+      if (!done && !dismissed) setShowReviewNudge(true);
+    } catch {}
+  }, []);
+
+  const handleReviewNudgeClick = () => {
+    try { localStorage.setItem(REVIEW_DONE_KEY, "clicked"); } catch {}
+    setShowReviewNudge(false);
+    window.open(GOOGLE_REVIEW_URL, "_blank", "noopener,noreferrer");
+  };
+
+  const handleReviewNudgeDone = () => {
+    try { localStorage.setItem(REVIEW_DONE_KEY, "self_reported"); } catch {}
+    setShowReviewNudge(false);
+  };
+
+  const handleReviewNudgeDismiss = () => {
+    try { localStorage.setItem(REVIEW_NUDGE_DISMISSED_KEY, "1"); } catch {}
+    setShowReviewNudge(false);
+  };
 
   const {
     data,
@@ -331,6 +364,36 @@ export default function ClientDietDetailPage() {
             Diyetisyen Notları
           </h3>
           <p className="text-sm text-blue-800">{diet.dietitianNote}</p>
+        </div>
+      )}
+
+      {/* Review nudge — shown once after viewing a diet */}
+      {showReviewNudge && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <Star className="w-5 h-5 text-amber-500 shrink-0" />
+          <p className="text-sm text-gray-700 flex-1">
+            Programınızdan memnun musunuz?{" "}
+            <button
+              onClick={handleReviewNudgeClick}
+              className="text-amber-600 font-semibold hover:underline"
+            >
+              Google&apos;da değerlendirin
+            </button>{" "}
+            ya da{" "}
+            <button
+              onClick={handleReviewNudgeDone}
+              className="text-gray-500 hover:underline"
+            >
+              zaten yaptım
+            </button>
+          </p>
+          <button
+            onClick={handleReviewNudgeDismiss}
+            className="p-1 text-gray-300 hover:text-gray-500 transition shrink-0"
+            aria-label="Kapat"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -95,7 +95,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {!hideNav && <ClientTopNav />}
-      <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">{children}</main>
     </div>
   );
 }
