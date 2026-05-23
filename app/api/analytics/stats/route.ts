@@ -89,8 +89,6 @@ export async function GET(request: NextRequest) {
     const chartData: { period: string; diets: number; clients: number }[] = [];
     
     if (chartView === "weekly") {
-      const weekPromises = [];
-      const weekNames = [];
       // Last 8 weeks
       for (let i = 7; i >= 0; i--) {
         const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7));
@@ -98,44 +96,36 @@ export async function GET(request: NextRequest) {
         weekStart.setHours(0, 0, 0, 0);
         weekEnd.setHours(23, 59, 59, 999);
         
-        weekNames.push(`${weekStart.getDate()} ${weekStart.toLocaleString('tr-TR', { month: 'short' })}`);
+        const weekName = `${weekStart.getDate()} ${weekStart.toLocaleString('tr-TR', { month: 'short' })}`;
         
-        weekPromises.push(Promise.all([
+        const [dietsCount, clientsCount] = await Promise.all([
           prisma.diet.count({ where: { dietitianId, createdAt: { gte: weekStart, lte: weekEnd } } }),
           prisma.client.count({ where: { dietitianId, createdAt: { gte: weekStart, lte: weekEnd } } }),
-        ]));
-      }
-      
-      const weekResults = await Promise.all(weekPromises);
-      for (let i = 0; i < weekResults.length; i++) {
+        ]);
+        
         chartData.push({
-          period: weekNames[i],
-          diets: weekResults[i][0],
-          clients: weekResults[i][1],
+          period: weekName,
+          diets: dietsCount,
+          clients: clientsCount,
         });
       }
     } else {
-      const monthPromises = [];
-      const monthNames = [];
       // Monthly data for the last 6 months
       for (let i = 5; i >= 0; i--) {
         const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
         
-        monthNames.push(monthStart.toLocaleString('tr-TR', { month: 'short' }));
+        const monthName = monthStart.toLocaleString('tr-TR', { month: 'short' });
         
-        monthPromises.push(Promise.all([
+        const [dietsCount, clientsCount] = await Promise.all([
           prisma.diet.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
           prisma.client.count({ where: { dietitianId, createdAt: { gte: monthStart, lte: monthEnd } } }),
-        ]));
-      }
-      
-      const monthResults = await Promise.all(monthPromises);
-      for (let i = 0; i < monthResults.length; i++) {
+        ]);
+        
         chartData.push({
-          period: monthNames[i],
-          diets: monthResults[i][0],
-          clients: monthResults[i][1],
+          period: monthName,
+          diets: dietsCount,
+          clients: clientsCount,
         });
       }
     }
