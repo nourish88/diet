@@ -528,6 +528,17 @@ export async function sendMealReminders(): Promise<{
               },
             }
           );
+          await prisma.notificationLog.create({
+            data: {
+              userId,
+              clientId: reminder.clientId,
+              ogunId: reminder.ogunId,
+              type: "meal_reminder",
+              title,
+              body: shortMessage,
+              status: "success",
+            },
+          });
           sent++;
           console.log(
             `✅ Sent meal reminder to user ${userId} for meal ${reminder.ogunName}`
@@ -537,6 +548,18 @@ export async function sendMealReminders(): Promise<{
             `❌ Failed to send reminder to user ${userId} for meal ${reminder.ogunName}:`,
             error
           );
+          await prisma.notificationLog.create({
+            data: {
+              userId,
+              clientId: reminder.clientId,
+              ogunId: reminder.ogunId,
+              type: "meal_reminder",
+              title,
+              body: shortMessage,
+              status: "failed",
+              errorMessage: error?.message || String(error),
+            },
+          });
           failed++;
 
           // Delete invalid/expired subscriptions
@@ -555,6 +578,24 @@ export async function sendMealReminders(): Promise<{
         }
       }
     }
+  }
+
+  // Cleanup old notification logs (> 3 days)
+  try {
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const deleteResult = await prisma.notificationLog.deleteMany({
+      where: {
+        sentAt: {
+          lt: threeDaysAgo,
+        },
+      },
+    });
+    if (deleteResult.count > 0) {
+      console.log(`🧹 Cleaned up ${deleteResult.count} old notification logs.`);
+    }
+  } catch (err) {
+    console.error("❌ Failed to clean up notification logs:", err);
   }
 
   return { sent, failed, reminders };
@@ -674,12 +715,35 @@ export async function sendMealReminderForOgun(
           },
         }
       );
+      await prisma.notificationLog.create({
+        data: {
+          userId: reminder.userId,
+          clientId: reminder.clientId,
+          ogunId: reminder.ogunId,
+          type: "manual_test",
+          title,
+          body,
+          status: "success",
+        },
+      });
       sent++;
     } catch (error: any) {
       console.error(
         `Failed to send manual meal reminder to ${subscription.endpoint}:`,
         error
       );
+      await prisma.notificationLog.create({
+        data: {
+          userId: reminder.userId,
+          clientId: reminder.clientId,
+          ogunId: reminder.ogunId,
+          type: "manual_test",
+          title,
+          body,
+          status: "failed",
+          errorMessage: error?.message || String(error),
+        },
+      });
       failed++;
 
       if (error?.statusCode === 404 || error?.statusCode === 410) {

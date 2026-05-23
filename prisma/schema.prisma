@@ -45,6 +45,7 @@ model Client {
   kvkkPortalConsentVersion  String?
   consentRecords            ClientConsentRecord[]
   congratulationLogs        CongratulationLog[]
+  notificationLogs          NotificationLog[]
 }
 
 model ClientPhoneAuth {
@@ -101,6 +102,7 @@ model Ogun {
   items      MenuItem[]
   comments   DietComment[]
   mealPhotos MealPhoto[]
+  notificationLogs NotificationLog[]
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 }
@@ -313,6 +315,7 @@ model User {
   exerciseLogs          ExerciseLog[]
   consentRecords        ClientConsentRecord[]
   congratulationLogs    CongratulationLog[]
+  notificationLogs      NotificationLog[]
 
   @@index([supabaseId])
   @@index([email])
@@ -615,3 +618,25 @@ model TanitaMeasurement {
   @@index([tanitaMemberId, measureDate])
   @@index([tanitaMeasurementId])
 }
+
+model NotificationLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  clientId     Int
+  ogunId       Int?
+  type         String   // "meal_reminder", "manual_test" etc.
+  title        String?
+  body         String?
+  status       String   // "success", "failed"
+  errorMessage String?
+  sentAt       DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  ogun         Ogun?    @relation(fields: [ogunId], references: [id], onDelete: SetNull)
+
+  @@index([userId, sentAt])
+  @@index([clientId])
+  @@index([sentAt])
+}
+
