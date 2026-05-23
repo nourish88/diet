@@ -197,75 +197,108 @@ export async function PUT(
         );
       }
 
-      // Update diet using transaction to ensure consistency
-      const updatedDiet = await prisma.$transaction(async (tx) => {
-        // First, delete all existing oguns (cascade will delete items)
-        await tx.ogun.deleteMany({
-          where: { dietId },
-        });
+      // Resolve every distinct besin/birim name to an id BEFORE the
+      // transaction starts. Otherwise each menu item triggers a sequential
+      // `connectOrCreate` round-trip inside the interactive transaction and
+      // diets with many items blow past Prisma's 5 sn default (P2028).
+      const ogunsInput: any[] = Array.isArray(data.oguns) ? data.oguns : [];
+      const besinNameSet = new Set<string>();
+      const birimNameSet = new Set<string>();
+      for (const ogun of ogunsInput) {
+        for (const item of (ogun.items || [])) {
+          besinNameSet.add(item.besin || "");
+          birimNameSet.add(item.birim || "");
+        }
+      }
+      const [besinRecords, birimRecords] = await Promise.all([
+        Promise.all(
+          Array.from(besinNameSet).map((name) =>
+            prisma.besin.upsert({
+              where: { name },
+              create: { name },
+              update: {},
+              select: { id: true, name: true },
+            })
+          )
+        ),
+        Promise.all(
+          Array.from(birimNameSet).map((name) =>
+            prisma.birim.upsert({
+              where: { name },
+              create: { name },
+              update: {},
+              select: { id: true, name: true },
+            })
+          )
+        ),
+      ]);
+      const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
+      const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
 
-        // Update diet fields
-        const diet = await tx.diet.update({
-          where: { id: dietId },
-          data: {
-            tarih: data.tarih ? new Date(data.tarih) : null,
-            su: data.su || "",
-            sonuc: data.sonuc || "",
-            hedef: data.hedef || "",
-            fizik: data.fizik || "",
-            isBirthdayCelebration: data.isBirthdayCelebration || false,
-            isImportantDateCelebrated: data.isImportantDateCelebrated || false,
-            importantDateId: data.importantDateId || null,
-            dietitianNote: data.dietitianNote || "",
-            oguns: {
-              create: (data.oguns || []).map((ogun: any) => ({
-                name: ogun.name || "",
-                time: ogun.time || "",
-                detail: ogun.detail || "",
-                order: ogun.order || 0,
-                items: {
-                  create: (ogun.items || []).map((item: any) => ({
-                    miktar: item.miktar || "",
-                    birim: {
-                      connectOrCreate: {
-                        where: { name: item.birim || "" },
-                        create: { name: item.birim || "" },
-                      },
-                    },
-                    besin: {
-                      connectOrCreate: {
-                        where: { name: item.besin || "" },
-                        create: { name: item.besin || "" },
-                      },
-                    },
-                  })),
-                },
-              })),
+      const ogunsCreate = ogunsInput.map((ogun: any) => ({
+        name: ogun.name || "",
+        time: ogun.time || "",
+        detail: ogun.detail || "",
+        order: ogun.order || 0,
+        items: {
+          create: (ogun.items || []).map((item: any) => ({
+            miktar: item.miktar || "",
+            birim: { connect: { id: birimIdByName.get(item.birim || "")! } },
+            besin: { connect: { id: besinIdByName.get(item.besin || "")! } },
+          })),
+        },
+      }));
+
+      // Update diet using transaction to ensure consistency
+      const updatedDiet = await prisma.$transaction(
+        async (tx) => {
+          // First, delete all existing oguns (cascade will delete items)
+          await tx.ogun.deleteMany({
+            where: { dietId },
+          });
+
+          // Update diet fields
+          const diet = await tx.diet.update({
+            where: { id: dietId },
+            data: {
+              tarih: data.tarih ? new Date(data.tarih) : null,
+              su: data.su || "",
+              sonuc: data.sonuc || "",
+              hedef: data.hedef || "",
+              fizik: data.fizik || "",
+              isBirthdayCelebration: data.isBirthdayCelebration || false,
+              isImportantDateCelebrated: data.isImportantDateCelebrated || false,
+              importantDateId: data.importantDateId || null,
+              dietitianNote: data.dietitianNote || "",
+              oguns: { create: ogunsCreate },
             },
-          },
-          include: {
-            oguns: {
-              include: {
-                items: {
-                  include: {
-                    birim: true,
-                    besin: true,
+            include: {
+              oguns: {
+                include: {
+                  items: {
+                    include: {
+                      birim: true,
+                      besin: true,
+                    },
                   },
                 },
               },
-            },
-            client: true,
-            importantDate: {
-              select: {
-                id: true,
-                message: true,
+              client: true,
+              importantDate: {
+                select: {
+                  id: true,
+                  message: true,
+                },
               },
             },
-          },
-        });
+          });
 
-        return diet;
-      });
+          return diet;
+        },
+        // Cold-start safety net; the actual work is fast (~1 sn) now that
+        // besin/birim are pre-resolved.
+        { timeout: 15_000, maxWait: 5_000 }
+      );
 
       // Log diet update on server side
       try {

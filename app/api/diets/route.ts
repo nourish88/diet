@@ -67,7 +67,48 @@ export const POST = requireDietitian(
         existingDietId = existing?.id ?? null;
       }
 
-      const ogunsCreate = (data.oguns || []).map((ogun: any) => ({
+      // Resolve every distinct besin and birim name to an id BEFORE we
+      // touch the diet transaction. Previously the override path did a
+      // `connectOrCreate` for every menu item inside the transaction; with
+      // 6 öğün × ~5 items that's ~60 sequential round-trips to Neon and
+      // routinely blew through the 5 sn interactive-tx limit (P2028).
+      // After this pass the transaction only runs deleteMany + a single
+      // nested-create — well under a second.
+      const ogunsInput: any[] = Array.isArray(data.oguns) ? data.oguns : [];
+      const besinNameSet = new Set<string>();
+      const birimNameSet = new Set<string>();
+      for (const ogun of ogunsInput) {
+        for (const item of (ogun.items || [])) {
+          besinNameSet.add(item.besin || "");
+          birimNameSet.add(item.birim || "");
+        }
+      }
+      const [besinRecords, birimRecords] = await Promise.all([
+        Promise.all(
+          Array.from(besinNameSet).map((name) =>
+            prisma.besin.upsert({
+              where: { name },
+              create: { name },
+              update: {},
+              select: { id: true, name: true },
+            })
+          )
+        ),
+        Promise.all(
+          Array.from(birimNameSet).map((name) =>
+            prisma.birim.upsert({
+              where: { name },
+              create: { name },
+              update: {},
+              select: { id: true, name: true },
+            })
+          )
+        ),
+      ]);
+      const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
+      const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
+
+      const ogunsCreate = ogunsInput.map((ogun: any) => ({
         name: ogun.name || "",
         time: ogun.time || "",
         detail: ogun.detail || "",
@@ -75,18 +116,8 @@ export const POST = requireDietitian(
         items: {
           create: (ogun.items || []).map((item: any) => ({
             miktar: item.miktar || "",
-            birim: {
-              connectOrCreate: {
-                where: { name: item.birim || "" },
-                create: { name: item.birim || "" },
-              },
-            },
-            besin: {
-              connectOrCreate: {
-                where: { name: item.besin || "" },
-                create: { name: item.besin || "" },
-              },
-            },
+            birim: { connect: { id: birimIdByName.get(item.birim || "")! } },
+            besin: { connect: { id: besinIdByName.get(item.besin || "")! } },
           })),
         },
       }));
@@ -118,19 +149,25 @@ export const POST = requireDietitian(
       } as const;
 
       const diet = existingDietId
-        ? await prisma.$transaction(async (tx) => {
-            // Override: replace meals (cascades menu items) and update fields
-            await tx.ogun.deleteMany({ where: { dietId: existingDietId } });
-            return tx.diet.update({
-              where: { id: existingDietId },
-              data: {
-                ...dietFields,
-                oguns: { create: ogunsCreate },
-                notifiedAt: null, // re-notify since the diet changed
-              },
-              include,
-            });
-          })
+        ? await prisma.$transaction(
+            async (tx) => {
+              // Override: replace meals (cascades menu items) and update fields
+              await tx.ogun.deleteMany({ where: { dietId: existingDietId } });
+              return tx.diet.update({
+                where: { id: existingDietId },
+                data: {
+                  ...dietFields,
+                  oguns: { create: ogunsCreate },
+                  notifiedAt: null, // re-notify since the diet changed
+                },
+                include,
+              });
+            },
+            // Safety net for cold-starts on Neon serverless. The actual work
+            // here is fast (~1 sn) since besin/birim are pre-resolved above;
+            // this bigger budget only matters when the connection warms up.
+            { timeout: 15_000, maxWait: 5_000 }
+          )
         : await prisma.diet.create({
             data: {
               clientId: data.clientId,

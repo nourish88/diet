@@ -42,6 +42,42 @@ export async function POST(
       return NextResponse.json({ error: "Şablon bulunamadı" }, { status: 404 });
     }
 
+    // Pre-resolve besin/birim ids to avoid N round-trips inside the
+    // implicit transaction Prisma uses for nested creates — matches the
+    // pattern in /api/diets POST/PUT after the same P2028 fix.
+    const besinNameSet = new Set<string>();
+    const birimNameSet = new Set<string>();
+    for (const ogun of template.oguns) {
+      for (const item of ogun.items) {
+        besinNameSet.add(item.besinName);
+        birimNameSet.add(item.birim);
+      }
+    }
+    const [besinRecords, birimRecords] = await Promise.all([
+      Promise.all(
+        Array.from(besinNameSet).map((name) =>
+          prisma.besin.upsert({
+            where: { name },
+            create: { name },
+            update: {},
+            select: { id: true, name: true },
+          })
+        )
+      ),
+      Promise.all(
+        Array.from(birimNameSet).map((name) =>
+          prisma.birim.upsert({
+            where: { name },
+            create: { name },
+            update: {},
+            select: { id: true, name: true },
+          })
+        )
+      ),
+    ]);
+    const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
+    const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
+
     // Create new diet from template
     const diet = await prisma.diet.create({
       data: {
@@ -60,18 +96,8 @@ export async function POST(
             items: {
               create: ogun.items.map((item) => ({
                 miktar: item.miktar,
-                birim: {
-                  connectOrCreate: {
-                    where: { name: item.birim },
-                    create: { name: item.birim },
-                  },
-                },
-                besin: {
-                  connectOrCreate: {
-                    where: { name: item.besinName },
-                    create: { name: item.besinName },
-                  },
-                },
+                birim: { connect: { id: birimIdByName.get(item.birim)! } },
+                besin: { connect: { id: besinIdByName.get(item.besinName)! } },
               })),
             },
           })),
