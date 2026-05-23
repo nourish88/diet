@@ -36,6 +36,10 @@ export type ResponseInterceptor = (
   response: Response
 ) => Promise<Response> | Response;
 
+export interface ApiRequestInit extends RequestInit {
+  timeoutMs?: number;
+}
+
 /**
  * API Client - Automatic authentication injection for web
  * Mobile app uses its own client in mobile/src/core/api/client.ts
@@ -180,14 +184,15 @@ class ApiClient {
 
   async request<T = unknown>(
     endpoint: string,
-    options: RequestInit = {}
+    options: ApiRequestInit = {}
   ): Promise<T> {
+    const { timeoutMs, ...fetchOptions } = options;
     // Step 1: Get session and prepare initial config
     const session = await this.getCachedSession();
 
     let headers: HeadersInit = {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(fetchOptions.headers || {}),
     };
 
     // Auto-inject auth token from Supabase session (default behavior)
@@ -197,7 +202,7 @@ class ApiClient {
 
     // Step 2: Build initial request config
     let config: RequestInit = {
-      ...options,
+      ...fetchOptions,
       headers,
     };
 
@@ -206,11 +211,17 @@ class ApiClient {
 
     // Step 4: Make the request with timeout
     const controller = new AbortController();
-    // Sync operations (like tanita/sync-measurements) need more time
+    // Sync and diet write operations can legitimately take longer on
+    // serverless cold starts because they touch several related tables.
     const isSyncOperation = endpoint.includes('/sync-measurements') || endpoint.includes('/sync');
-    const timeoutDuration = isSyncOperation ? 60000 : 8000; // 60s for sync, 8s for others
+    const isDietWrite =
+      (config.method === "POST" && endpoint === "/diets") ||
+      (config.method === "PUT" && /^\/diets\/\d+$/.test(endpoint));
+    const timeoutDuration = timeoutMs ?? (isSyncOperation || isDietWrite ? 60000 : 8000);
     const timeoutId = setTimeout(() => {
-      console.error(`⏰ [API Client] Request timeout for ${endpoint}`);
+      console.error(
+        `⏰ [API Client] Request timeout after ${timeoutDuration}ms for ${endpoint}`
+      );
       controller.abort();
     }, timeoutDuration);
     
@@ -305,14 +316,14 @@ class ApiClient {
     return {} as T;
   }
 
-  get<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+  get<T = unknown>(endpoint: string, options?: ApiRequestInit): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "GET" });
   }
 
   post<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestInit
+    options?: ApiRequestInit
   ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -324,7 +335,7 @@ class ApiClient {
   put<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestInit
+    options?: ApiRequestInit
   ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -336,7 +347,7 @@ class ApiClient {
   patch<T = unknown>(
     endpoint: string,
     data?: unknown,
-    options?: RequestInit
+    options?: ApiRequestInit
   ): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
@@ -345,7 +356,7 @@ class ApiClient {
     });
   }
 
-  delete<T = unknown>(endpoint: string, options?: RequestInit): Promise<T> {
+  delete<T = unknown>(endpoint: string, options?: ApiRequestInit): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 }

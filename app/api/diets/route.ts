@@ -6,6 +6,46 @@ import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+type DietLogAction = "diet_overridden" | "diet_saved" | "diet_save_failed";
+
+async function logDietAction({
+  action,
+  clientId,
+  dietId,
+  dietitianId,
+  metadata,
+}: {
+  action: DietLogAction;
+  clientId: number | null;
+  dietId?: number | null;
+  dietitianId: number;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: "diet_form_logging_enabled" },
+      select: { value: true },
+    });
+
+    if (!config || config.value !== "true") return;
+
+    await prisma.dietFormLog.create({
+      data: {
+        sessionId: `api_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        dietitianId,
+        clientId,
+        dietId: dietId ?? null,
+        action,
+        source: "server",
+        metadata,
+      },
+    });
+  } catch (logError) {
+    console.warn("Error logging diet action:", logError);
+  }
+}
 
 export const POST = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
@@ -183,42 +223,24 @@ export const POST = requireDietitian(
       // Push notification to the client — runs after response is sent
       after(() => notifyClientOfNewDiet(diet.id));
 
-      // Log diet creation on server side
-      try {
-        const logResponse = await fetch(
-          `${request.nextUrl.origin}/api/diet-logs`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: request.headers.get("Authorization") || "",
-            },
-            body: JSON.stringify({
-              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              dietitianId: auth.user!.id,
-              clientId: data.clientId,
-              dietId: diet.id,
-              action: wasOverridden ? "diet_overridden" : "diet_saved",
-              source: "server", // Server-side log
-              metadata: {
-                ogunCount: diet.oguns.length,
-                totalItems: diet.oguns.reduce(
-                  (sum, ogun) => sum + (ogun.items?.length || 0),
-                  0
-                ),
-                overridden: wasOverridden,
-              },
-            }),
-          }
-        );
-        // Don't fail if logging fails
-        if (!logResponse.ok) {
-          console.warn("Failed to log diet creation:", logResponse.statusText);
-        }
-      } catch (logError) {
-        // Silently fail - logging should not break diet creation
-        console.warn("Error logging diet creation:", logError);
-      }
+      // Log after the response is sent. Saving the diet should not wait for
+      // non-critical telemetry, especially on serverless cold starts.
+      after(() =>
+        logDietAction({
+          dietitianId: auth.user!.id,
+          clientId: data.clientId,
+          dietId: diet.id,
+          action: wasOverridden ? "diet_overridden" : "diet_saved",
+          metadata: {
+            ogunCount: diet.oguns.length,
+            totalItems: diet.oguns.reduce(
+              (sum, ogun) => sum + (ogun.items?.length || 0),
+              0
+            ),
+            overridden: wasOverridden,
+          },
+        })
+      );
 
       return addCorsHeaders(
         NextResponse.json({ ...diet, _overridden: wasOverridden })
@@ -244,40 +266,20 @@ export const POST = requireDietitian(
         timestamp: new Date().toISOString(),
       });
       
-      // Log diet save failure with detailed error info
-      try {
-        const logResponse = await fetch(
-          `${request.nextUrl.origin}/api/diet-logs`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: request.headers.get("Authorization") || "",
-            },
-            body: JSON.stringify({
-              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              dietitianId: auth.user!.id,
-              clientId: data?.clientId || null,
-              action: "diet_save_failed",
-              source: "server", // Server-side log
-              metadata: {
-                error: errorDetails.message,
-                errorType: errorDetails.type,
-                prismaCode: errorDetails.prismaCode,
-                prismaMeta: errorDetails.meta,
-                stack: errorDetails.stack?.substring(0, 500), // Limit stack trace length
-              },
-            }),
-          }
-        );
-        // Don't fail if logging fails
-        if (!logResponse.ok) {
-          console.warn("Failed to log diet creation:", logResponse.statusText);
-        }
-      } catch (logError) {
-        // Silently fail - logging should not break diet creation
-        console.warn("Error logging diet creation:", logError);
-      }
+      after(() =>
+        logDietAction({
+          dietitianId: auth.user!.id,
+          clientId: data?.clientId || null,
+          action: "diet_save_failed",
+          metadata: {
+            error: errorDetails.message,
+            errorType: errorDetails.type,
+            prismaCode: errorDetails.prismaCode,
+            prismaMeta: errorDetails.meta,
+            stack: errorDetails.stack?.substring(0, 500),
+          },
+        })
+      );
 
       // Return structured error response
       const errorMessage = errorDetails.message || "Unknown error occurred";

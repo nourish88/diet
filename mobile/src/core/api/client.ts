@@ -17,6 +17,16 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
+      const method = config.method?.toUpperCase();
+      const url = config.url || "";
+      const isDietWrite =
+        (method === "POST" && url === "/api/diets") ||
+        (method === "PUT" && /^\/api\/diets\/\d+$/.test(url));
+
+      if (isDietWrite) {
+        config.timeout = 60000;
+      }
+
       // Use the same SecureStorage instance as auth store
       const token = await SecureStorage.getItem(STORAGE_KEYS.SUPABASE_TOKEN);
       console.log("🔑 Interceptor - Token from SecureStorage:", token ? "✅ Found" : "❌ Not found");
@@ -126,7 +136,6 @@ const api = {
 };
 
 export default api;
-
 
 
 

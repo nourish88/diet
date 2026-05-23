@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/prisma";
 import {
   requireDietitian,
@@ -7,6 +7,43 @@ import {
   authenticateRequest,
 } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+
+export const maxDuration = 60;
+
+async function logDietUpdate({
+  clientId,
+  dietId,
+  dietitianId,
+  metadata,
+}: {
+  clientId: number | null;
+  dietId: number;
+  dietitianId: number;
+  metadata: Record<string, any>;
+}) {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: "diet_form_logging_enabled" },
+      select: { value: true },
+    });
+
+    if (!config || config.value !== "true") return;
+
+    await prisma.dietFormLog.create({
+      data: {
+        sessionId: `api_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        dietitianId,
+        clientId,
+        dietId,
+        action: "diet_updated",
+        source: "server",
+        metadata,
+      },
+    });
+  } catch (logError) {
+    console.warn("Error logging diet update:", logError);
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -300,39 +337,20 @@ export async function PUT(
         { timeout: 15_000, maxWait: 5_000 }
       );
 
-      // Log diet update on server side
-      try {
-        const logResponse = await fetch(
-          `${request.nextUrl.origin}/api/diet-logs`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: request.headers.get("Authorization") || "",
-            },
-            body: JSON.stringify({
-              sessionId: `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              dietitianId: auth.user!.id,
-              clientId: updatedDiet.clientId,
-              dietId: updatedDiet.id,
-              action: "diet_updated",
-              source: "server",
-              metadata: {
-                ogunCount: updatedDiet.oguns.length,
-                totalItems: updatedDiet.oguns.reduce(
-                  (sum, ogun) => sum + (ogun.items?.length || 0),
-                  0
-                ),
-              },
-            }),
-          }
-        );
-        if (!logResponse.ok) {
-          console.warn("Failed to log diet update:", logResponse.statusText);
-        }
-      } catch (logError) {
-        console.warn("Error logging diet update:", logError);
-      }
+      after(() =>
+        logDietUpdate({
+          dietitianId: auth.user!.id,
+          clientId: updatedDiet.clientId,
+          dietId: updatedDiet.id,
+          metadata: {
+            ogunCount: updatedDiet.oguns.length,
+            totalItems: updatedDiet.oguns.reduce(
+              (sum, ogun) => sum + (ogun.items?.length || 0),
+              0
+            ),
+          },
+        })
+      );
 
       // Normalize date fields
       const normalized = {
