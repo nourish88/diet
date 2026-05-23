@@ -81,17 +81,21 @@ export async function getNewDietsForNotification(): Promise<NewDietNotification[
 }
 
 /**
- * Send new diet notification to a client
+ * Send new diet notification to a client.
+ * Returns counts so callers can surface how many devices received the push.
  */
 export async function sendNewDietNotification(
   notification: NewDietNotification & { user: any }
-): Promise<void> {
-  const { dietId, clientId, clientName, user } = notification;
+): Promise<{ sent: number; failed: number }> {
+  const { dietId, clientName, user } = notification;
 
   const title = "Yeni diyet programınız hazır! 🎉";
   const body = "Diyetisyeniniz size yeni bir beslenme programı hazırladı.";
   const url = `/client/diets/${dietId}`;
   const notificationTag = `new-diet-${dietId}`;
+
+  let sent = 0;
+  let failed = 0;
 
   // Send to all push subscriptions for this user
   for (const subscription of user.pushSubscriptions) {
@@ -113,14 +117,17 @@ export async function sendNewDietNotification(
           data: {
             type: "new_diet",
             dietId,
+            clientName,
           },
         }
       );
+      sent++;
     } catch (error: any) {
       console.error(
         `Failed to send new diet notification to ${subscription.endpoint}:`,
         error
       );
+      failed++;
 
       // If subscription is invalid, delete it
       if (
@@ -142,6 +149,8 @@ export async function sendNewDietNotification(
       }
     }
   }
+
+  return { sent, failed };
 }
 
 /**
@@ -182,8 +191,21 @@ export async function sendNewDietNotifications(): Promise<void> {
  * Send a new diet notification for a single diet right after creation.
  * Sets notifiedAt on success so the cron safety net doesn't double-send.
  * Swallows errors — never blocks the diet creation request.
+ *
+ * When `options.force` is true, bypasses the `notifiedAt` guard and the
+ * `dietUpdates` preference, and does NOT update `notifiedAt`. This is used
+ * by the dietitian-triggered manual "send notification now" button.
  */
-export async function notifyClientOfNewDiet(dietId: number): Promise<void> {
+export async function notifyClientOfNewDiet(
+  dietId: number,
+  options?: { force?: boolean }
+): Promise<{
+  ok: boolean;
+  sent: number;
+  failed: number;
+  reason?: "diet-not-found" | "no-user" | "preference-disabled" | "no-subscriptions";
+}> {
+  const force = options?.force === true;
   try {
     const diet = await prisma.diet.findUnique({
       where: { id: dietId },
@@ -201,20 +223,34 @@ export async function notifyClientOfNewDiet(dietId: number): Promise<void> {
       },
     });
 
-    if (!diet || diet.notifiedAt) return;
+    if (!diet) {
+      return { ok: false, sent: 0, failed: 0, reason: "diet-not-found" };
+    }
+
+    if (!force && diet.notifiedAt) {
+      return { ok: true, sent: 0, failed: 0 };
+    }
 
     const user = diet.client.user;
-    if (!user) return;
+    if (!user) {
+      return { ok: false, sent: 0, failed: 0, reason: "no-user" };
+    }
 
-    const dietUpdatesEnabled =
-      user.notificationPreference?.dietUpdates !== undefined
-        ? user.notificationPreference.dietUpdates
-        : true;
+    if (!force) {
+      const dietUpdatesEnabled =
+        user.notificationPreference?.dietUpdates !== undefined
+          ? user.notificationPreference.dietUpdates
+          : true;
+      if (!dietUpdatesEnabled) {
+        return { ok: false, sent: 0, failed: 0, reason: "preference-disabled" };
+      }
+    }
 
-    if (!dietUpdatesEnabled) return;
-    if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) return;
+    if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+      return { ok: false, sent: 0, failed: 0, reason: "no-subscriptions" };
+    }
 
-    await sendNewDietNotification({
+    const result = await sendNewDietNotification({
       dietId: diet.id,
       clientId: diet.client.id,
       clientName: `${diet.client.name} ${diet.client.surname}`,
@@ -222,17 +258,24 @@ export async function notifyClientOfNewDiet(dietId: number): Promise<void> {
       user,
     } as any);
 
-    await prisma.diet.update({
-      where: { id: diet.id },
-      data: { notifiedAt: new Date() },
-    });
+    if (!force) {
+      await prisma.diet.update({
+        where: { id: diet.id },
+        data: { notifiedAt: new Date() },
+      });
+    }
 
-    console.log(`Sent immediate new diet notification for diet ${diet.id}`);
+    console.log(
+      `Sent ${force ? "manual" : "immediate"} new diet notification for diet ${diet.id}`
+    );
+
+    return { ok: true, sent: result.sent, failed: result.failed };
   } catch (error) {
     console.error(
-      `Failed to send immediate new diet notification for diet ${dietId}:`,
+      `Failed to send new diet notification for diet ${dietId}:`,
       error
     );
+    return { ok: false, sent: 0, failed: 0 };
   }
 }
 

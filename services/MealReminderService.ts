@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
+import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
 
 export interface MealReminder {
   userId: number;
@@ -557,5 +558,142 @@ export async function sendMealReminders(): Promise<{
   }
 
   return { sent, failed, reminders };
+}
+
+/**
+ * Send a meal reminder for a specific ogun, bypassing the time-window check.
+ * Used by the dietitian-triggered "Test bildirimi" button so they can verify
+ * with the client (in-room) that the push actually arrives.
+ *
+ * Does NOT touch notification preferences — assumes the dietitian manually
+ * triggered this on purpose. Still respects the push subscription requirement:
+ * if the client has none, returns `reason: "no-subscriptions"`.
+ */
+export async function sendMealReminderForOgun(
+  ogunId: number
+): Promise<{
+  ok: boolean;
+  sent: number;
+  failed: number;
+  reason?:
+    | "ogun-not-found"
+    | "no-user"
+    | "no-subscriptions"
+    | "push-not-configured";
+}> {
+  const ogun = await prisma.ogun.findUnique({
+    where: { id: ogunId },
+    include: {
+      items: {
+        include: {
+          besin: true,
+          birim: true,
+        },
+      },
+      diet: {
+        include: {
+          client: {
+            include: {
+              user: {
+                include: {
+                  pushSubscriptions: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!ogun || !ogun.diet) {
+    return { ok: false, sent: 0, failed: 0, reason: "ogun-not-found" };
+  }
+
+  const user = ogun.diet.client.user;
+  if (!user) {
+    return { ok: false, sent: 0, failed: 0, reason: "no-user" };
+  }
+
+  if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+    return { ok: false, sent: 0, failed: 0, reason: "no-subscriptions" };
+  }
+
+  if (!isWebPushConfigured()) {
+    return { ok: false, sent: 0, failed: 0, reason: "push-not-configured" };
+  }
+
+  const reminder: MealReminder = {
+    userId: user.id,
+    clientId: ogun.diet.client.id,
+    clientName: ogun.diet.client.name,
+    clientSurname: ogun.diet.client.surname,
+    dietId: ogun.diet.id,
+    dietDate: ogun.diet.tarih ?? ogun.diet.createdAt,
+    ogunId: ogun.id,
+    ogunName: ogun.name,
+    ogunTime: ogun.time,
+    ogunDetail: ogun.detail,
+    menuItems: ogun.items.map((item) => ({
+      miktar: item.miktar,
+      birim: item.birim?.name ?? null,
+      besinName: item.besin.name,
+    })),
+  };
+
+  const title = `${reminder.ogunName} zamanı yaklaşıyor!`;
+  const body = formatShortMealNotificationMessage(reminder);
+  // Use a unique tag so manual sends don't overwrite each other in the
+  // notification tray when the dietitian taps multiple times for testing.
+  const notificationTag = `meal-reminder-${reminder.ogunId}-manual-${Date.now()}`;
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const subscription of user.pushSubscriptions) {
+    try {
+      await sendWebPushNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            auth: subscription.auth,
+            p256dh: subscription.p256dh,
+          },
+        },
+        {
+          title,
+          body,
+          url: `/client/diets/${reminder.dietId}?ogunId=${reminder.ogunId}`,
+          tag: notificationTag,
+          requireInteraction: false,
+          data: {
+            type: "meal_reminder",
+            dietId: reminder.dietId,
+            ogunId: reminder.ogunId,
+            manual: true,
+          },
+        }
+      );
+      sent++;
+    } catch (error: any) {
+      console.error(
+        `Failed to send manual meal reminder to ${subscription.endpoint}:`,
+        error
+      );
+      failed++;
+
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        try {
+          await prisma.pushSubscription.delete({
+            where: { endpoint: subscription.endpoint },
+          });
+        } catch (deleteError) {
+          console.error("Failed to delete invalid subscription:", deleteError);
+        }
+      }
+    }
+  }
+
+  return { ok: sent > 0 || failed === 0, sent, failed };
 }
 

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form } from "./ui/form";
 import DietHeader from "./DietHeader";
+import { NotificationTestPanel } from "./NotificationTestPanel";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import html2canvas from "html2canvas";
@@ -615,15 +616,18 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
   };
 
-  const handleSaveToDB = async () => {
+  const handleSaveToDB = async (
+    options: { skipRedirect?: boolean } = {}
+  ): Promise<{ ok: boolean; dietId?: number; clientId?: number }> => {
     if (!selectedClientId) {
       toast({
         title: "Hata",
         description: "Lütfen önce bir müşteri seçin",
         variant: "destructive",
       });
-      return;
+      return { ok: false };
     }
+    const skipRedirect = options.skipRedirect === true;
 
     try {
       // CRITICAL: If in update mode, keep the ID to update existing diet
@@ -674,12 +678,28 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           dietLogging.logDietSaved(dietId);
         }
 
-        // Update local state with diet ID if available
+        // Update local state with diet ID if available.
+        // Also propagate ogun IDs from the API response so downstream
+        // features (e.g. manual meal-reminder test push) can reference them
+        // without forcing a page reload.
         if (dietId) {
-          setDiet((prev) => ({
-            ...prev,
-            id: dietId,
-          }));
+          const savedOguns: Array<{ id?: number; name?: string; time?: string }> =
+            Array.isArray(result?.oguns) ? result.oguns : [];
+          setDiet((prev) => {
+            const next = { ...prev, id: dietId };
+            if (savedOguns.length > 0 && Array.isArray(prev.Oguns)) {
+              next.Oguns = prev.Oguns.map((ogun) => {
+                if (ogun.id) return ogun;
+                const match = savedOguns.find(
+                  (s) =>
+                    s.name === ogun.name &&
+                    s.time === ogun.time
+                );
+                return match?.id ? { ...ogun, id: match.id } : ogun;
+              });
+            }
+            return next;
+          });
 
           // Show success message
           toast({
@@ -702,8 +722,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           // Clear auto-saved draft on successful save
           clearDraft();
 
-          // Redirect to diet detail page after successful save (only for new diets)
-          if (!isUpdateMode) {
+          // Redirect to diet detail page after successful save (only for new
+          // diets, and only when the caller didn't ask us to stay put —
+          // e.g. "Kaydet ve PDF İndir" wants to remain on the form so the
+          // PDF download is not interrupted by navigation).
+          if (!isUpdateMode && !skipRedirect) {
             // Small delay to show toast, then redirect
             setTimeout(() => {
               router.push(`/diets/${dietId}`);
@@ -718,7 +741,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             variant: "default",
           });
         }
+        return { ok: true, dietId, clientId: selectedClientId };
       }
+      return { ok: false };
     } catch (error: any) {
       console.error("Veritabanına kaydetme hatası:", error);
 
@@ -760,6 +785,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         variant: "destructive",
         duration: 5000, // Show longer for important errors
       });
+      return { ok: false };
     }
   };
 
@@ -1108,6 +1134,27 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                   disabled={isFormDisabled}
                   phoneNumber={clientPhoneNumber}
                   isUpdateMode={isUpdateMode}
+                />
+              </div>
+
+              {/*
+                Manual notification test panel — lets the dietitian verify
+                with the client (in-room) that "diet created" and meal
+                reminder pushes actually land on their device. Disabled
+                until the diet has a real id so the API has something to
+                attach the notification to.
+              */}
+              <div className="mt-6 no-print">
+                <NotificationTestPanel
+                  dietId={diet.id ?? null}
+                  variant="compact"
+                  oguns={(diet.Oguns ?? [])
+                    .filter((o) => typeof o.id === "number" && o.id > 0)
+                    .map((o) => ({
+                      id: o.id as number,
+                      name: o.name,
+                      time: o.time || null,
+                    }))}
                 />
               </div>
             </div>

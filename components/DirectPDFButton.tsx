@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
 import { Diet } from "@/types/types";
 import { apiClient } from "@/lib/api-client";
@@ -102,6 +102,17 @@ const buildInlineColumns = (
   } as any;
 };
 
+export interface DirectPDFButtonHandle {
+  /**
+   * Trigger PDF generation programmatically. Useful when another button
+   * (e.g. "Kaydet ve PDF İndir") needs to invoke the same pdfmake pipeline
+   * without rendering a duplicate trigger button.
+   */
+  generate: () => Promise<void>;
+  /** Whether a generation is currently in flight. */
+  isGenerating: () => boolean;
+}
+
 interface DirectPDFButtonProps {
   diet?: Diet;
   pdfData?: PDFData;
@@ -120,10 +131,20 @@ interface DirectPDFButtonProps {
     | "ghost"
     | "link";
   size?: "default" | "sm" | "lg" | "icon";
+  /**
+   * Optional async callback that runs BEFORE PDF generation. If it returns
+   * `false`, generation is aborted. Used to save the diet first so the PDF
+   * never leaves the office without a matching DB record.
+   */
+  beforeGenerate?: () => Promise<boolean | void> | boolean | void;
+  /** Override the button label (default: "PDF İndir"). */
+  label?: string;
+  /** Hide the rendered button — caller uses the ref to trigger instead. */
+  hidden?: boolean;
   onClick?: () => void;
 }
 
-const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
+const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(function DirectPDFButton({
   diet,
   pdfData,
   phoneNumber,
@@ -135,9 +156,12 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   onError,
   variant = "ghost",
   size = "sm",
+  beforeGenerate,
+  label,
+  hidden = false,
   onClick,
   ...props
-}) => {
+}, ref) {
   const [isLoading, setIsLoading] = useState(false);
   const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
   const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
@@ -216,8 +240,15 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
   };
 
   const generatePDF = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
+      if (beforeGenerate) {
+        const shouldContinue = await beforeGenerate();
+        if (shouldContinue === false) {
+          return;
+        }
+      }
       const pdfMake = await ensurePdfMake();
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
       const pdfDataToUse = preparePdfData(diet, pdfData);
@@ -1223,13 +1254,20 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
     };
   };
 
+  useImperativeHandle(ref, () => ({
+    generate: generatePDF,
+    isGenerating: () => isLoading,
+  }), [isLoading, generatePDF]);
+
+  if (hidden) return null;
+
   return (
     <Button
       variant={variant}
       size={size}
       className={`gap-2 ${className}`}
       onClick={generatePDF}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       {...props}
     >
       {isLoading ? (
@@ -1237,8 +1275,11 @@ const DirectPDFButton: React.FC<DirectPDFButtonProps> = ({
       ) : (
         <FileText className="h-4 w-4" />
       )}
-      PDF İndir
+      {label ?? "PDF İndir"}
     </Button>
   );
-};
+});
+
+DirectPDFButton.displayName = "DirectPDFButton";
+
 export default DirectPDFButton;

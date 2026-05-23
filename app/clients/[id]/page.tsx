@@ -98,6 +98,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { NotificationTestPanel } from "@/components/NotificationTestPanel";
 
 export default function ClientDetailPage() {
   const { toast } = useToast();
@@ -183,6 +184,28 @@ export default function ClientDetailPage() {
         `/exercises?${params.toString()}`
       );
       return data.logs || [];
+    },
+    enabled: !!clientId,
+  });
+
+  // Fetch the latest diet (with oguns) so the manual notification test
+  // panel can list this client's most recent meals as trigger targets.
+  interface LatestDietWithOguns {
+    id: number;
+    oguns?: Array<{ id: number; name: string; time: string | null }>;
+  }
+  const { data: latestDietForNotify } = useQuery<LatestDietWithOguns | null>({
+    queryKey: ["latestDietForNotify", clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      try {
+        return await apiClient.get<LatestDietWithOguns>(
+          `/diets/latest/${clientId}`
+        );
+      } catch (error: any) {
+        if (error?.status === 404) return null;
+        throw error;
+      }
     },
     enabled: !!clientId,
   });
@@ -684,6 +707,25 @@ export default function ClientDetailPage() {
             ) : (
               <p className="text-gray-500 italic">Henüz diyet bulunmuyor.</p>
             )}
+          </div>
+
+          {/*
+            Manual notification test panel — lets the dietitian, with the
+            client physically next to them, push a real "new diet"
+            notification or a specific meal-reminder to the client's device
+            so they can both confirm bildirimlerin ulaştığını verify in
+            real time. Driven off the latest diet for this client.
+          */}
+          <div className="mt-8">
+            <NotificationTestPanel
+              dietId={latestDietForNotify?.id ?? null}
+              variant="card"
+              oguns={(latestDietForNotify?.oguns ?? []).map((o) => ({
+                id: o.id,
+                name: o.name,
+                time: o.time ?? null,
+              }))}
+            />
           </div>
         </div>
       </div>

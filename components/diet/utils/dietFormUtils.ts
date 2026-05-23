@@ -13,6 +13,10 @@ export function convertDbDietToUiDiet(
   try {
     const mappedOguns =
       dbDiet.oguns?.map((dbOgun: any) => ({
+        // Carry the DB id forward so features that need to reference a
+        // specific meal (e.g. manual meal-reminder push) can find it.
+        id: dbOgun.id,
+        dietId: dbOgun.dietId,
         name: dbOgun.name || "",
         time: dbOgun.time || "",
         detail: stripEmojis(dbOgun.detail || ""),
