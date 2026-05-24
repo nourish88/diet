@@ -16,12 +16,6 @@ const SIZE_CLASSES: Record<LogoSize, string> = {
   lg: "h-16",
 };
 
-const AVATAR_CLASSES: Record<LogoSize, string> = {
-  sm: "h-9 w-9 text-sm",
-  md: "h-11 w-11 text-base",
-  lg: "h-16 w-16 text-2xl",
-};
-
 const TEXT_SIZE: Record<LogoSize, { title: string; subtitle: string }> = {
   sm: { title: "text-sm", subtitle: "text-xs" },
   md: { title: "text-base lg:text-lg", subtitle: "text-xs" },
@@ -36,7 +30,7 @@ export default function Logo({
 }: LogoProps) {
   const content = (
     <div className={cn("flex items-center gap-2.5", className)}>
-      {/* Light mode: gerçek logo */}
+      {/* Light mode: renkli logo */}
       <img
         src="/ezgi_evgin.png"
         alt="Ezgi Evgin Diyet Danışmanlık"
@@ -45,16 +39,15 @@ export default function Logo({
           "w-auto object-contain block dark:hidden"
         )}
       />
-      {/* Dark mode: brand gradient avatar (Stripe/Linear-style) */}
-      <div
+      {/* Dark mode: açık tonlu logo (koyu zemine uygun) */}
+      <img
+        src="/ezgi_evgin_dark.png"
+        alt="Ezgi Evgin Diyet Danışmanlık"
         className={cn(
-          AVATAR_CLASSES[size],
-          "hidden dark:flex items-center justify-center rounded-xl bg-brand-gradient font-bold text-white shadow-card shrink-0 tracking-tight"
+          SIZE_CLASSES[size],
+          "w-auto object-contain hidden dark:block"
         )}
-        aria-label="Ezgi Evgin Diyet Danışmanlık"
-      >
-        EE
-      </div>
+      />
       {showText && (
         <div className="hidden md:block leading-tight">
           <p
