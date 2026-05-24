@@ -5,9 +5,7 @@ import {
   Check,
   Copy,
   ExternalLink,
-  MessageCircle,
   QrCode,
-  Send,
   Share2,
   Star,
 } from "lucide-react";
@@ -27,10 +25,6 @@ export default function ClientReviewPage() {
   const shareMessage = useMemo(
     () => `${REVIEW_SHARE_TEXT}\n${GOOGLE_REVIEW_URL}`,
     []
-  );
-  const whatsappUrl = useMemo(
-    () => `https://wa.me/?text=${encodeURIComponent(shareMessage)}`,
-    [shareMessage]
   );
 
   useEffect(() => {
@@ -128,22 +122,15 @@ export default function ClientReviewPage() {
                 <Share2 className="w-4 h-4 mr-2" />
                 Paylaş
               </Button>
-              <Button variant="outline" asChild>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  WhatsApp
-                </a>
+              <Button variant="outline" onClick={handleCopy}>
+                {copied ? (
+                  <Check className="w-4 h-4 mr-2 text-success" />
+                ) : (
+                  <Copy className="w-4 h-4 mr-2" />
+                )}
+                {copied ? "Kopyalandı" : "Linki Kopyala"}
               </Button>
             </div>
-
-            <Button variant="ghost" className="w-full" onClick={handleCopy}>
-              {copied ? (
-                <Check className="w-4 h-4 mr-2 text-success" />
-              ) : (
-                <Copy className="w-4 h-4 mr-2" />
-              )}
-              {copied ? "Kopyalandı" : "Linki Kopyala"}
-            </Button>
           </CardContent>
         </Card>
 
@@ -172,25 +159,6 @@ export default function ClientReviewPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-brand-soft flex items-center justify-center shrink-0">
-              <Send className="w-4 h-4 text-brand" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1">
-                Arkadaşınıza da önerebilirsiniz
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Paylaş butonu, cihazınızın paylaşım ekranını açar. WhatsApp
-                butonu ise hazır mesajla gönderim yapmanızı sağlar.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

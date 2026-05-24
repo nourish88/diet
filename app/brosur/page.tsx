@@ -73,6 +73,10 @@ export default function BrosurPage() {
                       <li>Ana ekrandaki uygulama ikonundan açın</li>
                       <li>Telefon numaranızla giriş yapın</li>
                       <li>Bildirim sorulduğunda İzin Ver seçin</li>
+                      <li>
+                        Sonradan açmak için: Ayarlar &gt; Bildirimler &gt;
+                        Diyetisyen Ezgi &gt; Bildirimlere İzin Ver
+                      </li>
                     </ul>
                   </div>
                   <div>
@@ -86,6 +90,11 @@ export default function BrosurPage() {
                       <li>Ana ekrandaki uygulama ikonundan açın</li>
                       <li>Telefon numaranızla giriş yapın</li>
                       <li>Bildirim sorulduğunda İzin Ver seçin</li>
+                      <li>
+                        Sonradan açmak için: Ayarlar &gt; Bildirimler &gt;
+                        Uygulama bildirimleri &gt; Diyetisyen Ezgi &gt;
+                        Bildirimleri aç
+                      </li>
                     </ul>
                   </div>
                 </div>

@@ -138,10 +138,12 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
               "Alt menüden Paylaş simgesine dokunun",
               '"Ana Ekrana Ekle" seçeneğini seçip Ekle deyin',
               "Ana ekrandan açıp telefon numarasıyla giriş yapın",
+              "Bildirim sorulduğunda İzin Ver seçin",
+              "Sonradan açmak için: Ayarlar > Bildirimler > Diyetisyen Ezgi > Bildirimlere İzin Ver",
             ],
             fontSize: 7,
             color: "#4b5563",
-            margin: [10, 0, 0, 4],
+            margin: [10, 0, 0, 3],
           },
           // Android
           {
@@ -157,10 +159,12 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
               '"Uygulamayı Yükle / Ana ekrana ekle" seçeneğini kullanın',
               '"Ana ekrana ekle / Yükle" onayını verin',
               "Ana ekrandan açıp telefon numarasıyla giriş yapın",
+              "Bildirim sorulduğunda İzin Ver seçin",
+              "Sonradan açmak için: Ayarlar > Bildirimler > Uygulama bildirimleri > Diyetisyen Ezgi > Bildirimleri aç",
             ],
             fontSize: 7,
             color: "#4b5563",
-            margin: [10, 0, 0, 5],
+            margin: [10, 0, 0, 3],
           },
           // Uygulama Özellikleri
           {
@@ -178,7 +182,7 @@ export function BrosurPDF({ onGenerate }: BrosurPDFProps) {
             ],
             fontSize: 7,
             color: "#374151",
-            margin: [10, 0, 0, 5],
+            margin: [10, 0, 0, 3],
           },
           // Diyetisyen Onayı Bilgisi
           {
