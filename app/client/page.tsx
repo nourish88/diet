@@ -84,6 +84,13 @@ export default function ClientDashboard() {
   }, []);
 
   useEffect(() => {
+    const client = (databaseUser as any)?.client;
+    if (client?.name) {
+      setUserName(client.name as string);
+    }
+  }, [databaseUser]);
+
+  useEffect(() => {
     loadData();
 
     const interval = setInterval(() => {
