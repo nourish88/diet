@@ -1,8 +1,9 @@
 "use client";
 
 import { BrosurPDF } from "@/components/brosur/BrosurPDF";
+import { ReviewPosterPDF } from "@/components/reviews/ReviewPosterPDF";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QrCode, Smartphone, CheckCircle2, MessageCircle, Camera, BarChart3, Calendar } from "lucide-react";
+import { QrCode, Smartphone, CheckCircle2, MessageCircle, Camera, BarChart3, Calendar, Star } from "lucide-react";
 
 export default function BrosurPage() {
   return (
@@ -156,6 +157,38 @@ export default function BrosurPage() {
           </CardHeader>
           <CardContent className="flex justify-center">
             <BrosurPDF />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg mt-6 border-amber-200 bg-amber-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-600" />
+              Google Yorum Posteri
+            </CardTitle>
+            <CardDescription>
+              Ofise asmak için A4 boyutunda, QR kodlu yorum çağrısı.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+              <div className="rounded-lg border border-amber-200 bg-white p-5">
+                <p className="text-lg font-bold text-foreground mb-2">
+                  Deneyiminizi Google'da Paylaşın
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Danışanlar QR kodu okutup doğrudan Google yorum ekranına
+                  gidebilir.
+                </p>
+                <div className="flex items-center gap-2 text-sm text-amber-700">
+                  <QrCode className="w-4 h-4" />
+                  <span>QR kod otomatik olarak Google yorum linkine gider.</span>
+                </div>
+              </div>
+              <div className="md:min-w-56">
+                <ReviewPosterPDF />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

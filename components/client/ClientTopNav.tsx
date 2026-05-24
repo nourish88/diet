@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Home, Settings, TrendingUp, Activity } from "lucide-react";
+import { LogOut, Home, Settings, TrendingUp, Activity, Star } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { usePathname } from "next/navigation";
@@ -59,6 +59,11 @@ export default function ClientTopNav() {
               "/client/exercises",
               <Activity className="w-4 h-4" />,
               "Antrenman"
+            )}
+            {navLink(
+              "/client/review",
+              <Star className="w-4 h-4" />,
+              "Yorum"
             )}
             {navLink(
               "/client/settings",

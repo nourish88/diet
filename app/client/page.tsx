@@ -398,11 +398,8 @@ export default function ClientDashboard() {
           </div>
         </a>
 
-        <a
-          href={GOOGLE_REVIEW_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleReviewClick}
+        <Link
+          href="/client/review"
           className="bg-card rounded-xl border border-border hover:border-warning/40 hover:shadow-card p-4 transition-all group"
         >
           <div className="flex items-center justify-between">
@@ -412,16 +409,16 @@ export default function ClientDashboard() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  Google Yorumu
+                  Yorum & Paylaş
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Deneyiminizi paylaşın
+                  Google yorumu bırakın veya önerin
                 </p>
               </div>
             </div>
-            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-warning transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-warning transition-colors" />
           </div>
-        </a>
+        </Link>
       </div>
 
       {/* Logout */}

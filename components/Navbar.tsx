@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Cog,
   Gift,
+  QrCode,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ const Navbar = () => {
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
       { href: "/birthdays", label: "Doğum Günleri", icon: Gift },
+      { href: "/brosur", label: "Broşür & Yorum Posteri", icon: QrCode },
       { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
       {
         href: "/management/diet-logs",
