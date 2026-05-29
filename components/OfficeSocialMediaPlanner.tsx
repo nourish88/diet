@@ -317,8 +317,8 @@ export function OfficeSocialMediaPlanner() {
                   Diyetisyen PWA hatırlatıcısı
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Bildirimler bu diyetisyen hesabına bağlı PWA cihazlarına
-                  gider. Telefonunda PWA açık ve bildirim izni verilmiş olmalı.
+                  Bildirimler sadece giriş yapan diyetisyen hesabına bağlı PWA
+                  cihazlarına gider; danışan cihazlarına gönderilmez.
                 </p>
               </div>
             </div>
@@ -637,7 +637,7 @@ function NotificationStatusBadge({
 
   return (
     <Badge className="w-fit bg-emerald-600 hover:bg-emerald-600">
-      {status.subscriptionCount} cihaz hazır
+      {status.subscriptionCount} diyetisyen cihazı hazır
     </Badge>
   );
 }
