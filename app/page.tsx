@@ -16,6 +16,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OfficeSocialMediaPlanner } from "@/components/OfficeSocialMediaPlanner";
 import {
   Select,
   SelectContent,
@@ -462,6 +463,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <OfficeSocialMediaPlanner />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <div className="bg-card rounded-lg shadow-md border-2 border-purple-700 overflow-hidden">
