@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import {
+  deleteMealPhotoImage,
+  storeMealPhotoImage,
+} from "@/lib/meal-photo-storage";
 import { z } from "zod";
 
 // Force dynamic rendering
@@ -68,10 +72,15 @@ export const POST = requireAuth(async (request: NextRequest, auth) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 2);
 
+    const storedImageData = await storeMealPhotoImage(validatedData.imageData, {
+      clientId: validatedData.clientId,
+      dietId: validatedData.dietId,
+    });
+
     // Create meal photo
     const mealPhoto = await prisma.mealPhoto.create({
       data: {
-        imageData: validatedData.imageData,
+        imageData: storedImageData,
         dietId: validatedData.dietId,
         ogunId: validatedData.ogunId,
         clientId: validatedData.clientId,
@@ -260,6 +269,10 @@ export const DELETE = requireAuth(async (request: NextRequest, auth) => {
         )
       );
     }
+
+    await deleteMealPhotoImage(photo.imageData).catch((error) => {
+      console.error("Error deleting meal photo blob:", error);
+    });
 
     // Delete photo
     await prisma.mealPhoto.delete({

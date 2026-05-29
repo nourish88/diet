@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { sendExpoPushNotification } from "@/lib/expo-push";
+import { storeMealPhotoImage } from "@/lib/meal-photo-storage";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 
 const ACTIVE_THRESHOLD_MS = 30 * 1000;
@@ -373,6 +374,18 @@ export async function POST(
       `💬 Creating message from ${auth.user.role} (${auth.user.email})`
     );
 
+    const storedPhotos =
+      photos && photos.length > 0 && auth.user.role === "client"
+        ? await Promise.all(
+            photos.map(async (photo: any) => ({
+              imageData: await storeMealPhotoImage(photo.imageData, {
+                clientId,
+                dietId,
+              }),
+            }))
+          )
+        : [];
+
     // Create message with photos in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create the comment/message
@@ -401,8 +414,8 @@ export async function POST(
       });
 
       // If photos provided, create them
-      if (photos && photos.length > 0 && auth.user!.role === "client") {
-        const photoData = photos.map((photo: any) => ({
+      if (storedPhotos.length > 0 && auth.user!.role === "client") {
+        const photoData = storedPhotos.map((photo) => ({
           imageData: photo.imageData,
           dietId,
           ogunId: ogunId || null,

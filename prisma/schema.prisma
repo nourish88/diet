@@ -383,7 +383,7 @@ model DietComment {
 
 model MealPhoto {
   id         Int          @id @default(autoincrement())
-  imageData  String // Base64 encoded image data
+  imageData  String // Blob URL for new uploads; legacy rows may contain data URLs
   dietId     Int
   diet       Diet         @relation(fields: [dietId], references: [id])
   ogunId     Int? // Optional: Which meal (for context)
@@ -640,4 +640,3 @@ model NotificationLog {
   @@index([clientId])
   @@index([sentAt])
 }
-

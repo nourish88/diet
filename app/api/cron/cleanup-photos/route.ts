@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders } from "@/lib/cors";
+import { deleteMealPhotoImage } from "@/lib/meal-photo-storage";
 
 /**
  * Cleanup expired photos (older than 12 hours)
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
         id: true,
         dietId: true,
         clientId: true,
+        imageData: true,
         expiresAt: true,
       },
     });
@@ -57,6 +59,19 @@ export async function GET(request: NextRequest) {
           message: "No expired photos found",
           deleted: 0,
         })
+      );
+    }
+
+    const blobDeleteResults = await Promise.allSettled(
+      expiredPhotos.map((photo) => deleteMealPhotoImage(photo.imageData))
+    );
+    const blobDeleteFailed = blobDeleteResults.filter(
+      (result) => result.status === "rejected"
+    ).length;
+
+    if (blobDeleteFailed > 0) {
+      console.warn(
+        `⚠️ Failed to delete ${blobDeleteFailed} expired photo blob(s)`
       );
     }
 
@@ -76,6 +91,7 @@ export async function GET(request: NextRequest) {
         success: true,
         message: `Deleted ${deleteResult.count} expired photos`,
         deleted: deleteResult.count,
+        blobDeleteFailed,
         expiredPhotos: expiredPhotos.map((p) => ({
           id: p.id,
           dietId: p.dietId,
@@ -99,4 +115,3 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return GET(request);
 }
-
