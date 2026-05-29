@@ -12,7 +12,6 @@ import { apiClient } from "@/lib/api-client";
 
 interface DietFormActionsProps {
   onAddOgun: () => void;
-  onGeneratePDF: (formattedDietData: any) => void;
   dietData: any;
   diet: Diet;
   clientId?: number;
@@ -33,7 +32,6 @@ interface DietFormActionsProps {
 
 const DietFormActions = ({
   onAddOgun,
-  onGeneratePDF,
   dietData,
   diet,
   clientId,

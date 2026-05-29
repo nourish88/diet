@@ -7,8 +7,6 @@ import DietHeader from "./DietHeader";
 import { NotificationTestPanel } from "./NotificationTestPanel";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { formSchema } from "../schemas/formSchema";
 import { Diet, Ogun, Birim, Besin } from "../types/types";
 import { OGUN, initialDiet } from "../models/dietModels";
@@ -570,51 +568,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       return () => clearTimeout(timeout);
     }
   }, [recentlyMovedOgunIndex]);
-  const generatePDF = async () => {
-    const element = document.getElementById("content");
-    console.log("Generating PDF with diet data:", diet);
-
-    if (!element) {
-      console.error("Element with id 'content' not found.");
-      return;
-    }
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const imgData = canvas.toDataURL("image/png");
-    const imgWidth = 210; // A4 width in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    // Adjust the image height to fit within A4 page height if necessary
-    const pageHeight = 297; // A4 height in mm
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    if (heightLeft <= pageHeight) {
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-    } else {
-      while (heightLeft > 0) {
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        position -= pageHeight;
-        if (heightLeft > 0) {
-          pdf.addPage();
-        }
-      }
-    }
-
-    pdf.save("diet-plan.pdf");
-
-    // Log PDF generated
-    if (dietLogging.isReady) {
-      dietLogging.logPdfGenerated();
-    }
-  };
 
   const handleSaveToDB = async (
     options: { skipRedirect?: boolean } = {}
@@ -1122,7 +1075,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 <DietFormActions
                   onAddOgun={handleAddOgun}
                   importantDateId={diet.importantDateId}
-                  onGeneratePDF={generatePDF}
                   dietData={prepareDietDataForPDF(
                     diet,
                     getClientFullName(selectedClientId),

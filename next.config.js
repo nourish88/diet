@@ -1,6 +1,3 @@
-const path = require("path");
-const fontkitIncludes = ["./node_modules/@foliojs-fork/fontkit/*.trie"];
-
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for pdfmake and some Supabase operations
@@ -50,7 +47,6 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   turbopack: {},
-  transpilePackages: ["@foliojs-fork/fontkit", "@foliojs-fork/pdfkit"],
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = [
@@ -62,36 +58,17 @@ const nextConfig = {
         "@neondatabase/serverless",
         "ws",
         "pdfmake",
-        // Keep fontkit/pdfkit bundled so assets are available
-        // "@foliojs-fork/fontkit",
-        // "@foliojs-fork/pdfkit",
       ];
-
-      // better-sqlite3 is a native module, needs to be bundled for Vercel
-      // Don't externalize it - let it be bundled
-
-      // Fix for pdfkit in Next.js
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        canvas: false,
-      };
     }
 
     // Add fallback for 'crypto'
     config.resolve.fallback = {
       ...config.resolve.fallback,
       crypto: false,
-      // Don't fallback fs and path for better-sqlite3
-      // fs: false,
-      // path: false,
     };
-
-    // Ignore pdfkit warnings
-    config.ignoreWarnings = [{ module: /node_modules\/pdfkit/ }];
 
     return config;
   },
-  // Specify valid file extensions for Next.js pages
   pageExtensions: ["tsx", "ts", "jsx", "js"],
   async headers() {
     return [
@@ -100,11 +77,6 @@ const nextConfig = {
         headers: securityHeaders,
       },
     ];
-  },
-  outputFileTracingIncludes: {
-    "/api/diets/download/[id]": fontkitIncludes,
-    "/api/diets/download-pdfmake/[id]": fontkitIncludes,
-    "/api/diets/test-pdf/[id]": fontkitIncludes,
   },
 };
 
