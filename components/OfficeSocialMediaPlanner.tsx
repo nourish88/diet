@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  Lightbulb,
   Loader2,
   Megaphone,
   Smartphone,
@@ -17,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import {
+  OfficeContentIdeaBucket,
   OfficeSocialMediaTask,
+  officeContentIdeaBuckets,
   officeSocialMediaTasks,
 } from "@/lib/office-social-media-plan";
 import { apiClient } from "@/lib/api-client";
@@ -41,6 +44,7 @@ type ReminderResponse = {
 };
 
 const STORAGE_KEY = "office-social-media-completed-v1";
+const PANEL_STORAGE_KEY = "office-social-media-panel-open-v1";
 
 const groupLabels: Record<OfficeSocialMediaTask["group"], string> = {
   setup: "Kurulum",
@@ -52,6 +56,8 @@ export function OfficeSocialMediaPlanner() {
   const { databaseUser } = useAuth();
   const { toast } = useToast();
   const [openTaskId, setOpenTaskId] = useState("instagram-profile");
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [openIdeaId, setOpenIdeaId] = useState("next-monday-education");
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const [permission, setPermission] =
     useState<NotificationPermission | "unsupported">("unsupported");
@@ -75,6 +81,11 @@ export function OfficeSocialMediaPlanner() {
       } catch {
         window.localStorage.removeItem(STORAGE_KEY);
       }
+    }
+
+    const panelOpen = window.localStorage.getItem(PANEL_STORAGE_KEY);
+    if (panelOpen === "false") {
+      setIsPanelOpen(false);
     }
 
     setPermission(getNotificationPermission());
@@ -131,6 +142,16 @@ export function OfficeSocialMediaPlanner() {
   const progressPercent = Math.round(
     (completedCount / officeSocialMediaTasks.length) * 100
   );
+
+  const togglePanel = () => {
+    setIsPanelOpen((current) => {
+      const next = !current;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(PANEL_STORAGE_KEY, String(next));
+      }
+      return next;
+    });
+  };
 
   const toggleCompleted = (taskId: string) => {
     setCompletedTaskIds((current) => {
@@ -240,12 +261,23 @@ export function OfficeSocialMediaPlanner() {
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 p-5 sm:p-6 text-white">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={togglePanel}
+                className="flex items-center gap-2 mb-2 text-left"
+                aria-expanded={isPanelOpen}
+              >
                 <ClipboardCheck className="h-6 w-6 shrink-0" />
                 <h2 className="text-2xl font-semibold">
                   Ofis İçin Yapman Gerekenler
                 </h2>
-              </div>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform shrink-0",
+                    isPanelOpen && "rotate-180"
+                  )}
+                />
+              </button>
               <p className="text-sm sm:text-base text-white/90 max-w-3xl">
                 Sosyal medya stratejisini günlük ofis akışına çeviren takip
                 paneli. Maddeleri aç, uygula, tamamla ve gerekiyorsa PWA
@@ -268,10 +300,14 @@ export function OfficeSocialMediaPlanner() {
                 {completedCount}/{officeSocialMediaTasks.length} görev
                 tamamlandı
               </p>
+              <p className="mt-1 text-xs text-white/80">
+                {isPanelOpen ? "Panel açık" : "Panel kapalı"}
+              </p>
             </div>
           </div>
         </div>
 
+        {isPanelOpen && (
         <div className="p-4 sm:p-6">
           <div className="mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
             <div className="flex items-start gap-2">
@@ -341,12 +377,103 @@ export function OfficeSocialMediaPlanner() {
             ))}
           </div>
 
+          <div className="mt-6 rounded-md border border-sky-200 bg-sky-50/50 p-3 sm:p-4">
+            <div className="flex items-start gap-2 mb-3">
+              <Lightbulb className="h-5 w-5 text-sky-700 mt-0.5 shrink-0" />
+              <div>
+                <h3 className="font-semibold text-foreground">
+                  İçerik Fikir Havuzu
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Sonraki haftaları üretmek için gün, format ve rutin bazlı
+                  fikirler.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {officeContentIdeaBuckets.map((bucket) => (
+                <IdeaBucketRow
+                  key={bucket.id}
+                  bucket={bucket}
+                  isOpen={openIdeaId === bucket.id}
+                  onToggleOpen={() =>
+                    setOpenIdeaId((current) =>
+                      current === bucket.id ? "" : bucket.id
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </div>
+
           <p className="mt-5 text-xs text-muted-foreground">
             Kaynak akış: docs/SOSYAL-MEDYA-STRATEJISI.md
           </p>
         </div>
+        )}
       </div>
     </section>
+  );
+}
+
+function IdeaBucketRow({
+  bucket,
+  isOpen,
+  onToggleOpen,
+}: {
+  bucket: OfficeContentIdeaBucket;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background">
+      <button
+        type="button"
+        onClick={onToggleOpen}
+        className="w-full text-left p-3 flex items-center gap-3"
+      >
+        <span className="h-9 w-9 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+          <Lightbulb className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2 mb-1">
+            <Badge variant="outline" className="text-[11px]">
+              {bucket.format}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {bucket.bestTime}
+            </span>
+          </span>
+          <span className="block font-semibold text-foreground">
+            {bucket.title}
+          </span>
+          <span className="block text-xs text-muted-foreground mt-0.5">
+            {bucket.subtitle}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-5 w-5 text-muted-foreground transition-transform shrink-0",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="px-3 pb-3 sm:pl-[60px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {bucket.ideas.map((idea) => (
+              <div
+                key={idea}
+                className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
+              >
+                {idea}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
