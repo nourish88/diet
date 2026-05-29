@@ -1,14 +1,9 @@
-import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getCachedBirims } from "@/lib/cache";
 
 export async function GET() {
   try {
-    const birims = await prisma.birim.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    });
-    
+    const birims = await getCachedBirims();
     return NextResponse.json(birims);
   } catch (error) {
     console.error("Error fetching birims:", error);

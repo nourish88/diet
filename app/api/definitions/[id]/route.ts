@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { invalidate } from "@/lib/cache";
 
 export async function PUT(
   request: NextRequest,
@@ -31,6 +32,7 @@ export async function PUT(
       data: updateData,
     });
 
+    invalidate.definitions();
     return NextResponse.json(definition);
   } catch (error: any) {
     console.error("Error updating definition:", error);
@@ -59,6 +61,7 @@ export async function DELETE(
       where: { id },
     });
 
+    invalidate.definitions();
     return NextResponse.json({ message: "Tanımlama silindi" });
   } catch (error: any) {
     console.error("Error deleting definition:", error);

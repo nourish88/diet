@@ -7,6 +7,7 @@ import {
   authenticateRequest,
 } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { invalidate } from "@/lib/cache";
 
 export const maxDuration = 60;
 
@@ -271,6 +272,9 @@ export async function PUT(
       ]);
       const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
       const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
+
+      invalidate.besinler();
+      invalidate.birims();
 
       const ogunsCreate = ogunsInput.map((ogun: any) => ({
         name: ogun.name || "",

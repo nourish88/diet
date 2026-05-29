@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCachedBesinler, invalidate } from "@/lib/cache";
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 200;
@@ -20,53 +21,8 @@ export async function GET(request: NextRequest) {
       ? DEFAULT_PAGE_SIZE
       : Math.min(Math.max(pageSizeParam, 1), MAX_PAGE_SIZE);
 
-    const skip = (page - 1) * pageSize;
-
-    const whereClause = searchQuery
-      ? {
-          name: {
-            contains: searchQuery,
-            mode: "insensitive" as const,
-          },
-        }
-      : {};
-
-    const [items, total] = await prisma.$transaction([
-      prisma.besin.findMany({
-        where: whereClause,
-        include: {
-          besinGroup: true,
-        },
-        orderBy: [
-          {
-            priority: "asc",
-          },
-          {
-            name: "asc",
-          },
-          {
-            id: "asc",
-          },
-        ],
-        skip,
-        take: pageSize,
-      }),
-      prisma.besin.count({
-        where: whereClause,
-      }),
-    ]);
-
-    const hasMore = skip + items.length < total;
-    const nextPage = hasMore ? page + 1 : null;
-
-    return NextResponse.json({
-      items,
-      page,
-      pageSize,
-      total,
-      hasMore,
-      nextPage,
-    });
+    const result = await getCachedBesinler(searchQuery, page, pageSize);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Database error:", error);
     return NextResponse.json(
@@ -81,7 +37,6 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
-    // Validate request body
     if (!data.name || typeof data.name !== "string") {
       return NextResponse.json(
         { error: "Geçerli bir besin adı gerekmektedir" },
@@ -89,7 +44,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if besin already exists
     const existingBesin = await prisma.besin.findUnique({
       where: { name: data.name.trim() },
     });
@@ -101,7 +55,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if group exists if groupId is provided
     if (data.groupId) {
       const group = await prisma.besinGroup.findUnique({
         where: { id: data.groupId },
@@ -115,7 +68,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create besin
     const newBesin = await prisma.besin.create({
       data: {
         name: data.name.trim(),
@@ -127,11 +79,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    invalidate.besinler();
     return NextResponse.json(newBesin, { status: 201 });
   } catch (error: any) {
     console.error("Error creating besin:", error);
 
-    // Handle unique constraint violation
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Bu besin adı zaten kullanılıyor" },

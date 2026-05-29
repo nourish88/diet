@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult, requireOwnClient } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
+import { invalidate } from "@/lib/cache";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -147,6 +148,11 @@ export const POST = requireDietitian(
       ]);
       const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
       const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
+
+      // Upserts above may have inserted new besin/birim rows; invalidate
+      // dictionary caches so autocomplete sees them on the next read.
+      invalidate.besinler();
+      invalidate.birims();
 
       const ogunsCreate = ogunsInput.map((ogun: any) => ({
         name: ogun.name || "",

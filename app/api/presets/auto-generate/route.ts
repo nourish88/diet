@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { invalidate } from "@/lib/cache";
 
 interface MealItem {
   besinName: string;
@@ -147,13 +148,17 @@ export const POST = requireDietitian(
       }
     }
 
-      return addCorsHeaders(
-        NextResponse.json({
-          message: `${createdPresets.length} yeni preset oluşturuldu`,
-          presets: createdPresets,
-          patternsDetected: detectedPatterns.length,
-        })
-      );
+    if (createdPresets.length > 0) {
+      invalidate.presets(auth.user!.id);
+    }
+
+    return addCorsHeaders(
+      NextResponse.json({
+        message: `${createdPresets.length} yeni preset oluşturuldu`,
+        presets: createdPresets,
+        patternsDetected: detectedPatterns.length,
+      })
+    );
     } catch (error) {
       console.error("Error auto-generating presets:", error);
       return addCorsHeaders(

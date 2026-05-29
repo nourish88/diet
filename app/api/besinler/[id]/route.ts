@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { invalidate } from "@/lib/cache";
 
 // GET /api/besinler/[id] - Get a specific besin
 export async function GET(
@@ -97,6 +98,7 @@ export async function PUT(
       },
     });
 
+    invalidate.besinler();
     return NextResponse.json(updatedBesin);
   } catch (error) {
     console.error("Error updating besin:", error);
@@ -167,6 +169,7 @@ export async function DELETE(
       throw error;
     }
 
+    invalidate.besinler();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting besin:", error);

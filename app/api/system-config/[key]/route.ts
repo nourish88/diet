@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateRequest, requireDietitian, AuthResult } from "@/lib/api-auth";
+import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
-
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+import { getCachedSystemConfig, invalidate } from "@/lib/cache";
 
 /**
  * GET /api/system-config/[key]
@@ -28,9 +26,7 @@ export async function GET(
 
     const { key } = await params;
 
-    const config = await prisma.systemConfig.findUnique({
-      where: { key },
-    });
+    const config = await getCachedSystemConfig(key);
 
     if (!config) {
       // Return default value if not found
@@ -102,6 +98,7 @@ export async function PUT(
       },
     });
 
+    invalidate.systemConfig(key);
     return addCorsHeaders(NextResponse.json(config));
   } catch (error: any) {
     console.error("Error updating system config:", error);

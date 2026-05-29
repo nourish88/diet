@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
-
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+import { getCachedPresets, invalidate } from "@/lib/cache";
 
 export const GET = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
@@ -12,48 +10,7 @@ export const GET = requireDietitian(
       const searchParams = request.nextUrl.searchParams;
       const mealType = searchParams.get("mealType");
 
-      console.log(
-        "📥 Preset request",
-        JSON.stringify({
-          mealType,
-          dietitianId: auth.user?.id,
-          url: request.nextUrl.pathname,
-        })
-      );
-
-      const whereClause: any = {
-        isActive: true,
-        dietitianId: auth.user!.id, // SECURITY: Only show own presets
-      };
-
-      if (mealType) {
-        whereClause.mealType = mealType;
-      }
-
-      const presets = await prisma.mealPreset.findMany({
-        where: whereClause,
-        include: {
-          items: {
-            orderBy: {
-              order: "asc",
-            },
-          },
-        },
-        orderBy: [
-          { patternScore: "desc" }, // Auto-generated with high score first
-          { usageCount: "desc" }, // Then by usage
-          { createdAt: "desc" },
-        ],
-      });
-
-      console.log(
-        "✅ Preset response",
-        JSON.stringify({
-          count: presets.length,
-          mealType,
-        })
-      );
-
+      const presets = await getCachedPresets(auth.user!.id, mealType);
       return addCorsHeaders(NextResponse.json(presets));
     } catch (error) {
       console.error("Error fetching presets:", error);
@@ -104,6 +61,7 @@ export const POST = requireDietitian(
         },
       });
 
+      invalidate.presets(auth.user!.id);
       return addCorsHeaders(NextResponse.json(preset, { status: 201 }));
     } catch (error) {
       console.error("Error creating preset:", error);

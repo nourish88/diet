@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { invalidate } from "@/lib/cache";
 
 export const GET = requireDietitian(
   async (
@@ -107,6 +108,7 @@ export const PUT = requireDietitian(
         },
       });
 
+      invalidate.importantDates(auth.user!.id);
       return addCorsHeaders(NextResponse.json(updatedDate));
     } catch (error) {
       console.error("Error updating important date:", error);
@@ -160,6 +162,7 @@ export const DELETE = requireDietitian(
         where: { id },
       });
 
+      invalidate.importantDates(auth.user!.id);
       return addCorsHeaders(NextResponse.json(deletedDate));
     } catch (error) {
       console.error("Error deleting important date:", error);

@@ -1,29 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+import { getCachedDefinitions, invalidate } from "@/lib/cache";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type");
 
-    const whereClause: any = {
-      isActive: true,
-    };
-
-    if (type) {
-      whereClause.type = type;
-    }
-
-    const definitions = await prisma.definition.findMany({
-      where: whereClause,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
+    const definitions = await getCachedDefinitions(type);
     return NextResponse.json({ definitions });
   } catch (error) {
     console.error("Database error:", error);
@@ -46,7 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate type
     if (
       type !== "su_tuketimi" &&
       type !== "fiziksel_aktivite" &&
@@ -66,6 +49,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    invalidate.definitions();
     return NextResponse.json(definition, { status: 201 });
   } catch (error) {
     console.error("Error creating definition:", error);

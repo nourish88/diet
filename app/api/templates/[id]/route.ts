@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { invalidate } from "@/lib/cache";
 
 export const GET = requireDietitian(
   async (
@@ -115,6 +116,7 @@ export const PUT = requireDietitian(
         },
       });
 
+      invalidate.templates(auth.user!.id);
       return addCorsHeaders(NextResponse.json(template));
     } catch (error: any) {
       console.error("Error updating template:", error);
@@ -167,6 +169,7 @@ export const DELETE = requireDietitian(
         where: { id },
       });
 
+      invalidate.templates(auth.user!.id);
       return addCorsHeaders(NextResponse.json({ message: "Şablon silindi" }));
     } catch (error: any) {
       console.error("Error deleting template:", error);

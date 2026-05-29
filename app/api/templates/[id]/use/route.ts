@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/prisma";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
+import { invalidate } from "@/lib/cache";
 
 export async function POST(
   request: NextRequest,
@@ -77,6 +78,9 @@ export async function POST(
     ]);
     const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
     const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
+
+    invalidate.besinler();
+    invalidate.birims();
 
     // Create new diet from template
     const diet = await prisma.diet.create({

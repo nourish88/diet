@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { invalidate } from "@/lib/cache";
 
 // GET /api/besin-gruplari/[id] - Get a specific besin group
 export async function GET(
@@ -81,6 +82,8 @@ export async function PUT(
       },
     });
 
+    invalidate.besinGroups();
+    invalidate.besinler(); // besinGroup relation appears in besin payloads
     return NextResponse.json(updatedGroup);
   } catch (error) {
     console.error("Error updating besin group:", error);
@@ -132,6 +135,8 @@ export async function DELETE(
       where: { id: besinGroupId },
     });
 
+    invalidate.besinGroups();
+    invalidate.besinler(); // any besin previously in this group now has groupId=null
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting besin group:", error);

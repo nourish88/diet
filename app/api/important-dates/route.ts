@@ -2,19 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { getCachedImportantDates, invalidate } from "@/lib/cache";
 
 export const GET = requireDietitian(
   async (request: NextRequest, auth: AuthResult) => {
     try {
-      const importantDates = await prisma.importantDate.findMany({
-        where: {
-          dietitianId: auth.user!.id, // SECURITY: Only show own important dates
-        },
-        orderBy: {
-          startDate: "asc",
-        },
-      });
-
+      const importantDates = await getCachedImportantDates(auth.user!.id);
       return addCorsHeaders(NextResponse.json(importantDates));
     } catch (error) {
       console.error("Error fetching important dates:", error);
@@ -57,6 +50,7 @@ export const POST = requireDietitian(
         },
       });
 
+      invalidate.importantDates(auth.user!.id);
       return addCorsHeaders(NextResponse.json(importantDate, { status: 201 }));
     } catch (error) {
       console.error("Error creating important date:", error);

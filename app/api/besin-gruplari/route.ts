@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCachedBesinGroups, invalidate } from "@/lib/cache";
 
 // GET /api/besin-gruplari - Get all besin groups
 export async function GET() {
   try {
-    const besinGroups = await prisma.besinGroup.findMany({
-      include: {
-        _count: {
-          select: {
-            besins: true,
-          },
-        },
-      },
-      orderBy: {
-        description: "asc",
-      },
-    });
-
+    const besinGroups = await getCachedBesinGroups();
     return NextResponse.json(besinGroups);
   } catch (error) {
     console.error("Error fetching besin groups:", error);
@@ -32,7 +21,6 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
-    // Validate request body
     if (!data.description || typeof data.description !== "string") {
       return NextResponse.json(
         { error: "Geçerli bir açıklama gerekmektedir" },
@@ -40,14 +28,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create besin group
     const besinGroup = await prisma.besinGroup.create({
       data: {
-        name: data.name, // Ensure 'name' is provided in the request body
+        name: data.name,
         description: data.description,
       },
     });
 
+    invalidate.besinGroups();
     return NextResponse.json(besinGroup, { status: 201 });
   } catch (error) {
     console.error("Error creating besin group:", error);

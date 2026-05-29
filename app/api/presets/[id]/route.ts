@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { invalidate } from "@/lib/cache";
 
 export async function GET(
   request: NextRequest,
@@ -57,6 +58,7 @@ export async function PUT(
       },
     });
 
+    invalidate.presets(preset.dietitianId ?? undefined);
     return NextResponse.json(preset);
   } catch (error: any) {
     console.error("Error updating preset:", error);
@@ -78,10 +80,16 @@ export async function DELETE(
     const { id: idParam } = await params;
     const id = parseInt(idParam);
 
+    const existing = await prisma.mealPreset.findUnique({
+      where: { id },
+      select: { dietitianId: true },
+    });
+
     await prisma.mealPreset.delete({
       where: { id },
     });
 
+    invalidate.presets(existing?.dietitianId ?? undefined);
     return NextResponse.json({ message: "Preset silindi" });
   } catch (error: any) {
     console.error("Error deleting preset:", error);
