@@ -794,17 +794,17 @@ export default function ClientDetailPage() {
               <TrendingUp className="h-5 w-5 text-brand" />
               <CardTitle>Gelişim Takibi</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                variant="outline"
                 onClick={() => {
                   setMeasurementForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "" });
                   setShowMeasurementDialog(true);
                 }}
+                className="bg-brand hover:bg-brand/90 text-white shadow-sm"
               >
                 <PlusCircle className="h-4 w-4 mr-1.5" />
-                Ölçüm Ekle
+                Ölçüm Ekle (Kilo / Yağ)
               </Button>
               <DateRangePicker
                 dateFrom={progressDateFrom}
@@ -861,8 +861,18 @@ export default function ClientDetailPage() {
               )}
             </>
           ) : (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
               <p className="text-muted-foreground">Henüz gelişim verisi bulunmuyor</p>
+              <Button
+                onClick={() => {
+                  setMeasurementForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "" });
+                  setShowMeasurementDialog(true);
+                }}
+                className="bg-brand hover:bg-brand/90 text-white"
+              >
+                <PlusCircle className="h-4 w-4 mr-1.5" />
+                İlk Ölçümü Ekle
+              </Button>
             </div>
           )}
         </CardContent>
