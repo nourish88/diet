@@ -8,9 +8,21 @@ export async function GET(request: NextRequest) {
   try {
     // Use nextUrl.searchParams instead of request.url for better compatibility
     const query = request.nextUrl.searchParams.get("q") || "";
+    const clientIdParam = request.nextUrl.searchParams.get("clientId");
+    const clientId = clientIdParam ? parseInt(clientIdParam, 10) : null;
 
     if (!query || query.length < 2) {
       return NextResponse.json({ suggestions: [] });
+    }
+
+    // Collect banned besin IDs for this client (if provided)
+    let bannedBesinIds: number[] = [];
+    if (clientId && !isNaN(clientId)) {
+      const banned = await prisma.bannedFood.findMany({
+        where: { clientId },
+        select: { besinId: true },
+      });
+      bannedBesinIds = banned.map((b) => b.besinId);
     }
 
     // Search besins with usage stats
@@ -20,6 +32,7 @@ export async function GET(request: NextRequest) {
           contains: query,
           mode: "insensitive",
         },
+        ...(bannedBesinIds.length > 0 && { id: { notIn: bannedBesinIds } }),
       },
       include: {
         usageStats: true,

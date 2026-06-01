@@ -117,6 +117,11 @@ export default function ClientDetailPage() {
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
 
+  // Measurement entry dialog state
+  const [showMeasurementDialog, setShowMeasurementDialog] = useState(false);
+  const [measurementForm, setMeasurementForm] = useState({ date: "", weight: "", bodyFat: "" });
+  const [isSavingMeasurement, setIsSavingMeasurement] = useState(false);
+
   const queryClient = useQueryClient();
 
   // Use React Query hook for data fetching with automatic caching
@@ -332,6 +337,26 @@ export default function ClientDetailPage() {
       setIsUnlinking(false);
     }
   }, [clientId, toast, queryClient, router]);
+
+  const handleSaveMeasurement = useCallback(async () => {
+    if (!clientId || (!measurementForm.weight && !measurementForm.bodyFat)) return;
+    setIsSavingMeasurement(true);
+    try {
+      await apiClient.post(`/clients/${clientId}/progress`, {
+        date: measurementForm.date || new Date().toISOString(),
+        weight: measurementForm.weight ? parseFloat(measurementForm.weight) : undefined,
+        bodyFat: measurementForm.bodyFat ? parseFloat(measurementForm.bodyFat) : undefined,
+      });
+      toast({ title: "Ölçüm kaydedildi" });
+      setShowMeasurementDialog(false);
+      setMeasurementForm({ date: "", weight: "", bodyFat: "" });
+      queryClient.invalidateQueries({ queryKey: ["progress", clientId] });
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message || "Kayıt başarısız", variant: "destructive" });
+    } finally {
+      setIsSavingMeasurement(false);
+    }
+  }, [clientId, measurementForm, toast, queryClient]);
 
   // Update the formatDate function to properly handle the date format
   const formatDate = (dateString: string | null | undefined) => {
@@ -769,11 +794,24 @@ export default function ClientDetailPage() {
               <TrendingUp className="h-5 w-5 text-brand" />
               <CardTitle>Gelişim Takibi</CardTitle>
             </div>
-            <DateRangePicker
-              dateFrom={progressDateFrom}
-              dateTo={progressDateTo}
-              onDateChange={handleProgressDateChange}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setMeasurementForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "" });
+                  setShowMeasurementDialog(true);
+                }}
+              >
+                <PlusCircle className="h-4 w-4 mr-1.5" />
+                Ölçüm Ekle
+              </Button>
+              <DateRangePicker
+                dateFrom={progressDateFrom}
+                dateTo={progressDateTo}
+                onDateChange={handleProgressDateChange}
+              />
+            </div>
           </div>
           <CardDescription>
             Danışanın kilo, ölçü ve vücut yağ oranı takibi
@@ -789,6 +827,27 @@ export default function ClientDetailPage() {
               {progressSummary && (
                 <div className="mb-6">
                   <ProgressSummary summary={progressSummary} />
+                  {progressSummary.weightChange !== null && progressSummary.weightChange < 0 && (
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                        onClick={() => {
+                          const lostKg = Math.abs(progressSummary.weightChange!).toFixed(1);
+                          const fatKg = progressSummary.bodyFatChange !== null && progressSummary.bodyFatChange < 0
+                            ? Math.abs(progressSummary.bodyFatChange).toFixed(1)
+                            : null;
+                          const period = progressSummary.totalDays > 0 ? `${progressSummary.totalDays} günde` : "";
+                          const name = client?.name ? `${client.name} ${client.surname ?? ""}`.trim() : "Danışanım";
+                          const url = `/api/og/weight-badge?kg=${lostKg}${fatKg ? `&fatKg=${fatKg}` : ""}&period=${encodeURIComponent(period)}&name=${encodeURIComponent(name)}`;
+                          window.open(url, "_blank");
+                        }}
+                      >
+                        🏆 Rozet Oluştur
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
               {progressChartData && (
@@ -903,6 +962,63 @@ export default function ClientDetailPage() {
                   İlişkiyi Kaldır
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ölçüm Ekle Dialog */}
+      <Dialog open={showMeasurementDialog} onOpenChange={setShowMeasurementDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Yeni Ölçüm Ekle</DialogTitle>
+            <DialogDescription>Danışan için kilo ve/veya yağ oranı giriniz.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">Tarih</label>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={measurementForm.date}
+                onChange={(e) => setMeasurementForm((p) => ({ ...p, date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Kilo (kg)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                placeholder="ör. 72.5"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={measurementForm.weight}
+                onChange={(e) => setMeasurementForm((p) => ({ ...p, weight: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Yağ Oranı (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                placeholder="ör. 24.3"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={measurementForm.bodyFat}
+                onChange={(e) => setMeasurementForm((p) => ({ ...p, bodyFat: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMeasurementDialog(false)}>
+              İptal
+            </Button>
+            <Button
+              onClick={handleSaveMeasurement}
+              disabled={isSavingMeasurement || (!measurementForm.weight && !measurementForm.bodyFat)}
+            >
+              {isSavingMeasurement ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kaydet"}
             </Button>
           </DialogFooter>
         </DialogContent>

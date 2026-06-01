@@ -45,6 +45,7 @@ interface DietTableProps {
   ) => void;
   disabled?: boolean;
   bannedFoods?: Array<{ besin: { id: number; name: string } }>;
+  clientId?: number;
   onAddOgun: () => void;
   onItemRemoved?: (ogunIndex: number, itemIndex: number) => void;
   highlightedIndex?: number | null;
@@ -63,6 +64,7 @@ const DietTable = ({
   handleMenuItemChange,
   disabled = false,
   bannedFoods = [],
+  clientId,
   onAddOgun,
   onItemRemoved,
   highlightedIndex = null,
@@ -493,6 +495,7 @@ const DietTable = ({
                                   }}
                                   placeholder="Besin ara..."
                                   className="text-sm border-border"
+                                  clientId={clientId}
                                 />
                                 <Button
                                   type="button"

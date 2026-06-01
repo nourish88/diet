@@ -5,6 +5,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/daily-tasks",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/birthday-notifications?slot=0",
       "schedule": "0 7 * * *"
     },

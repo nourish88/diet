@@ -12,17 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Sparkles, 
-  Loader2, 
-  Users, 
-  FileText, 
+import {
+  BarChart3,
+  TrendingUp,
+  Sparkles,
+  Loader2,
+  Users,
+  FileText,
   CheckCircle2,
   CalendarDays,
   TrendingDown,
-  Activity
+  Activity,
+  Clock,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PresetService from "@/services/PresetService";
@@ -57,8 +59,26 @@ interface MonthlyData {
   month?: string; // backwards compatibility if needed
 }
 
+interface ExtendedBesinStat {
+  id: number;
+  name: string;
+  groupName: string | null;
+  usageCount: number;
+  avgMiktar: string | null;
+  commonBirim: string | null;
+  lastUsed: string | null;
+}
+
+interface UnusedBesin {
+  id: number;
+  name: string;
+  groupName: string | null;
+}
+
 interface AnalyticsData {
   topBesins: BesinStat[];
+  topBesinsExtended: ExtendedBesinStat[];
+  unusedBesins: UnusedBesin[];
   totalClients: number;
   totalDiets: number;
   periodDiets: number;
@@ -77,6 +97,14 @@ interface AnalyticsData {
     avgTimeLastMonth: number;
     improvement: number;
   };
+}
+
+interface DietLogsSummary {
+  avgMinutes: number;
+  completedSessions: number;
+  totalSessions: number;
+  topFrictionFields: { field: string; count: number }[];
+  periodDays: number;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -114,6 +142,13 @@ export default function IstatistiklerPage() {
     queryFn: async () => {
       return apiClient.get<AnalyticsData>(`/analytics/stats?timeRange=${timeRange}&chartView=${chartView}`);
     },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const { data: logsData, isLoading: logsLoading } = useQuery<DietLogsSummary>({
+    queryKey: ["analytics", "diet-logs-summary"],
+    queryFn: () => apiClient.get<DietLogsSummary>("/analytics/diet-logs-summary"),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -274,14 +309,18 @@ export default function IstatistiklerPage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full space-y-8">
-        <TabsList className="grid w-full max-w-md grid-cols-2 p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl">
+        <TabsList className="grid w-full max-w-xl grid-cols-3 p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl">
           <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-card dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
             <BarChart3 className="h-4 w-4 mr-2" />
             Genel Bakış
           </TabsTrigger>
           <TabsTrigger value="foods" className="rounded-lg data-[state=active]:bg-card dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
             <Activity className="h-4 w-4 mr-2" />
-            Besin & Pattern Analizi
+            Besin & Pattern
+          </TabsTrigger>
+          <TabsTrigger value="writing" className="rounded-lg data-[state=active]:bg-card dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+            <Clock className="h-4 w-4 mr-2" />
+            Yazma Analizi
           </TabsTrigger>
         </TabsList>
 
@@ -463,6 +502,182 @@ export default function IstatistiklerPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Top-20 All-Time Besinler */}
+          {analyticsData?.topBesinsExtended && analyticsData.topBesinsExtended.length > 0 && (
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center">
+                  <Activity className="h-5 w-5 mr-2 text-indigo-500" />
+                  En Sık Kullandığın 20 Besin (Tüm Zamanlar)
+                </CardTitle>
+                <CardDescription>Tüm diyetlerdeki BesinUsageStats üzerinden hesaplanır</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  {analyticsData.topBesinsExtended.map((besin, index) => {
+                    const maxUsage = analyticsData.topBesinsExtended[0].usageCount;
+                    const percentage = Math.max(4, (besin.usageCount / maxUsage) * 100);
+                    return (
+                      <div key={besin.id}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{index + 1}.</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{besin.name}</span>
+                            {besin.groupName && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0 hidden sm:inline">
+                                {besin.groupName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-2">
+                            {besin.avgMiktar && besin.commonBirim && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                                ~{besin.avgMiktar} {besin.commonBirim}
+                              </span>
+                            )}
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 w-8 text-right">
+                              {besin.usageCount}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-indigo-400 to-indigo-500 h-1 rounded-full transition-all duration-700"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Unused Besinler */}
+          {analyticsData?.unusedBesins && analyticsData.unusedBesins.length > 0 && (
+            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-slate-400" />
+                  Hiç Kullanmadığın Besinler
+                </CardTitle>
+                <CardDescription>Sisteme kayıtlı ama henüz hiç kullanmadığın ilk 30 besin</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {analyticsData.unusedBesins.map((besin) => (
+                    <span
+                      key={besin.id}
+                      className="inline-flex items-center gap-1 text-sm px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                    >
+                      {besin.name}
+                      {besin.groupName && (
+                        <span className="text-[10px] text-slate-400">· {besin.groupName}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 3: Yazma Analizi */}
+        <TabsContent value="writing" className="space-y-6">
+          {logsLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Session stats */}
+              <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-violet-500" />
+                    Diyet Yazma Süresi
+                  </CardTitle>
+                  <CardDescription>Son 30 gündeki tamamlanan oturumlar</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="text-center py-6">
+                    <p className="text-5xl font-bold text-violet-600 dark:text-violet-400">
+                      {logsData?.avgMinutes ?? 0}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">dakika ortalama yazma süresi</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 text-center">
+                      <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                        {logsData?.completedSessions ?? 0}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">tamamlanan oturum</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4 text-center">
+                      <p className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                        {logsData?.totalSessions ?? 0}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">toplam oturum</p>
+                    </div>
+                  </div>
+                  {!logsData?.totalSessions && (
+                    <p className="text-center text-sm text-slate-400 pb-2">
+                      Diyet formu loglaması etkin değil. Yönetim → Diyet Logları sayfasından etkinleştirebilirsiniz.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Friction fields */}
+              <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center">
+                    <Pencil className="h-5 w-5 mr-2 text-amber-500" />
+                    En Çok Değiştirilen Alanlar
+                  </CardTitle>
+                  <CardDescription>Son 30 günde en sık silinen veya güncellenen alanlar</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {logsData?.topFrictionFields && logsData.topFrictionFields.length > 0 ? (
+                    <div className="space-y-4">
+                      {logsData.topFrictionFields.map((item, index) => {
+                        const max = logsData.topFrictionFields[0].count;
+                        const pct = Math.max(6, (item.count / max) * 100);
+                        return (
+                          <div key={item.field}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 w-4">{index + 1}.</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200 capitalize">
+                                  {item.field}
+                                </span>
+                              </div>
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                {item.count}
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full transition-all duration-700"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-400">
+                      <Pencil className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+                      <p className="text-sm">Henüz yeterli log verisi bulunmuyor.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

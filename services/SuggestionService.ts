@@ -13,14 +13,16 @@ export interface BesinSuggestion {
 
 const SuggestionService = {
   // Get smart besin suggestions
-  async getBesinSuggestions(query: string): Promise<BesinSuggestion[]> {
+  async getBesinSuggestions(query: string, clientId?: number): Promise<BesinSuggestion[]> {
     try {
       if (!query || query.length < 2) {
         return [];
       }
 
+      const params = new URLSearchParams({ q: query });
+      if (clientId) params.set("clientId", String(clientId));
       const response = await fetch(
-        `/api/suggestions/besin?q=${encodeURIComponent(query)}`,
+        `/api/suggestions/besin?${params.toString()}`,
         {
           method: "GET",
           headers: {

@@ -1,7 +1,8 @@
-const SW_VERSION = "diet-pwa-v2-offline";
-const PUSH_CACHE = "diet-pwa-cache-v2";
-const RUNTIME_CACHE = "diet-runtime-v1";
-const NETWORK_TIMEOUT_MS = 3000;
+const SW_VERSION = "diet-pwa-v3-offline";
+const PUSH_CACHE = "diet-pwa-cache-v3";
+const RUNTIME_CACHE = "diet-runtime-v2";
+const BLOB_CACHE = "diet-blob-v1";
+const NETWORK_TIMEOUT_MS = 4000;
 
 self.addEventListener("install", (event) => {
   console.log(`[ServiceWorker] Installing ${SW_VERSION}`);
@@ -13,7 +14,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const cacheNames = await caches.keys();
-      const currentCaches = new Set([PUSH_CACHE, RUNTIME_CACHE]);
+      const currentCaches = new Set([PUSH_CACHE, RUNTIME_CACHE, BLOB_CACHE]);
       await Promise.all(
         cacheNames
           .filter((cacheName) => !currentCaches.has(cacheName))
@@ -32,6 +33,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   const url = new URL(request.url);
+
+  // Cache public meal photos from Vercel Blob (cross-origin)
+  if (url.hostname.endsWith(".blob.vercel-storage.com")) {
+    event.respondWith(blobCacheFirst(request));
+    return;
+  }
+
   if (url.origin !== self.location.origin) {
     return;
   }
@@ -145,7 +153,10 @@ self.addEventListener("notificationclick", (event) => {
 function isNetworkFirstPath(pathname) {
   return (
     pathname === "/api/clients/my-diets" ||
+    pathname === "/api/client/portal/overview" ||
+    pathname === "/api/client/portal/conversations" ||
     /^\/api\/clients\/\d+\/diets\/\d+\/messages$/.test(pathname) ||
+    /^\/api\/client\/portal\/diets\/\d+$/.test(pathname) ||
     /^\/api\/client\/portal\/diets\/\d+\/messages$/.test(pathname)
   );
 }
@@ -162,7 +173,11 @@ function isCacheFirstPath(pathname) {
   return (
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/fonts/") ||
-    pathname === "/image.png"
+    pathname === "/manifest.json" ||
+    pathname === "/image.png" ||
+    pathname === "/icon-192x192.png" ||
+    pathname === "/icon-512x512.png" ||
+    pathname === "/apple-touch-icon.png"
   );
 }
 
@@ -224,6 +239,21 @@ function fetchWithTimeout(request, timeoutMs) {
   return fetch(request, { signal: controller.signal }).finally(() => {
     clearTimeout(timeoutId);
   });
+}
+
+// Cache Vercel Blob photo URLs indefinitely (they are content-addressed by UUID)
+async function blobCacheFirst(request) {
+  const cache = await caches.open(BLOB_CACHE);
+  const cached = await cache.match(request);
+  if (cached) {
+    return cached;
+  }
+
+  const response = await fetch(request);
+  if (response && response.ok) {
+    await cache.put(request, response.clone());
+  }
+  return response;
 }
 
 self.addEventListener("pushsubscriptionchange", (event) => {

@@ -33,6 +33,7 @@ interface SmartBesinInputProps {
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  clientId?: number;
 }
 
 export const SmartBesinInput = ({
@@ -42,6 +43,7 @@ export const SmartBesinInput = ({
   placeholder = "Besin ara...",
   className = "",
   autoFocus = false,
+  clientId,
 }: SmartBesinInputProps) => {
   const [suggestions, setSuggestions] = useState<BesinSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -176,7 +178,7 @@ export const SmartBesinInput = ({
       }
 
       setIsLoading(true);
-      const results = await SuggestionService.getBesinSuggestions(value);
+      const results = await SuggestionService.getBesinSuggestions(value, clientId);
       setSuggestions(results);
       setIsLoading(false);
       setSelectedIndex(-1);

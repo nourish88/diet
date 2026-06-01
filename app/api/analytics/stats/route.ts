@@ -67,9 +67,9 @@ export async function GET(request: NextRequest) {
       prisma.client.count({ where: { dietitianId, kvkkPortalConsentAt: { gte: periodStart, lte: periodEnd } } }),
     ]);
 
-    // Top besins (raw query)
+    // Top besins (raw query for period-scoped top-10 on overview)
     const topBesins = await prisma.$queryRaw<any[]>`
-      SELECT 
+      SELECT
         b.id,
         b.name,
         bg.name as "groupName",
@@ -84,6 +84,48 @@ export async function GET(request: NextRequest) {
       ORDER BY "usageCount" DESC
       LIMIT 10
     `;
+
+    // Top-20 from BesinUsageStats (all-time, dietitian-scoped via MenuItem→Ogun→Diet)
+    const topBesinsExtended = await prisma.besinUsageStats.findMany({
+      where: {
+        besin: {
+          menuItems: {
+            some: {
+              ogun: {
+                diet: { dietitianId },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        usageCount: true,
+        avgMiktar: true,
+        commonBirim: true,
+        lastUsed: true,
+        besin: {
+          select: {
+            id: true,
+            name: true,
+            besinGroup: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ usageCount: "desc" }, { lastUsed: "desc" }],
+      take: 20,
+    });
+
+    // Unused besins: no BesinUsageStats row at all (never written by anyone)
+    const unusedBesins = await prisma.besin.findMany({
+      where: { usageStats: null },
+      select: {
+        id: true,
+        name: true,
+        besinGroup: { select: { name: true } },
+      },
+      orderBy: [{ priority: "asc" }, { name: "asc" }],
+      take: 30,
+    });
 
     // Chart data based on chartView
     const chartData: { period: string; diets: number; clients: number }[] = [];
@@ -151,6 +193,20 @@ export async function GET(request: NextRequest) {
           name: b.name,
           groupName: b.groupName,
           usageCount: Number(b.usageCount),
+        })),
+        topBesinsExtended: topBesinsExtended.map((s) => ({
+          id: s.besin.id,
+          name: s.besin.name,
+          groupName: s.besin.besinGroup?.name ?? null,
+          usageCount: s.usageCount,
+          avgMiktar: s.avgMiktar,
+          commonBirim: s.commonBirim,
+          lastUsed: s.lastUsed,
+        })),
+        unusedBesins: unusedBesins.map((b) => ({
+          id: b.id,
+          name: b.name,
+          groupName: b.besinGroup?.name ?? null,
         })),
         totals: {
           totalDiets,
