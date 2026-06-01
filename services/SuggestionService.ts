@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client";
+
 export interface BesinSuggestion {
   id: number;
   name: string;
@@ -12,32 +14,18 @@ export interface BesinSuggestion {
 }
 
 const SuggestionService = {
-  // Get smart besin suggestions
-  async getBesinSuggestions(query: string, clientId?: number): Promise<BesinSuggestion[]> {
+  async getBesinSuggestions(
+    query: string,
+    clientId?: number,
+  ): Promise<BesinSuggestion[]> {
+    if (!query || query.length < 2) return [];
     try {
-      if (!query || query.length < 2) {
-        return [];
-      }
-
       const params = new URLSearchParams({ q: query });
       if (clientId) params.set("clientId", String(clientId));
-      const response = await fetch(
-        `/api/suggestions/besin?${params.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-        }
+      const data = await apiClient.get<{ suggestions?: BesinSuggestion[] }>(
+        `/suggestions/besin?${params.toString()}`,
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.suggestions || [];
+      return data.suggestions ?? [];
     } catch (error) {
       console.error("Error fetching besin suggestions:", error);
       return [];

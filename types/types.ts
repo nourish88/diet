@@ -90,3 +90,8 @@ export interface Birim {
   id?: number;
   name: string;
 }
+
+export interface BannedFood {
+  besin: { id: number; name: string };
+  reason?: string;
+}

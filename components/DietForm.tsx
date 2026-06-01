@@ -8,7 +8,7 @@ import { NotificationTestPanel } from "./NotificationTestPanel";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formSchema } from "../schemas/formSchema";
-import { Diet, Ogun, Birim, Besin } from "../types/types";
+import { Diet, Ogun, Birim, Besin, BannedFood } from "../types/types";
 import { OGUN, initialDiet } from "../models/dietModels";
 import DietTable from "./DietTable";
 import DietFormActions from "./DietFormActions";
@@ -22,7 +22,7 @@ import ClientWarnings from "./ClientWarnings";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Textarea } from "./ui/textarea";
 import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
-import TemplateService from "@/services/TemplateService";
+import TemplateService, { type DietTemplate } from "@/services/TemplateService";
 import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
@@ -45,7 +45,7 @@ interface ClientResp {
   name: string;
   surname: string;
   illness?: string | null;
-  bannedFoods?: any[];
+  bannedFoods?: BannedFood[];
   phoneNumber?: string | null;
 }
 
@@ -66,7 +66,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const [selectedClientName, setSelectedClientName] = useState<string>("");
   const [clientData, setClientData] = useState<{
     illness: string | null;
-    bannedFoods: any[];
+    bannedFoods: BannedFood[];
   }>({
     illness: null,
     bannedFoods: [],
@@ -120,7 +120,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
   // Template states
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<DietTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // Log form opened on mount

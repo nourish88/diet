@@ -1,14 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import type { EmojiClickData } from "emoji-picker-react";
 import { Smile } from "lucide-react";
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-[350px] h-[400px] flex items-center justify-center text-sm text-muted-foreground">
+      Yükleniyor...
+    </div>
+  ),
+});
 
 interface EmojiPickerButtonProps {
   onEmojiSelect: (emoji: string) => void;
@@ -40,15 +50,15 @@ export const EmojiPickerButton = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <EmojiPicker
-          onEmojiClick={handleEmojiClick}
-          width={350}
-          height={400}
-          previewConfig={{
-            showPreview: false,
-          }}
-          skinTonesDisabled
-        />
+        {isOpen && (
+          <EmojiPicker
+            onEmojiClick={handleEmojiClick}
+            width={350}
+            height={400}
+            previewConfig={{ showPreview: false }}
+            skinTonesDisabled
+          />
+        )}
       </PopoverContent>
     </Popover>
   );

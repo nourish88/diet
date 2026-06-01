@@ -1,8 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ExerciseForm from "@/components/exercises/ExerciseForm";
-import ExerciseChart from "@/components/exercises/ExerciseChart";
+
+const ExerciseChart = dynamic(() => import("@/components/exercises/ExerciseChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full bg-muted/30 rounded-md animate-pulse" />,
+});
 import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
 import { Activity, Clock, Footprints, Plus } from "lucide-react";

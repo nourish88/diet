@@ -1,9 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ProgressForm from "@/components/progress/ProgressForm";
-import ProgressChart from "@/components/progress/ProgressChart";
 import ProgressSummary from "@/components/progress/ProgressSummary";
+
+const ProgressChart = dynamic(() => import("@/components/progress/ProgressChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full bg-muted/30 rounded-md animate-pulse" />,
+});
 import DateRangePicker from "@/components/progress/DateRangePicker";
 import { ProgressEntry, calculateProgressSummary, getChartData } from "@/services/ProgressService";
 import { Plus } from "lucide-react";
