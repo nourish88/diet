@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { verifyCronRequest } from "@/lib/api/cron-auth";
 import { officeSocialMediaTasks } from "@/lib/office-social-media-plan";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 
 const TURKISH_DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
 export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const cronCheck = verifyCronRequest(request);
+  if (!cronCheck.ok) {
+    return NextResponse.json({ error: `Unauthorized: ${cronCheck.reason}` }, { status: 401 });
   }
 
   if (!isWebPushConfigured()) {

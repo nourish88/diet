@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addCorsHeaders } from "@/lib/cors";
+import { verifyCronRequest } from "@/lib/api/cron-auth";
 import { sendBirthdayNotificationsForSlot } from "@/services/BirthdayService";
 
 /**
@@ -17,20 +18,11 @@ import { sendBirthdayNotificationsForSlot } from "@/services/BirthdayService";
  */
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const secretParam = request.nextUrl.searchParams.get("secret");
-
-    if (cronSecret) {
-      const isValid =
-        authHeader === `Bearer ${cronSecret}` || secretParam === cronSecret;
-
-      if (!isValid) {
-        console.log("⛔ Unauthorized birthday notification cron job attempt");
-        return addCorsHeaders(
-          NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        );
-      }
+    const cronCheck = verifyCronRequest(request);
+    if (!cronCheck.ok) {
+      return addCorsHeaders(
+        NextResponse.json({ error: `Unauthorized: ${cronCheck.reason}` }, { status: 401 })
+      );
     }
 
     // Read slot param (0 = first notification at 10:00, 1 = 10:30, etc.)

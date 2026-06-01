@@ -1,26 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addCorsHeaders } from "@/lib/cors";
+import { verifyCronRequest } from "@/lib/api/cron-auth";
 import { sendMealReminders } from "@/services/MealReminderService";
 import { sendNewDietNotifications } from "@/services/DietNotificationService";
 
 export async function GET(request: NextRequest) {
   try {
-    // Optional: Add authorization check for cron jobs
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    const secretParam = request.nextUrl.searchParams.get("secret");
-
-    // If CRON_SECRET is set, verify the request
-    if (cronSecret) {
-      const isValid =
-        authHeader === `Bearer ${cronSecret}` || secretParam === cronSecret;
-
-      if (!isValid) {
-        console.log("⛔ Unauthorized meal reminder cron job attempt");
-        return addCorsHeaders(
-          NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-        );
-      }
+    const cronCheck = verifyCronRequest(request);
+    if (!cronCheck.ok) {
+      return addCorsHeaders(
+        NextResponse.json({ error: `Unauthorized: ${cronCheck.reason}` }, { status: 401 })
+      );
     }
 
     console.log("🔔 Starting meal reminder job...");

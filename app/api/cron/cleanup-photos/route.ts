@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders } from "@/lib/cors";
+import { verifyCronRequest } from "@/lib/api/cron-auth";
 import { deleteMealPhotoImage } from "@/lib/meal-photo-storage";
 
 /**
@@ -18,15 +19,10 @@ import { deleteMealPhotoImage } from "@/lib/meal-photo-storage";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Optional: Add authorization check for cron jobs
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    // If CRON_SECRET is set, verify the request
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      console.log("⛔ Unauthorized cron job attempt");
+    const cronCheck = verifyCronRequest(request);
+    if (!cronCheck.ok) {
       return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        NextResponse.json({ error: `Unauthorized: ${cronCheck.reason}` }, { status: 401 })
       );
     }
 
