@@ -1,70 +1,50 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { getWhatsAppURL, createWhatsAppMessage } from "@/utils/whatsapp";
+import { route } from "@/lib/api/handler";
+import { createWhatsAppMessage, getWhatsAppURL } from "@/utils/whatsapp";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { clientId, dietId } = await request.json();
+const Body = z.object({
+  clientId: z.coerce.number().int().positive(),
+  dietId: z.coerce.number().int().positive(),
+});
 
-    if (!clientId || !dietId) {
-      return NextResponse.json(
-        { error: "clientId and dietId are required" },
-        { status: 400 }
-      );
-    }
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "whatsapp.send-diet",
+  handler: async ({ body, log }) => {
+    const { clientId, dietId } = body;
 
-    // Get client with phone number
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      select: {
-        phoneNumber: true,
-        name: true,
-        surname: true,
-      },
+      select: { phoneNumber: true, name: true, surname: true },
     });
-
     if (!client?.phoneNumber) {
       return NextResponse.json(
         { error: "Client phone number not found" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Get diet data
     const diet = await prisma.diet.findUnique({
       where: { id: dietId },
-      include: {
-        oguns: {
-          include: {
-            items: {
-              include: {
-                besin: true,
-                birim: true,
-              },
-            },
-          },
-        },
-      },
+      select: { tarih: true },
     });
-
     if (!diet) {
       return NextResponse.json({ error: "Diet not found" }, { status: 404 });
     }
 
-    // Format diet date
+    const clientName = `${client.name} ${client.surname}`;
     const dietDate = diet.tarih
       ? new Date(diet.tarih).toLocaleDateString("tr-TR")
       : "Yeni";
+    const whatsappURL = getWhatsAppURL(
+      client.phoneNumber,
+      createWhatsAppMessage(clientName, dietDate),
+    );
 
-    // Create WhatsApp message (just text, no URL - dietitian will attach PDF manually)
-    const clientName = `${client.name} ${client.surname}`;
-    const message = createWhatsAppMessage(clientName, dietDate);
-
-    // Generate WhatsApp URL
-    const whatsappURL = getWhatsAppURL(client.phoneNumber, message);
-
-    // Log the action
-    console.log(`WhatsApp URL generated for ${clientName}: ${whatsappURL}`);
+    log.info("url generated", { clientId, dietId });
 
     return NextResponse.json({
       success: true,
@@ -73,11 +53,5 @@ export async function POST(request: NextRequest) {
       clientName,
       dietDate,
     });
-  } catch (error) {
-    console.error("WhatsApp URL generation error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate WhatsApp URL" },
-      { status: 500 }
-    );
-  }
-}
+  },
+});

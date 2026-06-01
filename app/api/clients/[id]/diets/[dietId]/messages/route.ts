@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
-import { sendExpoPushNotification } from "@/lib/expo-push";
 import { storeMealPhotoImage } from "@/lib/meal-photo-storage";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
+import { route } from "@/lib/api/handler";
+
+type Params = { id: string; dietId: string };
 
 const ACTIVE_THRESHOLD_MS = 30 * 1000;
 
@@ -96,22 +97,14 @@ async function isUserActivelyViewing(userId: number, dietId: number) {
   return Boolean(presence);
 }
 
-// GET - Get all messages/comments for a diet (conversation history)
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; dietId: string }> }
-) {
+/** GET /api/clients/[id]/diets/[dietId]/messages — conversation history (owner client/dietitian). */
+export const GET = route<undefined, Params>({
+  auth: "any",
+  scope: "clients.diet.messages.list",
+  handler: async ({ request, params, auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const { id, dietId: dietParam } = await params;
-    const clientId = parseInt(id);
-    const dietId = parseInt(dietParam);
+    const clientId = parseInt(params.id, 10);
+    const dietId = parseInt(params.dietId, 10);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -142,9 +135,9 @@ export async function GET(
 
     // Authorization
     const isOwnClient =
-      auth.user.role === "client" && client.userId === auth.user.id;
+      auth.user!.role === "client" && client.userId === auth.user!.id;
     const isOwnDietitian =
-      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+      auth.user!.role === "dietitian" && client.dietitianId === auth.user!.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -273,10 +266,6 @@ export async function GET(
       (msg) => !msg.isRead && msg.userId !== auth.user!.id
     ).length;
 
-    console.log(
-      `✅ Fetched ${messages.length} messages for diet ${dietId} (${unreadCount} unread)`
-    );
-
     return addCorsHeaders(
       NextResponse.json({
         success: true,
@@ -284,33 +273,26 @@ export async function GET(
         ...(unreadCount !== undefined ? { unreadCount } : {}),
       })
     );
-  } catch (error: any) {
-    console.error("Error fetching messages:", error);
+  } catch (err) {
+    log.error("list failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
-        { error: error.message || "Failed to fetch messages" },
+        { error: "Failed to fetch messages" },
         { status: 500 }
       )
     );
   }
-}
+  },
+});
 
-// POST - Send a new message (client can send text+photo, dietitian only text)
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; dietId: string }> }
-) {
+/** POST /api/clients/[id]/diets/[dietId]/messages — send a message (clients may attach photos). */
+export const POST = route<undefined, Params>({
+  auth: "any",
+  scope: "clients.diet.messages.create",
+  handler: async ({ request, params, auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const { id, dietId: dietParam } = await params;
-    const clientId = parseInt(id);
-    const dietId = parseInt(dietParam);
+    const clientId = parseInt(params.id, 10);
+    const dietId = parseInt(params.dietId, 10);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -350,9 +332,9 @@ export async function POST(
 
     // Authorization
     const isOwnClient =
-      auth.user.role === "client" && client.userId === auth.user.id;
+      auth.user!.role === "client" && client.userId === auth.user!.id;
     const isOwnDietitian =
-      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+      auth.user!.role === "dietitian" && client.dietitianId === auth.user!.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -361,7 +343,7 @@ export async function POST(
     }
 
     // Only clients can send photos
-    if (photos && photos.length > 0 && auth.user.role !== "client") {
+    if (photos && photos.length > 0 && auth.user!.role !== "client") {
       return addCorsHeaders(
         NextResponse.json(
           { error: "Only clients can send photos" },
@@ -371,11 +353,11 @@ export async function POST(
     }
 
     console.log(
-      `💬 Creating message from ${auth.user.role} (${auth.user.email})`
+      `💬 Creating message from ${auth.user!.role} (${auth.user!.email})`
     );
 
     const storedPhotos =
-      photos && photos.length > 0 && auth.user.role === "client"
+      photos && photos.length > 0 && auth.user!.role === "client"
         ? await Promise.all(
             photos.map(async (photo: any) => ({
               imageData: await storeMealPhotoImage(photo.imageData, {
@@ -480,7 +462,6 @@ export async function POST(
             where: { id: client.dietitianId },
             select: {
               id: true,
-              pushToken: true,
               email: true,
               pushSubscriptions: {
                 select: {
@@ -496,38 +477,6 @@ export async function POST(
             client.dietitianId,
             dietId
           );
-
-          if (dietitian?.pushToken && !dietitianActive) {
-            console.log(
-              `✅ Found dietitian push token: ${dietitian.pushToken.substring(
-                0,
-                20
-              )}...`
-            );
-            await sendExpoPushNotification(
-              dietitian.pushToken,
-              `Yeni Mesaj: ${client.name} ${client.surname}`,
-              result!.content.substring(0, 100),
-              {
-                type: "new_message",
-                messageId: result!.id,
-                dietId,
-                clientId,
-                clientName: `${client.name} ${client.surname}`,
-              }
-            );
-            console.log(
-              `🔔 Push notification sent to dietitian (${dietitian.email})`
-            );
-          } else {
-            console.log(
-              dietitianActive
-                ? "ℹ️ Dietitian is actively viewing the conversation, skipping push."
-                : `⚠️ Dietitian has no push token (${
-                dietitian?.email || "unknown"
-              })`
-            );
-          }
 
           const webPushUrl = `/clients/${clientId}/messages?dietId=${dietId}`;
           if (!dietitianActive) {
@@ -562,7 +511,6 @@ export async function POST(
             where: { id: client.userId },
             select: {
               id: true,
-              pushToken: true,
               email: true,
               pushSubscriptions: {
                 select: {
@@ -578,35 +526,6 @@ export async function POST(
             client.userId,
             dietId
           );
-
-          if (clientUser?.pushToken && !clientActive) {
-            console.log(
-              `✅ Found client push token: ${clientUser.pushToken.substring(
-                0,
-                20
-              )}...`
-            );
-            await sendExpoPushNotification(
-              clientUser.pushToken,
-              "Diyetisyeninizden Yeni Mesaj",
-              result!.content.substring(0, 100),
-              {
-                type: "new_message",
-                messageId: result!.id,
-                dietId,
-                clientId,
-              }
-            );
-            console.log(
-              `🔔 Push notification sent to client (${clientUser.email})`
-            );
-          } else {
-            console.log(
-              clientActive
-                ? "ℹ️ Client is actively viewing the conversation, skipping push."
-                : `⚠️ Client has no push token (${clientUser?.email || "unknown"})`
-            );
-          }
 
           const clientWebPushUrl = `/client/diets/${dietId}/messages`;
           if (!clientActive) {
@@ -642,33 +561,26 @@ export async function POST(
         message: result,
       })
     );
-  } catch (error: any) {
-    console.error("Error creating message:", error);
+  } catch (err) {
+    log.error("create failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
-        { error: error.message || "Failed to create message" },
+        { error: "Failed to create message" },
         { status: 500 }
       )
     );
   }
-}
+  },
+});
 
-// PATCH - Mark messages as read
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; dietId: string }> }
-) {
+/** PATCH /api/clients/[id]/diets/[dietId]/messages — mark messages as read (owner client/dietitian). */
+export const PATCH = route<undefined, Params>({
+  auth: "any",
+  scope: "clients.diet.messages.read",
+  handler: async ({ request, params, auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const { id, dietId: dietParam } = await params;
-    const clientId = parseInt(id);
-    const dietId = parseInt(dietParam);
+    const clientId = parseInt(params.id, 10);
+    const dietId = parseInt(params.dietId, 10);
 
     if (isNaN(clientId) || isNaN(dietId)) {
       return addCorsHeaders(
@@ -706,9 +618,9 @@ export async function PATCH(
 
     // Authorization
     const isOwnClient =
-      auth.user.role === "client" && client.userId === auth.user.id;
+      auth.user!.role === "client" && client.userId === auth.user!.id;
     const isOwnDietitian =
-      auth.user.role === "dietitian" && client.dietitianId === auth.user.id;
+      auth.user!.role === "dietitian" && client.dietitianId === auth.user!.id;
 
     if (!isOwnClient && !isOwnDietitian) {
       return addCorsHeaders(
@@ -716,16 +628,12 @@ export async function PATCH(
       );
     }
 
-    console.log(
-      `📖 Marking ${messageIds.length} messages as read by ${auth.user.role}`
-    );
-
     // Mark messages as read (only if they're from the other party)
     const result = await prisma.dietComment.updateMany({
       where: {
         id: { in: messageIds },
         dietId, // Must be in this diet
-        userId: { not: auth.user.id }, // Can't mark own messages as read
+        userId: { not: auth.user!.id }, // Can't mark own messages as read
         isRead: false, // Only update unread messages
       },
       data: {
@@ -734,21 +642,20 @@ export async function PATCH(
       },
     });
 
-    console.log(`✅ Marked ${result.count} messages as read`);
-
     return addCorsHeaders(
       NextResponse.json({
         success: true,
         markedCount: result.count,
       })
     );
-  } catch (error: any) {
-    console.error("Error marking messages as read:", error);
+  } catch (err) {
+    log.error("read failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
-        { error: error.message || "Failed to mark messages as read" },
+        { error: "Failed to mark messages as read" },
         { status: 500 }
       )
     );
   }
-}
+  },
+});

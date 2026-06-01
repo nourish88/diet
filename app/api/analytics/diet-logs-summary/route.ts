@@ -1,20 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export const GET = route({
+  auth: "dietitian",
+  scope: "analytics.diet-logs-summary",
+  handler: async ({ auth, log: logger }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user || auth.user.role !== "dietitian") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const dietitianId = auth.user.id;
+    const dietitianId = auth.user!.id;
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Fetch all logs for the last 30 days
@@ -72,8 +68,8 @@ export async function GET(request: NextRequest) {
         periodDays: 30,
       })
     );
-  } catch (error) {
-    console.error("Error fetching diet logs summary:", error);
+  } catch (err) {
+    logger.error("summary failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
         { error: "Yazma analizi yüklenirken bir hata oluştu" },
@@ -81,4 +77,5 @@ export async function GET(request: NextRequest) {
       )
     );
   }
-}
+  },
+});

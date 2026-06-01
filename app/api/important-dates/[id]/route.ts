@@ -1,177 +1,116 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
+import { ImportantDateInput } from "@/schemas/api/important-date";
 
-export const GET = requireDietitian(
-  async (
-    request: NextRequest,
-    auth: AuthResult,
-    context: any
-  ) => {
+type Params = { id: string };
+
+function parseId(raw: string) {
+  const id = parseInt(raw, 10);
+  return Number.isNaN(id) ? null : id;
+}
+
+async function findOwn(id: number, dietitianId: number) {
+  return prisma.importantDate.findFirst({
+    where: { id, dietitianId },
+    select: { id: true },
+  });
+}
+
+export const GET = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "important-dates.get",
+  handler: async ({ params, auth, log }) => {
     try {
-      const { params } = context;
-      const id = parseInt(params.id);
-
-      if (isNaN(id)) {
+      const id = parseId(params.id);
+      if (id === null) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Invalid important date ID" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Invalid important date ID" }, { status: 400 }),
         );
       }
-
-      const importantDate = await prisma.importantDate.findFirst({
-        where: {
-          id,
-          dietitianId: auth.user!.id, // SECURITY: Only show own important dates
-        },
+      const item = await prisma.importantDate.findFirst({
+        where: { id, dietitianId: auth.user!.id },
       });
-
-      if (!importantDate) {
+      if (!item) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Important date not found" },
-            { status: 404 }
-          )
+          NextResponse.json({ error: "Important date not found" }, { status: 404 }),
         );
       }
-
-      return addCorsHeaders(NextResponse.json(importantDate));
-    } catch (error) {
-      console.error("Error fetching important date:", error);
+      return addCorsHeaders(NextResponse.json(item));
+    } catch (err) {
+      log.error("get failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to fetch important date" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to fetch important date" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});
 
-export const PUT = requireDietitian(
-  async (
-    request: NextRequest,
-    auth: AuthResult,
-    context: any
-  ) => {
+export const PUT = route<typeof ImportantDateInput, Params>({
+  auth: "dietitian",
+  schema: ImportantDateInput,
+  scope: "important-dates.update",
+  handler: async ({ body, params, auth, log }) => {
     try {
-      const { params } = context;
-      const id = parseInt(params.id);
-      const data = await request.json();
-
-      if (isNaN(id)) {
+      const id = parseId(params.id);
+      if (id === null) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Invalid important date ID" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Invalid important date ID" }, { status: 400 }),
         );
       }
-
-      if (!data.name || !data.message || !data.startDate || !data.endDate) {
+      const owned = await findOwn(id, auth.user!.id);
+      if (!owned) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "All fields are required" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Important date not found" }, { status: 404 }),
         );
       }
-
-      // SECURITY: Check if important date exists and belongs to dietitian
-      const existingDate = await prisma.importantDate.findFirst({
-        where: {
-          id,
-          dietitianId: auth.user!.id,
-        },
-      });
-
-      if (!existingDate) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Important date not found" },
-            { status: 404 }
-          )
-        );
-      }
-
-      const updatedDate = await prisma.importantDate.update({
+      const updated = await prisma.importantDate.update({
         where: { id },
         data: {
-          name: data.name,
-          message: data.message,
-          startDate: new Date(data.startDate),
-          endDate: new Date(data.endDate),
+          name: body.name,
+          message: body.message,
+          startDate: new Date(body.startDate),
+          endDate: new Date(body.endDate),
         },
       });
-
       invalidate.importantDates(auth.user!.id);
-      return addCorsHeaders(NextResponse.json(updatedDate));
-    } catch (error) {
-      console.error("Error updating important date:", error);
+      return addCorsHeaders(NextResponse.json(updated));
+    } catch (err) {
+      log.error("update failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to update important date" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to update important date" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});
 
-export const DELETE = requireDietitian(
-  async (
-    request: NextRequest,
-    auth: AuthResult,
-    context: any
-  ) => {
+export const DELETE = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "important-dates.delete",
+  handler: async ({ params, auth, log }) => {
     try {
-      const { params } = context;
-      const id = parseInt(params.id);
-
-      if (isNaN(id)) {
+      const id = parseId(params.id);
+      if (id === null) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Invalid important date ID" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Invalid important date ID" }, { status: 400 }),
         );
       }
-
-      // SECURITY: Check if important date exists and belongs to dietitian
-      const existingDate = await prisma.importantDate.findFirst({
-        where: {
-          id,
-          dietitianId: auth.user!.id,
-        },
-      });
-
-      if (!existingDate) {
+      const owned = await findOwn(id, auth.user!.id);
+      if (!owned) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Important date not found" },
-            { status: 404 }
-          )
+          NextResponse.json({ error: "Important date not found" }, { status: 404 }),
         );
       }
-
-      const deletedDate = await prisma.importantDate.delete({
-        where: { id },
-      });
-
+      const deleted = await prisma.importantDate.delete({ where: { id } });
       invalidate.importantDates(auth.user!.id);
-      return addCorsHeaders(NextResponse.json(deletedDate));
-    } catch (error) {
-      console.error("Error deleting important date:", error);
+      return addCorsHeaders(NextResponse.json(deleted));
+    } catch (err) {
+      log.error("delete failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to delete important date" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to delete important date" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});

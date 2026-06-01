@@ -1,61 +1,55 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getCachedDefinitions, invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const type = searchParams.get("type");
+const DefinitionType = z.enum(["su_tuketimi", "fiziksel_aktivite", "egzersiz_tipi"]);
 
-    const definitions = await getCachedDefinitions(type);
-    return NextResponse.json({ definitions });
-  } catch (error) {
-    console.error("Database error:", error);
-    return NextResponse.json(
-      { error: "Tanımlamalar yüklenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+const CreateDefinitionBody = z.object({
+  type: DefinitionType,
+  name: z.string().min(1, "Tanımlama metni zorunludur"),
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { type, name } = body;
-
-    if (!type || !name) {
+export const GET = route({
+  auth: "any",
+  scope: "definitions.list",
+  handler: async ({ request, log }) => {
+    try {
+      const type = request.nextUrl.searchParams.get("type");
+      const definitions = await getCachedDefinitions(type);
+      return NextResponse.json({ definitions });
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return NextResponse.json(
-        { error: "Tip ve tanımlama metni zorunludur" },
-        { status: 400 }
+        { error: "Tanımlamalar yüklenirken bir hata oluştu" },
+        { status: 500 },
       );
     }
+  },
+});
 
-    if (
-      type !== "su_tuketimi" &&
-      type !== "fiziksel_aktivite" &&
-      type !== "egzersiz_tipi"
-    ) {
+export const POST = route({
+  auth: "dietitian",
+  schema: CreateDefinitionBody,
+  scope: "definitions.create",
+  handler: async ({ body, log }) => {
+    try {
+      const definition = await prisma.definition.create({
+        data: {
+          type: body.type,
+          name: body.name.trim(),
+          isActive: true,
+        },
+      });
+      invalidate.definitions();
+      return NextResponse.json(definition, { status: 201 });
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
       return NextResponse.json(
-        { error: "Geçersiz tanımlama tipi" },
-        { status: 400 }
+        { error: "Tanımlama oluşturulurken bir hata oluştu" },
+        { status: 500 },
       );
     }
-
-    const definition = await prisma.definition.create({
-      data: {
-        type,
-        name: name.trim(),
-        isActive: true,
-      },
-    });
-
-    invalidate.definitions();
-    return NextResponse.json(definition, { status: 201 });
-  } catch (error) {
-    console.error("Error creating definition:", error);
-    return NextResponse.json(
-      { error: "Tanımlama oluşturulurken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+  },
+});

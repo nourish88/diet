@@ -1,141 +1,82 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ dietId: string }> }
-) {
-  try {
-    const auth = await authenticateRequest(request);
+type Params = { dietId: string };
 
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
+/** GET /api/client/portal/diets/[dietId]/messages — messages for the signed-in client. */
+export const GET = route<undefined, Params>({
+  auth: "client",
+  scope: "portal.messages",
+  handler: async ({ request, params, auth, log }) => {
+    try {
+      const dietIdNumber = parseInt(params.dietId, 10);
+      if (Number.isNaN(dietIdNumber)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid diet ID" }, { status: 400 }),
+        );
+      }
 
-    if (auth.user.role !== "client") {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Only clients can access this resource" },
-          { status: 403 }
-        )
-      );
-    }
-
-    const { dietId } = await params;
-    const dietIdNumber = parseInt(dietId);
-
-    if (isNaN(dietIdNumber)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid diet ID" }, { status: 400 })
-      );
-    }
-
-    const diet = await prisma.diet.findFirst({
-      where: {
-        id: dietIdNumber,
-        client: {
-          userId: auth.user.id,
+      const diet = await prisma.diet.findFirst({
+        where: { id: dietIdNumber, client: { userId: auth.user!.id } },
+        select: {
+          id: true,
+          clientId: true,
+          oguns: { orderBy: { order: "asc" }, select: { id: true, name: true } },
         },
-      },
-      select: {
-        id: true,
-        clientId: true,
-        oguns: {
-          orderBy: { order: "asc" },
-          select: {
-            id: true,
-            name: true,
+      });
+
+      if (!diet) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Diet not found or access denied" },
+            { status: 404 },
+          ),
+        );
+      }
+
+      const afterIdParam = request.nextUrl.searchParams.get("afterId");
+      const afterId = afterIdParam ? parseInt(afterIdParam, 10) : null;
+      if (afterIdParam && (afterId === null || Number.isNaN(afterId) || afterId < 0)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid afterId" }, { status: 400 }),
+        );
+      }
+
+      const messageFilter: Prisma.DietCommentWhereInput = {
+        dietId: diet.id,
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      };
+
+      const messages = await prisma.dietComment.findMany({
+        where: messageFilter,
+        include: {
+          user: { select: { id: true, email: true, role: true } },
+          ogun: { select: { id: true, name: true } },
+          photos: {
+            where: { expiresAt: { gte: new Date() } },
+            select: { id: true, imageData: true, uploadedAt: true, expiresAt: true },
           },
         },
-      },
-    });
+        orderBy: { createdAt: "asc" },
+      });
 
-    if (!diet) {
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Diet not found or access denied" },
-          { status: 404 }
-        )
+        NextResponse.json({
+          success: true,
+          clientId: diet.clientId,
+          userId: auth.user!.id,
+          messages,
+          oguns: diet.oguns,
+        }),
+      );
+    } catch (err) {
+      log.error("messages failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json({ error: "Failed to load messages" }, { status: 500 }),
       );
     }
-
-    const afterIdParam = request.nextUrl.searchParams.get("afterId");
-    const afterId = afterIdParam ? parseInt(afterIdParam) : null;
-
-    if (afterIdParam && (isNaN(afterId!) || afterId! < 0)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid afterId" }, { status: 400 })
-      );
-    }
-
-    const messageFilter = {
-      dietId: diet.id,
-      ...(afterId
-        ? {
-            id: {
-              gt: afterId,
-            },
-          }
-        : {}),
-    };
-
-    const messages = await prisma.dietComment.findMany({
-      where: messageFilter,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-        ogun: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        photos: {
-          where: {
-            expiresAt: {
-              gte: new Date(),
-            },
-          },
-          select: {
-            id: true,
-            imageData: true,
-            uploadedAt: true,
-            expiresAt: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({
-        success: true,
-        clientId: diet.clientId,
-        userId: auth.user.id,
-        messages,
-        oguns: diet.oguns,
-      })
-    );
-  } catch (error: any) {
-    console.error("Error fetching client messages:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: "Failed to load messages" },
-        { status: 500 }
-      )
-    );
-  }
-}
-
-
+  },
+});

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
 export interface Conversation {
   dietId: number;
@@ -32,28 +32,13 @@ export interface Conversation {
  *   - Unread message count
  *   - Last message information
  */
-export async function GET(request: NextRequest) {
+export const GET = route({
+  auth: "client",
+  scope: "portal.conversations",
+  handler: async ({ auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    if (auth.user.role !== "client") {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Only clients can access this resource" },
-          { status: 403 }
-        )
-      );
-    }
-
-    // Get client
     const client = await prisma.client.findUnique({
-      where: { userId: auth.user.id },
+      where: { userId: auth.user!.id },
       select: { id: true },
     });
 
@@ -109,7 +94,7 @@ export async function GET(request: NextRequest) {
       where: {
         dietId: { in: diets.map((d) => d.id) },
         isRead: false,
-        userId: { not: auth.user.id }, // Only messages from dietitian
+        userId: { not: auth.user!.id }, // Only messages from dietitian
       },
       _count: {
         id: true,
@@ -165,8 +150,8 @@ export async function GET(request: NextRequest) {
         conversations,
       })
     );
-  } catch (error: any) {
-    console.error("Error fetching conversations:", error);
+  } catch (err) {
+    log.error("conversations failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
         { error: "Failed to fetch conversations" },
@@ -174,5 +159,6 @@ export async function GET(request: NextRequest) {
       )
     );
   }
-}
+  },
+});
 

@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
 import { addCorsHeaders } from "@/lib/cors";
 import prisma from "@/lib/prisma";
 import {
@@ -9,21 +8,19 @@ import {
   shouldSendReminder,
 } from "@/services/MealReminderService";
 import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
+import { route } from "@/lib/api/handler";
 
 /**
- * Check for pending meal reminders for authenticated user
- * This endpoint is called from client-side when user opens app or visits dashboard
+ * GET /api/notifications/check-meal-reminders
+ * Checks and dispatches pending meal-reminder push notifications for the signed-in user.
+ * Called client-side when the user opens the app or visits the dashboard.
  */
-export async function GET(request: NextRequest) {
+export const GET = route({
+  auth: "any",
+  scope: "notifications.check-meal-reminders",
+  handler: async ({ auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const userId = auth.user.id;
+    const userId = auth.user!.id;
 
     // Get user's client info
     const user = await prisma.user.findUnique({
@@ -237,14 +234,15 @@ export async function GET(request: NextRequest) {
         message: `Found ${pendingReminders.length} pending reminders, sent ${sent} notifications`,
       })
     );
-  } catch (error: any) {
-    console.error("❌ Check meal reminders error:", error);
+  } catch (err) {
+    log.error("check failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
-        { error: error.message || "Failed to check meal reminders" },
+        { error: "Failed to check meal reminders" },
         { status: 500 }
       )
     );
   }
-}
+  },
+});
 

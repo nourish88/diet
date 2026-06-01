@@ -1,21 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = route({
+  auth: "dietitian",
+  scope: "analytics.stats",
+  handler: async ({ request, auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-
-    if (!auth.user || auth.user.role !== "dietitian") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const dietitianId = auth.user.id;
+    const dietitianId = auth.user!.id;
 
     const searchParams = request.nextUrl.searchParams;
     const timeRange = searchParams.get("timeRange") || "current_month";
@@ -226,8 +221,8 @@ export async function GET(request: NextRequest) {
         }
       })
     );
-  } catch (error) {
-    console.error("Error fetching analytics stats:", error);
+  } catch (err) {
+    log.error("stats failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json(
         { error: "İstatistikler yüklenirken bir hata oluştu" },
@@ -235,4 +230,5 @@ export async function GET(request: NextRequest) {
       )
     );
   }
-}
+  },
+});

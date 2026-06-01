@@ -1,20 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// GET - List pending client registrations (dietitian only)
-export const GET = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+/** GET /api/pending-clients — list pending client registrations (dietitian only). */
+export const GET = route({
+  auth: "dietitian",
+  scope: "pending-clients.list",
+  handler: async ({ log }) => {
     try {
       const pendingUsers = await prisma.user.findMany({
-        where: {
-          role: "client",
-          isApproved: false,
-        },
+        where: { role: "client", isApproved: false },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -24,21 +22,15 @@ export const GET = requireDietitian(
           createdAt: true,
         },
       });
-
       return addCorsHeaders(NextResponse.json(pendingUsers));
-    } catch (error) {
-      console.error("Error fetching pending users:", error);
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
           { error: "Bekleyen kayıtlar yüklenirken bir hata oluştu" },
-          { status: 500 }
-        )
+          { status: 500 },
+        ),
       );
     }
-  }
-);
-
-
-
-
-
+  },
+});

@@ -1,173 +1,115 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { authenticateRequest, requireDietitian } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-
-/**
- * POST /api/diet-logs
- * Creates a new diet form log entry
- */
-export async function POST(request: NextRequest) {
-  try {
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
-    // Authenticate request
-    const auth = await authenticateRequest(request);
-    if (!auth.user || auth.user.role !== "dietitian") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    // Check if logging is enabled
-    const config = await prisma.systemConfig.findUnique({
-      where: { key: "diet_form_logging_enabled" },
-    });
-
-    if (!config || config.value !== "true") {
-      // Return success even if logging is disabled (fail-safe)
-      return addCorsHeaders(NextResponse.json({ success: true, skipped: true }));
-    }
-
-    const body = await request.json();
-    const {
-      sessionId,
-      clientId,
-      dietId,
-      action,
-      fieldName,
-      fieldValue,
-      previousValue,
-      metadata,
-      source,
-    } = body;
-
-    // Validate required fields
-    if (!sessionId || !action) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Missing required fields: sessionId, action" },
-          { status: 400 }
-        )
-      );
-    }
-
-    // Determine source: use provided source, or detect from sessionId pattern, or default to "client"
-    let effectiveSource = source;
-    if (!effectiveSource) {
-      // Detect source from sessionId pattern: "api_" prefix means server-side
-      if (sessionId.startsWith("api_")) {
-        effectiveSource = "server";
-      } else {
-        effectiveSource = "client";
-      }
-    }
-
-    // Create log entry
-    const logEntry = await prisma.dietFormLog.create({
-      data: {
-        dietitianId: auth.user.id,
-        sessionId,
-        clientId: clientId ?? null,
-        dietId: dietId ?? null,
-        action,
-        fieldName: fieldName ?? null,
-        fieldValue: fieldValue ?? null,
-        previousValue: previousValue ?? null,
-        metadata: metadata ? metadata : null,
-        source: effectiveSource,
-      },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({ success: true, id: logEntry.id }, { status: 201 })
-    );
-  } catch (error: any) {
-    console.error("Error creating diet log:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Failed to create log entry" },
-        { status: 500 }
-      )
-    );
-  }
-}
+export const dynamic = "force-dynamic";
 
 /**
- * GET /api/diet-logs
- * Retrieves diet form logs with filtering
+ * POST /api/diet-logs — create a diet form log entry (dietitian only).
+ * Fail-safe: body is read defensively and logging is skipped when disabled.
  */
-export const GET = requireDietitian(
-  async (request: NextRequest) => {
+export const POST = route({
+  auth: "dietitian",
+  scope: "diet-logs.create",
+  handler: async ({ request, auth, log }) => {
     try {
-      const corsResponse = handleCors(request);
-      if (corsResponse) return corsResponse;
-
-      const auth = await authenticateRequest(request);
-      if (!auth.user) {
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: "diet_form_logging_enabled" },
+      });
+      if (!config || config.value !== "true") {
         return addCorsHeaders(
-          NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+          NextResponse.json({ success: true, skipped: true }),
         );
       }
 
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const sessionId = body.sessionId as string | undefined;
+      const action = body.action as string | undefined;
+
+      if (!sessionId || !action) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Missing required fields: sessionId, action" },
+            { status: 400 },
+          ),
+        );
+      }
+
+      const source =
+        (body.source as string | undefined) ??
+        (sessionId.startsWith("api_") ? "server" : "client");
+
+      const logEntry = await prisma.dietFormLog.create({
+        data: {
+          dietitianId: auth.user!.id,
+          sessionId,
+          clientId: (body.clientId as number | undefined) ?? null,
+          dietId: (body.dietId as number | undefined) ?? null,
+          action,
+          fieldName: (body.fieldName as string | undefined) ?? null,
+          fieldValue: (body.fieldValue as string | undefined) ?? null,
+          previousValue: (body.previousValue as string | undefined) ?? null,
+          metadata: (body.metadata as Prisma.InputJsonValue | undefined) ?? Prisma.JsonNull,
+          source,
+        },
+      });
+
+      return addCorsHeaders(
+        NextResponse.json({ success: true, id: logEntry.id }, { status: 201 }),
+      );
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Failed to create log entry" },
+          { status: 500 },
+        ),
+      );
+    }
+  },
+});
+
+/** GET /api/diet-logs — list a dietitian's own diet form logs (filtered). */
+export const GET = route({
+  auth: "dietitian",
+  scope: "diet-logs.list",
+  handler: async ({ request, auth, log }) => {
+    try {
       const searchParams = request.nextUrl.searchParams;
       const sessionId = searchParams.get("sessionId");
       const clientId = searchParams.get("clientId");
       const dietId = searchParams.get("dietId");
       const action = searchParams.get("action");
-      const limit = parseInt(searchParams.get("limit") || "100");
-      const offset = parseInt(searchParams.get("offset") || "0");
+      const limit = parseInt(searchParams.get("limit") || "100", 10);
+      const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-      // Build where clause
-      const where: any = {
-        dietitianId: auth.user.id, // Only show own logs
-      };
-
+      const where: Prisma.DietFormLogWhereInput = { dietitianId: auth.user!.id };
       if (sessionId) where.sessionId = sessionId;
-      if (clientId) where.clientId = parseInt(clientId);
-      if (dietId) where.dietId = parseInt(dietId);
+      if (clientId) where.clientId = parseInt(clientId, 10);
+      if (dietId) where.dietId = parseInt(dietId, 10);
       if (action) where.action = action;
 
-      // Get logs
-      const logs = await prisma.dietFormLog.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        skip: offset,
-        include: {
-          dietitian: {
-            select: {
-              id: true,
-              email: true,
-            },
-          },
-        },
-      });
-
-      // Get total count
-      const total = await prisma.dietFormLog.count({ where });
+      const [logs, total] = await Promise.all([
+        prisma.dietFormLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          skip: offset,
+          include: { dietitian: { select: { id: true, email: true } } },
+        }),
+        prisma.dietFormLog.count({ where }),
+      ]);
 
       return addCorsHeaders(
-        NextResponse.json({
-          logs,
-          total,
-          limit,
-          offset,
-        })
+        NextResponse.json({ logs, total, limit, offset }),
       );
-    } catch (error: any) {
-      console.error("Error fetching diet logs:", error);
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: error.message || "Failed to fetch logs" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to fetch logs" }, { status: 500 }),
       );
     }
-  }
-);
-
+  },
+});

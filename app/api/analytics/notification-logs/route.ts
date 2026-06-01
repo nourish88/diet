@@ -1,38 +1,30 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireDietitian } from "@/lib/api-auth";
+import { route } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
 
-export const GET = requireDietitian(async (request, auth) => {
-  try {
-    const logs = await prisma.notificationLog.findMany({
-      orderBy: {
-        sentAt: "desc",
-      },
-      take: 100, // Son 100 kaydı getir (3 günde bir temizleneceği için yeterli olur)
-      include: {
-        client: {
-          select: {
-            name: true,
-            surname: true,
-          }
+export const GET = route({
+  auth: "dietitian",
+  scope: "analytics.notification-logs",
+  handler: async ({ log }) => {
+    try {
+      const logs = await prisma.notificationLog.findMany({
+        orderBy: { sentAt: "desc" },
+        take: 100,
+        include: {
+          client: { select: { name: true, surname: true } },
+          ogun: { select: { name: true, time: true } },
         },
-        ogun: {
-          select: {
-            name: true,
-            time: true,
-          }
-        }
-      }
-    });
+      });
 
-    return NextResponse.json({ ok: true, logs });
-  } catch (error: any) {
-    console.error("Failed to fetch notification logs:", error);
-    return NextResponse.json(
-      { ok: false, error: "Loglar getirilemedi." },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json({ ok: true, logs });
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { ok: false, error: "Loglar getirilemedi." },
+        { status: 500 },
+      );
+    }
+  },
 });

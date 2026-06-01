@@ -1,104 +1,112 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
+type Params = { id: string };
 
-    const preset = await prisma.mealPreset.findUnique({
-      where: { id },
-      include: {
-        items: {
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
+const UpdatePresetBody = z.object({
+  name: z.string().optional(),
+  mealType: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+function parseId(raw: string) {
+  const id = parseInt(raw, 10);
+  return Number.isNaN(id) ? null : id;
+}
+
+async function findOwn(id: number, dietitianId: number) {
+  return prisma.mealPreset.findFirst({
+    where: { id, dietitianId },
+    select: { id: true, dietitianId: true },
+  });
+}
+
+export const GET = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "presets.get",
+  handler: async ({ params, auth }) => {
+    const id = parseId(params.id);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid preset ID" }, { status: 400 });
+    }
+    const preset = await prisma.mealPreset.findFirst({
+      where: { id, dietitianId: auth.user!.id },
+      include: { items: { orderBy: { order: "asc" } } },
     });
-
     if (!preset) {
       return NextResponse.json({ error: "Preset bulunamadı" }, { status: 404 });
     }
-
     return NextResponse.json(preset);
-  } catch (error) {
-    console.error("Error fetching preset:", error);
-    return NextResponse.json(
-      { error: "Preset yüklenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+  },
+});
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
-    const body = await request.json();
-    const { name, mealType, isActive } = body;
-
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (mealType !== undefined) updateData.mealType = mealType || null;
-    if (isActive !== undefined) updateData.isActive = isActive;
-
-    const preset = await prisma.mealPreset.update({
-      where: { id },
-      data: updateData,
-      include: {
-        items: true,
-      },
-    });
-
-    invalidate.presets(preset.dietitianId ?? undefined);
-    return NextResponse.json(preset);
-  } catch (error: any) {
-    console.error("Error updating preset:", error);
-    if (error.code === "P2025") {
+export const PUT = route<typeof UpdatePresetBody, Params>({
+  auth: "dietitian",
+  schema: UpdatePresetBody,
+  scope: "presets.update",
+  handler: async ({ body, params, auth, log }) => {
+    const id = parseId(params.id);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid preset ID" }, { status: 400 });
+    }
+    const owned = await findOwn(id, auth.user!.id);
+    if (!owned) {
       return NextResponse.json({ error: "Preset bulunamadı" }, { status: 404 });
     }
-    return NextResponse.json(
-      { error: "Preset güncellenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+    try {
+      const preset = await prisma.mealPreset.update({
+        where: { id },
+        data: {
+          ...(body.name !== undefined ? { name: body.name.trim() } : {}),
+          ...(body.mealType !== undefined ? { mealType: body.mealType ?? null } : {}),
+          ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+        },
+        include: { items: true },
+      });
+      invalidate.presets(preset.dietitianId ?? undefined);
+      return NextResponse.json(preset);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+        return NextResponse.json({ error: "Preset bulunamadı" }, { status: 404 });
+      }
+      log.error("update failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Preset güncellenirken bir hata oluştu" },
+        { status: 500 },
+      );
+    }
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
-
-    const existing = await prisma.mealPreset.findUnique({
-      where: { id },
-      select: { dietitianId: true },
-    });
-
-    await prisma.mealPreset.delete({
-      where: { id },
-    });
-
-    invalidate.presets(existing?.dietitianId ?? undefined);
-    return NextResponse.json({ message: "Preset silindi" });
-  } catch (error: any) {
-    console.error("Error deleting preset:", error);
-    if (error.code === "P2025") {
+export const DELETE = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "presets.delete",
+  handler: async ({ params, auth, log }) => {
+    const id = parseId(params.id);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid preset ID" }, { status: 400 });
+    }
+    const owned = await findOwn(id, auth.user!.id);
+    if (!owned) {
       return NextResponse.json({ error: "Preset bulunamadı" }, { status: 404 });
     }
-    return NextResponse.json(
-      { error: "Preset silinirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+    try {
+      await prisma.mealPreset.delete({ where: { id } });
+      invalidate.presets(owned.dietitianId ?? undefined);
+      return NextResponse.json({ message: "Preset silindi" });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+        return NextResponse.json({ error: "Preset bulunamadı" }, { status: 404 });
+      }
+      log.error("delete failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Preset silinirken bir hata oluştu" },
+        { status: 500 },
+      );
+    }
+  },
+});

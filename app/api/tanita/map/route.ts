@@ -1,72 +1,66 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import { TanitaMappingService } from "@/services/TanitaMappingService";
 import { TanitaProgressService } from "@/services/TanitaProgressService";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic";
 
-export const POST = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+const Body = z.object({
+  clientId: z.coerce.number().int().positive(),
+  tanitaMemberId: z.coerce.number().int().positive(),
+  syncMeasurements: z.boolean().optional(),
+});
+
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "tanita.map",
+  handler: async ({ body, auth, log }) => {
     try {
-      const body = await request.json();
-      const { clientId, tanitaMemberId, syncMeasurements } = body;
-
-      if (!clientId || !tanitaMemberId) {
-        const errorResponse = NextResponse.json(
-          { error: "clientId ve tanitaMemberId gerekli" },
-          { status: 400 }
-        );
-        return addCorsHeaders(errorResponse);
-      }
-
-      const dietitianId = auth.user!.id;
-
-      // Client'ı Tanita ile eşleştir
       const { client, tanitaUser } = await TanitaMappingService.mapClientToTanita(
-        clientId,
-        tanitaMemberId,
-        dietitianId
+        body.clientId,
+        body.tanitaMemberId,
+        auth.user!.id,
       );
 
-      // Ölçümleri aktar (eğer istenirse - userId opsiyonel)
-      let progressSyncResult: { created: number; skipped: number; errors: string[] } | null = null;
-      if (syncMeasurements) {
+      let progressSyncResult:
+        | { created: number; skipped: number; errors: string[] }
+        | null = null;
+      if (body.syncMeasurements) {
         progressSyncResult = await TanitaProgressService.syncMeasurementsToProgress(
-          clientId,
-          client.userId || undefined
+          body.clientId,
+          client.userId || undefined,
         );
       }
 
-      const response = NextResponse.json({
-        success: true,
-        client: {
-          id: client.id,
-          name: client.name,
-          surname: client.surname,
-          tanitaMemberId: client.tanitaMemberId,
-        },
-        tanitaUser: {
-          id: tanitaUser.id,
-          tanitaMemberId: tanitaUser.tanitaMemberId,
-          name: tanitaUser.name,
-          surname: tanitaUser.surname,
-        },
-        progressSync: progressSyncResult,
-      });
-
-      return addCorsHeaders(response);
-    } catch (error: any) {
-      console.error("Error mapping client to Tanita:", error);
-      const response = NextResponse.json(
-        {
-          error: error.message || "Client eşleştirme başarısız",
-        },
-        { status: 500 }
+      return addCorsHeaders(
+        NextResponse.json({
+          success: true,
+          client: {
+            id: client.id,
+            name: client.name,
+            surname: client.surname,
+            tanitaMemberId: client.tanitaMemberId,
+          },
+          tanitaUser: {
+            id: tanitaUser.id,
+            tanitaMemberId: tanitaUser.tanitaMemberId,
+            name: tanitaUser.name,
+            surname: tanitaUser.surname,
+          },
+          progressSync: progressSyncResult,
+        }),
       );
-      return addCorsHeaders(response);
+    } catch (err) {
+      log.error("map failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: err instanceof Error ? err.message : "Client eşleştirme başarısız" },
+          { status: 500 },
+        ),
+      );
     }
-  }
-);
-
+  },
+});

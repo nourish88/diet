@@ -1,198 +1,151 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
+import { CreateExerciseLogInput } from "@/schemas/api/exercise";
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/exercises
- * Get exercise logs for a client
- * - If called by client: returns their own exercise logs
- * - If called by dietitian: requires clientId query param
+ *  - dietitian: requires `clientId` (must own that client)
+ *  - client:    returns own logs (clientId inferred from auth)
  */
-export const GET = async (request: NextRequest) => {
-  try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
+export const GET = route({
+  auth: "any",
+  scope: "exercises.list",
+  handler: async ({ request, auth, log }) => {
+    try {
+      const sp = request.nextUrl.searchParams;
+      const dateFrom = sp.get("dateFrom");
+      const dateTo = sp.get("dateTo");
 
-    const searchParams = request.nextUrl.searchParams;
-    const clientIdParam = searchParams.get("clientId");
-    const dateFromParam = searchParams.get("dateFrom");
-    const dateToParam = searchParams.get("dateTo");
+      let clientId: number | undefined;
+      let userId: number | undefined;
 
-    let clientId: number | undefined;
-    let userId: number | undefined;
+      if (auth.user!.role === "dietitian") {
+        const clientIdParam = sp.get("clientId");
+        if (!clientIdParam) {
+          return addCorsHeaders(
+            NextResponse.json(
+              { error: "clientId is required for dietitian" },
+              { status: 400 },
+            ),
+          );
+        }
+        clientId = parseInt(clientIdParam, 10);
+        if (Number.isNaN(clientId)) {
+          return addCorsHeaders(
+            NextResponse.json({ error: "Invalid clientId" }, { status: 400 }),
+          );
+        }
+        const client = await prisma.client.findUnique({
+          where: { id: clientId },
+          select: { dietitianId: true, userId: true },
+        });
+        if (!client) {
+          return addCorsHeaders(
+            NextResponse.json({ error: "Client not found" }, { status: 404 }),
+          );
+        }
+        if (client.dietitianId !== auth.user!.id) {
+          return addCorsHeaders(
+            NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+          );
+        }
+        userId = client.userId ?? undefined;
+      } else {
+        // client role
+        const client = await prisma.client.findUnique({
+          where: { userId: auth.user!.id },
+          select: { id: true },
+        });
+        if (!client) {
+          return addCorsHeaders(
+            NextResponse.json({ error: "Client not found" }, { status: 404 }),
+          );
+        }
+        clientId = client.id;
+        userId = auth.user!.id;
+      }
 
-    if (auth.user.role === "dietitian") {
-      // Dietitian must provide clientId
-      if (!clientIdParam) {
+      if (!clientId || !userId) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "clientId is required for dietitian" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Client or user not found" }, { status: 404 }),
         );
       }
-      clientId = parseInt(clientIdParam, 10);
-      
-      // Verify dietitian owns this client
-      const client = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: { dietitianId: true, userId: true },
+
+      const where: Prisma.ExerciseLogWhereInput = { clientId, userId };
+      if (dateFrom || dateTo) {
+        where.date = {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo ? { lte: new Date(dateTo) } : {}),
+        };
+      }
+
+      const logs = await prisma.exerciseLog.findMany({
+        where,
+        include: { definition: true },
+        orderBy: { date: "desc" },
       });
 
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 })
-        );
-      }
-
-      if (client.dietitianId !== auth.user.id) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        );
-      }
-
-      userId = client.userId || undefined;
-    } else if (auth.user.role === "client") {
-      // Client can only view their own exercises
-      const client = await prisma.client.findUnique({
-        where: { userId: auth.user.id },
-        select: { id: true },
-      });
-
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 })
-        );
-      }
-
-      clientId = client.id;
-      userId = auth.user.id;
-    } else {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid role" }, { status: 403 })
-      );
-    }
-
-    if (!clientId || !userId) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Client or user not found" }, { status: 404 })
-      );
-    }
-
-    // Build date filter
-    const where: any = {
-      clientId,
-      userId,
-    };
-
-    if (dateFromParam || dateToParam) {
-      where.date = {};
-      if (dateFromParam) {
-        where.date.gte = new Date(dateFromParam);
-      }
-      if (dateToParam) {
-        where.date.lte = new Date(dateToParam);
-      }
-    }
-
-    // Get exercise logs
-    const logs = await prisma.exerciseLog.findMany({
-      where,
-      include: {
-        definition: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
-
-    return addCorsHeaders(NextResponse.json({ success: true, logs }));
-  } catch (error: any) {
-    console.error("Error fetching exercise logs:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Failed to fetch exercise logs" },
-        { status: 500 }
-      )
-    );
-  }
-};
-
-/**
- * POST /api/exercises
- * Create new exercise log (client only)
- */
-export const POST = async (request: NextRequest) => {
-  // Handle CORS preflight
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
-  try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user || auth.user.role !== "client") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    const body = await request.json();
-    const { date, exerciseTypeId, description, duration, steps } = body;
-
-    // Validate required fields
-    if (!date) {
+      return addCorsHeaders(NextResponse.json({ success: true, logs }));
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
-          { error: "Date is required" },
-          { status: 400 }
-        )
+          { error: err instanceof Error ? err.message : "Failed to fetch exercise logs" },
+          { status: 500 },
+        ),
       );
     }
+  },
+});
 
-    // Get client for this user
-    const client = await prisma.client.findUnique({
-      where: { userId: auth.user.id },
-      select: { id: true },
-    });
+/**
+ * POST /api/exercises (client only)
+ */
+export const POST = route({
+  auth: "client",
+  schema: CreateExerciseLogInput,
+  scope: "exercises.create",
+  handler: async ({ body, auth, log }) => {
+    try {
+      const client = await prisma.client.findUnique({
+        where: { userId: auth.user!.id },
+        select: { id: true },
+      });
+      if (!client) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Client not found" }, { status: 404 }),
+        );
+      }
 
-    if (!client) {
+      const created = await prisma.exerciseLog.create({
+        data: {
+          userId: auth.user!.id,
+          clientId: client.id,
+          date: new Date(body.date),
+          exerciseTypeId: body.exerciseTypeId ?? null,
+          description: body.description ?? null,
+          duration: body.duration ?? null,
+          steps: body.steps ?? null,
+        },
+        include: { definition: true },
+      });
+
       return addCorsHeaders(
-        NextResponse.json({ error: "Client not found" }, { status: 404 })
+        NextResponse.json({ success: true, log: created }, { status: 201 }),
+      );
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: err instanceof Error ? err.message : "Failed to create exercise log" },
+          { status: 500 },
+        ),
       );
     }
-
-    // Create exercise log
-    const log = await prisma.exerciseLog.create({
-      data: {
-        userId: auth.user.id,
-        clientId: client.id,
-        date: new Date(date),
-        exerciseTypeId: exerciseTypeId ? parseInt(exerciseTypeId, 10) : null,
-        description: description || null,
-        duration: duration ? parseInt(duration, 10) : null,
-        steps: steps ? parseInt(steps, 10) : null,
-      },
-      include: {
-        definition: true,
-      },
-    });
-
-    return addCorsHeaders(NextResponse.json({ success: true, log }, { status: 201 }));
-  } catch (error: any) {
-    console.error("Error creating exercise log:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Failed to create exercise log" },
-        { status: 500 }
-      )
-    );
-  }
-};
-
+  },
+});

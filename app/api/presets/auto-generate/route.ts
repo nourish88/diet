@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { addCorsHeaders } from "@/lib/cors";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
 interface MealItem {
   besinName: string;
@@ -17,8 +17,10 @@ interface MealPattern {
   score: number;
 }
 
-export const POST = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+export const POST = route({
+  auth: "dietitian",
+  scope: "presets.auto-generate",
+  handler: async ({ auth, log }) => {
     try {
       // Get last 30 diets for this dietitian
       const diets = await prisma.diet.findMany({
@@ -159,8 +161,8 @@ export const POST = requireDietitian(
         patternsDetected: detectedPatterns.length,
       })
     );
-    } catch (error) {
-      console.error("Error auto-generating presets:", error);
+    } catch (err) {
+      log.error("auto-generate failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
           { error: "Otomatik preset oluşturulurken bir hata oluştu" },
@@ -168,8 +170,8 @@ export const POST = requireDietitian(
         )
       );
     }
-  }
-);
+  },
+});
 
 // Helper: Normalize meal names
 function normalizeMealName(name: string): string {

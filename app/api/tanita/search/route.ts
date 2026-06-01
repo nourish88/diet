@@ -1,57 +1,54 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
 import { TanitaService } from "@/services/TanitaService";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic";
 
-export const GET = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+export const GET = route({
+  auth: "dietitian",
+  scope: "tanita.search",
+  handler: async ({ request, log }) => {
     try {
-
-      const searchParams = request.nextUrl.searchParams;
-      const query = searchParams.get("q") || "";
-
-      if (!query || query.trim().length < 2) {
-        return NextResponse.json(
-          { error: "Arama sorgusu en az 2 karakter olmalıdır" },
-          { status: 400 }
+      const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+      if (query.length < 2) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Arama sorgusu en az 2 karakter olmalıdır" },
+            { status: 400 },
+          ),
         );
       }
 
-      // Tanita veritabanında ara
-      const users = TanitaService.searchUsers(query.trim());
+      const users = TanitaService.searchUsers(query);
 
-      const response = NextResponse.json({
-        success: true,
-        users: users.map((user) => ({
-          id: user.id,
-          name: user.name,
-          surname: user.surname,
-          email: user.email,
-          phone: user.phone,
-          dob: user.dob,
-          gender: user.gender,
-          bodyType: user.bodyType,
-          height: user.height,
-          identityNumber: user.identityNumber,
-          notes: user.notes,
-        })),
-        count: users.length,
-      });
-
-      return addCorsHeaders(response);
-    } catch (error: any) {
-      console.error("Error searching Tanita users:", error);
-      const response = NextResponse.json(
-        {
-          error: error.message || "Tanita araması başarısız",
-        },
-        { status: 500 }
+      return addCorsHeaders(
+        NextResponse.json({
+          success: true,
+          users: users.map((user) => ({
+            id: user.id,
+            name: user.name,
+            surname: user.surname,
+            email: user.email,
+            phone: user.phone,
+            dob: user.dob,
+            gender: user.gender,
+            bodyType: user.bodyType,
+            height: user.height,
+            identityNumber: user.identityNumber,
+            notes: user.notes,
+          })),
+          count: users.length,
+        }),
       );
-      return addCorsHeaders(response);
+    } catch (err) {
+      log.error("search failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: err instanceof Error ? err.message : "Tanita araması başarısız" },
+          { status: 500 },
+        ),
+      );
     }
-  }
-);
-
+  },
+});

@@ -1,270 +1,179 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/api-auth";
-import { addCorsHeaders } from "@/lib/cors";
+import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// Validation schemas
-const createCommentSchema = z.object({
+const CreateCommentBody = z.object({
   content: z.string().min(1, "Yorum içeriği gerekli"),
   dietId: z.number().int().positive("Geçerli diyet ID gerekli"),
   ogunId: z.number().int().positive().optional(),
   menuItemId: z.number().int().positive().optional(),
 });
 
-const getCommentsSchema = z.object({
-  dietId: z.string().transform(Number),
-  ogunId: z.string().transform(Number).optional(),
-  menuItemId: z.string().transform(Number).optional(),
+const COMMENT_INCLUDE = {
+  user: { select: { id: true, email: true, role: true } },
+  ogun: { select: { id: true, name: true } },
+  menuItem: {
+    select: { id: true, besin: { select: { name: true } } },
+  },
+} satisfies Prisma.DietCommentInclude;
+
+async function assertDietAccess(dietId: number, userId: number) {
+  return prisma.diet.findFirst({
+    where: {
+      id: dietId,
+      OR: [{ dietitianId: userId }, { client: { userId } }],
+    },
+    select: { id: true },
+  });
+}
+
+/** POST /api/comments — create a comment on a diet/ogun/menu item. */
+export const POST = route({
+  auth: "any",
+  schema: CreateCommentBody,
+  scope: "comments.create",
+  handler: async ({ body, auth, log }) => {
+    try {
+      const diet = await assertDietAccess(body.dietId, auth.user!.id);
+      if (!diet) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
+            { status: 404 },
+          ),
+        );
+      }
+
+      const comment = await prisma.dietComment.create({
+        data: {
+          content: body.content,
+          userId: auth.user!.id,
+          dietId: body.dietId,
+          ogunId: body.ogunId,
+          menuItemId: body.menuItemId,
+        },
+        include: COMMENT_INCLUDE,
+      });
+
+      return addCorsHeaders(
+        NextResponse.json({ comment, message: "Yorum başarıyla eklendi" }),
+      );
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: err instanceof Error ? err.message : "Yorum oluşturulurken bir hata oluştu" },
+          { status: 500 },
+        ),
+      );
+    }
+  },
 });
 
-// POST /api/comments - Create a new comment
-export const POST = requireAuth(async (request: NextRequest, auth) => {
-  try {
-    const body = await request.json();
-    const validatedData = createCommentSchema.parse(body);
+/** GET /api/comments?dietId=&ogunId=&menuItemId= */
+export const GET = route({
+  auth: "any",
+  scope: "comments.list",
+  handler: async ({ request, auth, log }) => {
+    try {
+      const sp = request.nextUrl.searchParams;
+      const dietIdRaw = sp.get("dietId");
+      if (!dietIdRaw) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "dietId gerekli" }, { status: 400 }),
+        );
+      }
+      const dietId = Number(dietIdRaw);
+      if (!Number.isInteger(dietId) || dietId <= 0) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Geçersiz dietId" }, { status: 400 }),
+        );
+      }
+      const ogunIdRaw = sp.get("ogunId");
+      const menuItemIdRaw = sp.get("menuItemId");
 
-    // Verify user owns the diet or is the client
-    const diet = await prisma.diet.findFirst({
-      where: {
-        id: validatedData.dietId,
-        OR: [
-          { dietitianId: auth.user!.id }, // Dietitian owns the diet
-          { client: { userId: auth.user!.id } }, // Client owns the diet
-        ],
-      },
-      include: {
-        client: true,
-      },
-    });
+      const diet = await assertDietAccess(dietId, auth.user!.id);
+      if (!diet) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
+            { status: 404 },
+          ),
+        );
+      }
 
-    if (!diet) {
+      const where: Prisma.DietCommentWhereInput = { dietId };
+      if (ogunIdRaw) where.ogunId = Number(ogunIdRaw);
+      if (menuItemIdRaw) where.menuItemId = Number(menuItemIdRaw);
+
+      const comments = await prisma.dietComment.findMany({
+        where,
+        include: COMMENT_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      });
+
+      return addCorsHeaders(
+        NextResponse.json({ comments, total: comments.length }),
+      );
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
-          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
-          { status: 404 }
-        )
+          { error: err instanceof Error ? err.message : "Yorumlar yüklenirken bir hata oluştu" },
+          { status: 500 },
+        ),
       );
     }
-
-    // Create comment
-    const comment = await prisma.dietComment.create({
-      data: {
-        content: validatedData.content,
-        userId: auth.user!.id,
-        dietId: validatedData.dietId,
-        ogunId: validatedData.ogunId,
-        menuItemId: validatedData.menuItemId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-        ogun: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        menuItem: {
-          select: {
-            id: true,
-            besin: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({
-        comment,
-        message: "Yorum başarıyla eklendi",
-      })
-    );
-  } catch (error: any) {
-    console.error("Error creating comment:", error);
-
-    if (error instanceof z.ZodError) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Geçersiz veri", details: error.errors },
-          { status: 400 }
-        )
-      );
-    }
-
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Yorum oluşturulurken bir hata oluştu" },
-        { status: 500 }
-      )
-    );
-  }
+  },
 });
 
-// GET /api/comments - Get comments for a diet
-export const GET = requireAuth(async (request: NextRequest, auth) => {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const validatedParams = getCommentsSchema.parse({
-      dietId: searchParams.get("dietId"),
-      ogunId: searchParams.get("ogunId"),
-      menuItemId: searchParams.get("menuItemId"),
-    });
+/** DELETE /api/comments?id=N — author-only. */
+export const DELETE = route({
+  auth: "any",
+  scope: "comments.delete",
+  handler: async ({ request, auth, log }) => {
+    try {
+      const commentIdRaw = request.nextUrl.searchParams.get("id");
+      if (!commentIdRaw) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Yorum ID gerekli" }, { status: 400 }),
+        );
+      }
+      const commentId = parseInt(commentIdRaw, 10);
+      if (!Number.isInteger(commentId) || commentId <= 0) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Geçersiz yorum ID" }, { status: 400 }),
+        );
+      }
 
-    // Verify user has access to the diet
-    const diet = await prisma.diet.findFirst({
-      where: {
-        id: validatedParams.dietId,
-        OR: [
-          { dietitianId: auth.user!.id }, // Dietitian owns the diet
-          { client: { userId: auth.user!.id } }, // Client owns the diet
-        ],
-      },
-    });
+      const comment = await prisma.dietComment.findFirst({
+        where: { id: commentId, userId: auth.user!.id },
+        select: { id: true },
+      });
+      if (!comment) {
+        return addCorsHeaders(
+          NextResponse.json(
+            { error: "Yorum bulunamadı veya silme yetkiniz yok" },
+            { status: 404 },
+          ),
+        );
+      }
 
-    if (!diet) {
+      await prisma.dietComment.delete({ where: { id: comment.id } });
+      return addCorsHeaders(NextResponse.json({ message: "Yorum başarıyla silindi" }));
+    } catch (err) {
+      log.error("delete failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
-          { error: "Diyet bulunamadı veya erişim yetkiniz yok" },
-          { status: 404 }
-        )
+          { error: err instanceof Error ? err.message : "Yorum silinirken bir hata oluştu" },
+          { status: 500 },
+        ),
       );
     }
-
-    // Build where clause for comments
-    const where: any = {
-      dietId: validatedParams.dietId,
-    };
-
-    if (validatedParams.ogunId) {
-      where.ogunId = validatedParams.ogunId;
-    }
-
-    if (validatedParams.menuItemId) {
-      where.menuItemId = validatedParams.menuItemId;
-    }
-
-    // Get comments
-    const comments = await prisma.dietComment.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-          },
-        },
-        ogun: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        menuItem: {
-          select: {
-            id: true,
-            besin: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({
-        comments,
-        total: comments.length,
-      })
-    );
-  } catch (error: any) {
-    console.error("Error fetching comments:", error);
-
-    if (error instanceof z.ZodError) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Geçersiz parametreler", details: error.errors },
-          { status: 400 }
-        )
-      );
-    }
-
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Yorumlar yüklenirken bir hata oluştu" },
-        { status: 500 }
-      )
-    );
-  }
-});
-
-// DELETE /api/comments - Delete a comment
-export const DELETE = requireAuth(async (request: NextRequest, auth) => {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const commentId = searchParams.get("id");
-
-    if (!commentId) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Yorum ID gerekli" }, { status: 400 })
-      );
-    }
-
-    // Find comment and verify ownership
-    const comment = await prisma.dietComment.findFirst({
-      where: {
-        id: parseInt(commentId),
-        userId: auth.user!.id, // Only the author can delete
-      },
-    });
-
-    if (!comment) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Yorum bulunamadı veya silme yetkiniz yok" },
-          { status: 404 }
-        )
-      );
-    }
-
-    // Delete comment
-    await prisma.dietComment.delete({
-      where: {
-        id: comment.id,
-      },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({
-        message: "Yorum başarıyla silindi",
-      })
-    );
-  } catch (error: any) {
-    console.error("Error deleting comment:", error);
-
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Yorum silinirken bir hata oluştu" },
-        { status: 500 }
-      )
-    );
-  }
+  },
 });

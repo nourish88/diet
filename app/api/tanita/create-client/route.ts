@@ -1,76 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import { TanitaMappingService } from "@/services/TanitaMappingService";
 import { TanitaProgressService } from "@/services/TanitaProgressService";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
 export const dynamic = "force-dynamic";
 
-export const POST = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+const Body = z.object({
+  tanitaMemberId: z.coerce.number().int().positive(),
+  syncMeasurements: z.boolean().optional(),
+});
+
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "tanita.create-client",
+  handler: async ({ body, auth, log }) => {
     try {
-      const body = await request.json();
-      const { tanitaMemberId, syncMeasurements } = body;
-
-      if (!tanitaMemberId) {
-        const errorResponse = NextResponse.json(
-          { error: "tanitaMemberId gerekli" },
-          { status: 400 }
-        );
-        return addCorsHeaders(errorResponse);
-      }
-
-      const dietitianId = auth.user!.id;
-
-      // Tanita'dan yeni client oluştur
       const { client, tanitaUser } =
         await TanitaMappingService.createClientFromTanita(
-          tanitaMemberId,
-          dietitianId
+          body.tanitaMemberId,
+          auth.user!.id,
         );
 
-      // Ölçümleri aktar (eğer istenirse)
-      let progressSyncResult: { created: number; skipped: number; errors: string[] } | null = null;
-      if (syncMeasurements && client.userId) {
-        progressSyncResult =
-          await TanitaProgressService.syncMeasurementsToProgress(
-            client.id,
-            client.userId
-          );
+      let progressSyncResult:
+        | { created: number; skipped: number; errors: string[] }
+        | null = null;
+      if (body.syncMeasurements && client.userId) {
+        progressSyncResult = await TanitaProgressService.syncMeasurementsToProgress(
+          client.id,
+          client.userId,
+        );
       }
 
-      const response = NextResponse.json({
-        success: true,
-        client: {
-          id: client.id,
-          name: client.name,
-          surname: client.surname,
-          phoneNumber: client.phoneNumber,
-          birthdate: client.birthdate,
-          gender: client.gender,
-          tanitaMemberId: client.tanitaMemberId,
-        },
-        tanitaUser: {
-          id: tanitaUser.id,
-          tanitaMemberId: tanitaUser.tanitaMemberId,
-          name: tanitaUser.name,
-          surname: tanitaUser.surname,
-        },
-        progressSync: progressSyncResult,
-      });
-
-      return addCorsHeaders(response);
-    } catch (error: any) {
-      console.error("Error creating client from Tanita:", error);
-      const response = NextResponse.json(
-        {
-          error: error.message || "Client oluşturma başarısız",
-        },
-        { status: 500 }
+      return addCorsHeaders(
+        NextResponse.json({
+          success: true,
+          client: {
+            id: client.id,
+            name: client.name,
+            surname: client.surname,
+            phoneNumber: client.phoneNumber,
+            birthdate: client.birthdate,
+            gender: client.gender,
+            tanitaMemberId: client.tanitaMemberId,
+          },
+          tanitaUser: {
+            id: tanitaUser.id,
+            tanitaMemberId: tanitaUser.tanitaMemberId,
+            name: tanitaUser.name,
+            surname: tanitaUser.surname,
+          },
+          progressSync: progressSyncResult,
+        }),
       );
-      return addCorsHeaders(response);
+    } catch (err) {
+      log.error("create-client failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: err instanceof Error ? err.message : "Client oluşturma başarısız" },
+          { status: 500 },
+        ),
+      );
     }
-  }
-);
-
+  },
+});

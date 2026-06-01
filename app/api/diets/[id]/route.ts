@@ -1,15 +1,14 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextResponse, after } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import {
-  requireDietitian,
-  AuthResult,
-  requireOwnDiet,
-  authenticateRequest,
-} from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { requireOwnDiet, type AuthResult } from "@/lib/api-auth";
+import { addCorsHeaders } from "@/lib/cors";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
 export const maxDuration = 60;
+
+type Params = { id: string };
 
 async function logDietUpdate({
   clientId,
@@ -20,14 +19,13 @@ async function logDietUpdate({
   clientId: number | null;
   dietId: number;
   dietitianId: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }) {
   try {
     const config = await prisma.systemConfig.findUnique({
       where: { key: "diet_form_logging_enabled" },
       select: { value: true },
     });
-
     if (!config || config.value !== "true") return;
 
     await prisma.dietFormLog.create({
@@ -38,212 +36,127 @@ async function logDietUpdate({
         dietId,
         action: "diet_updated",
         source: "server",
-        metadata,
+        metadata: metadata as Prisma.InputJsonValue,
       },
     });
-  } catch (logError) {
-    console.warn("Error logging diet update:", logError);
+  } catch {
+    // Telemetry is best-effort; never fail the request on logging.
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await authenticateRequest(request);
+async function clientOwnsDiet(dietId: number, auth: AuthResult): Promise<boolean> {
+  if (!auth.user || auth.user.role !== "client") return false;
+  const diet = await prisma.diet.findUnique({
+    where: { id: dietId },
+    select: { clientId: true },
+  });
+  return diet ? diet.clientId === auth.user.id : false;
+}
 
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
+function toIso(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  return (value as string | null) ?? null;
+}
 
-    const { id } = await params;
-    const dietId = parseInt(id);
+/** GET /api/diets/[id] — diet detail (owning dietitian or client). */
+export const GET = route<undefined, Params>({
+  auth: "any",
+  scope: "diets.get",
+  handler: async ({ params, auth, log }) => {
+    try {
+      const dietId = parseInt(params.id, 10);
+      if (Number.isNaN(dietId)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid diet ID" }, { status: 400 }),
+        );
+      }
 
-    if (isNaN(dietId)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid diet ID" }, { status: 400 })
-      );
-    }
+      const user = auth.user!;
+      const hasAccess =
+        user.role === "dietitian"
+          ? await requireOwnDiet(dietId, auth)
+          : await clientOwnsDiet(dietId, auth);
+      if (!hasAccess) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Access denied" }, { status: 403 }),
+        );
+      }
 
-    // SECURITY: Check access based on role
-    console.log("🔐 Access check - User:", auth.user.id, "Role:", auth.user.role, "Diet ID:", dietId);
-    
-    let hasAccess = false;
-    if (auth.user.role === "dietitian") {
-      hasAccess = await requireOwnDiet(dietId, auth);
-      console.log("👨‍⚕️ Dietitian access check result:", hasAccess);
-    } else if (auth.user.role === "client") {
-      const requireOwnClientDiet = async (dietId: number, auth: AuthResult): Promise<boolean> => {
-        if (!auth.user || auth.user.role !== "client") {
-          return false;
-        }
-        try {
-          const diet = await prisma.diet.findUnique({
-            where: { id: dietId },
-            select: { clientId: true, dietitianId: true },
-          });
-          console.log("🔍 Diet found:", diet);
-          console.log("🔍 User ID:", auth.user.id, "Client ID in diet:", diet?.clientId);
-          if (!diet) {
-            return false;
-          }
-          return diet.clientId === auth.user.id;
-        } catch (error) {
-          console.error("Error checking client diet ownership:", error);
-          return false;
-        }
+      const diet = await prisma.diet.findUnique({
+        where: { id: dietId },
+        include: {
+          client: {
+            select: { id: true, name: true, surname: true, phoneNumber: true },
+          },
+          oguns: {
+            orderBy: { order: "asc" },
+            include: { items: { include: { besin: true, birim: true } } },
+          },
+          importantDate: { select: { id: true, message: true } },
+        },
+      });
+
+      if (!diet) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Diet not found" }, { status: 404 }),
+        );
+      }
+
+      const normalized = {
+        ...diet,
+        tarih: toIso(diet.tarih),
+        createdAt: toIso(diet.createdAt),
+        updatedAt: toIso(diet.updatedAt),
+        client: diet.client,
       };
-      hasAccess = await requireOwnClientDiet(dietId, auth);
-      console.log("👤 Client access check result:", hasAccess);
-    }
 
-    if (!hasAccess) {
-      console.log("❌ Access denied for user:", auth.user.id, "to diet:", dietId);
+      return addCorsHeaders(NextResponse.json(normalized));
+    } catch (err) {
+      log.error("get failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json({ error: "Access denied" }, { status: 403 })
+        NextResponse.json({ error: "Failed to fetch diet" }, { status: 500 }),
       );
     }
-    
-    console.log("✅ Access granted for user:", auth.user.id, "to diet:", dietId);
+  },
+});
 
-    const diet = await prisma.diet.findUnique({
-      where: {
-        id: dietId,
-      },
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            surname: true,
-            phoneNumber: true,
-          },
-        },
-        oguns: {
-          orderBy: {
-            order: "asc",
-          },
-          include: {
-            items: {
-              include: {
-                besin: true,
-                birim: true,
-              },
-            },
-          },
-        },
-        importantDate: {
-          select: {
-            id: true,
-            message: true,
-          },
-        },
-      },
-    });
+/** PUT /api/diets/[id] — replace a diet's fields and meals (dietitian, owner). */
+export const PUT = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "diets.update",
+  handler: async ({ request, params, auth, log }) => {
+    try {
+      const dietId = parseInt(params.id, 10);
+      if (Number.isNaN(dietId)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid diet ID" }, { status: 400 }),
+        );
+      }
 
-    if (!diet) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Diet not found" }, { status: 404 })
-      );
-    }
+      if (!(await requireOwnDiet(dietId, auth))) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Access denied" }, { status: 403 }),
+        );
+      }
 
-    // Debug: Log client phoneNumber
-    console.log("🔵 API - Diet client:", diet.client);
-    console.log("🔵 API - Client phoneNumber:", diet.client?.phoneNumber);
-
-    // Normalize date fields to ISO strings to avoid invalid date on frontend
-    const normalized = {
-      ...diet,
-      tarih:
-        (diet as any).tarih instanceof Date
-          ? ((diet as any).tarih as Date).toISOString()
-          : (diet as any).tarih ?? null,
-      createdAt:
-        (diet as any).createdAt instanceof Date
-          ? ((diet as any).createdAt as Date).toISOString()
-          : (diet as any).createdAt,
-      updatedAt:
-        (diet as any).updatedAt instanceof Date
-          ? ((diet as any).updatedAt as Date).toISOString()
-          : (diet as any).updatedAt,
-      // Ensure client object is preserved with phoneNumber
-      client: diet.client ? {
-        ...diet.client,
-        phoneNumber: diet.client.phoneNumber,
-      } : null,
-    };
-
-    console.log("🔵 API - Normalized client:", normalized.client);
-    console.log("🔵 API - Normalized client phoneNumber:", normalized.client?.phoneNumber);
-
-    return addCorsHeaders(NextResponse.json(normalized));
-  } catch (error) {
-    console.error("Error fetching diet:", error);
-    return addCorsHeaders(
-      NextResponse.json({ error: "Failed to fetch diet" }, { status: 500 })
-    );
-  }
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await authenticateRequest(request);
-
-    if (!auth.user || auth.user.role !== "dietitian") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    // Handle CORS preflight
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
-    const { id } = await params;
-    const dietId = parseInt(id);
-
-    if (isNaN(dietId)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid diet ID" }, { status: 400 })
-      );
-    }
-
-    // SECURITY: Check if dietitian owns this diet
-    const hasAccess = await requireOwnDiet(dietId, auth);
-    if (!hasAccess) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Access denied" }, { status: 403 })
-      );
-    }
-
-      // Parse request body
       let data: any;
       try {
         data = await request.json();
-      } catch (parseError) {
+      } catch {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "Invalid request body" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "Invalid request body" }, { status: 400 }),
         );
       }
 
       // Resolve every distinct besin/birim name to an id BEFORE the
-      // transaction starts. Otherwise each menu item triggers a sequential
-      // `connectOrCreate` round-trip inside the interactive transaction and
+      // transaction starts, otherwise each menu item triggers a sequential
+      // connectOrCreate round-trip inside the interactive transaction and
       // diets with many items blow past Prisma's 5 sn default (P2028).
       const ogunsInput: any[] = Array.isArray(data.oguns) ? data.oguns : [];
       const besinNameSet = new Set<string>();
       const birimNameSet = new Set<string>();
       for (const ogun of ogunsInput) {
-        for (const item of (ogun.items || [])) {
+        for (const item of ogun.items || []) {
           besinNameSet.add(item.besin || "");
           birimNameSet.add(item.birim || "");
         }
@@ -256,8 +169,8 @@ export async function PUT(
               create: { name },
               update: {},
               select: { id: true, name: true },
-            })
-          )
+            }),
+          ),
         ),
         Promise.all(
           Array.from(birimNameSet).map((name) =>
@@ -266,8 +179,8 @@ export async function PUT(
               create: { name },
               update: {},
               select: { id: true, name: true },
-            })
-          )
+            }),
+          ),
         ),
       ]);
       const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
@@ -290,16 +203,10 @@ export async function PUT(
         },
       }));
 
-      // Update diet using transaction to ensure consistency
       const updatedDiet = await prisma.$transaction(
         async (tx) => {
-          // First, delete all existing oguns (cascade will delete items)
-          await tx.ogun.deleteMany({
-            where: { dietId },
-          });
-
-          // Update diet fields
-          const diet = await tx.diet.update({
+          await tx.ogun.deleteMany({ where: { dietId } });
+          return tx.diet.update({
             where: { id: dietId },
             data: {
               tarih: data.tarih ? new Date(data.tarih) : null,
@@ -315,30 +222,14 @@ export async function PUT(
             },
             include: {
               oguns: {
-                include: {
-                  items: {
-                    include: {
-                      birim: true,
-                      besin: true,
-                    },
-                  },
-                },
+                include: { items: { include: { birim: true, besin: true } } },
               },
               client: true,
-              importantDate: {
-                select: {
-                  id: true,
-                  message: true,
-                },
-              },
+              importantDate: { select: { id: true, message: true } },
             },
           });
-
-          return diet;
         },
-        // Cold-start safety net; the actual work is fast (~1 sn) now that
-        // besin/birim are pre-resolved.
-        { timeout: 15_000, maxWait: 5_000 }
+        { timeout: 15_000, maxWait: 5_000 },
       );
 
       after(() =>
@@ -350,85 +241,58 @@ export async function PUT(
             ogunCount: updatedDiet.oguns.length,
             totalItems: updatedDiet.oguns.reduce(
               (sum, ogun) => sum + (ogun.items?.length || 0),
-              0
+              0,
             ),
           },
-        })
+        }),
       );
 
-      // Normalize date fields
       const normalized = {
         ...updatedDiet,
-        tarih:
-          (updatedDiet as any).tarih instanceof Date
-            ? ((updatedDiet as any).tarih as Date).toISOString()
-            : (updatedDiet as any).tarih ?? null,
-        createdAt:
-          (updatedDiet as any).createdAt instanceof Date
-            ? ((updatedDiet as any).createdAt as Date).toISOString()
-            : (updatedDiet as any).createdAt,
-        updatedAt:
-          (updatedDiet as any).updatedAt instanceof Date
-            ? ((updatedDiet as any).updatedAt as Date).toISOString()
-            : (updatedDiet as any).updatedAt,
+        tarih: toIso(updatedDiet.tarih),
+        createdAt: toIso(updatedDiet.createdAt),
+        updatedAt: toIso(updatedDiet.updatedAt),
       };
 
       return addCorsHeaders(NextResponse.json(normalized));
-    } catch (error: any) {
-      console.error("Error updating diet:", error);
+    } catch (err) {
+      log.error("update failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: error.message || "Failed to update diet" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to update diet" }, { status: 500 }),
       );
     }
-  }
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const auth = await authenticateRequest(request);
+/** DELETE /api/diets/[id] — delete a diet (dietitian, owner). */
+export const DELETE = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "diets.delete",
+  handler: async ({ params, auth, log }) => {
+    try {
+      const dietId = parseInt(params.id, 10);
+      if (Number.isNaN(dietId)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Invalid diet ID" }, { status: 400 }),
+        );
+      }
 
-    if (!auth.user || auth.user.role !== "dietitian") {
+      if (!(await requireOwnDiet(dietId, auth))) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "Access denied" }, { status: 403 }),
+        );
+      }
+
+      await prisma.diet.delete({ where: { id: dietId } });
+
       return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        NextResponse.json({ message: "Diet deleted successfully" }),
+      );
+    } catch (err) {
+      log.error("delete failed", err instanceof Error ? err.message : err);
+      return addCorsHeaders(
+        NextResponse.json({ error: "Failed to delete diet" }, { status: 500 }),
       );
     }
-
-    const { id } = await params;
-    const dietId = parseInt(id);
-
-    if (isNaN(dietId)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid diet ID" }, { status: 400 })
-      );
-    }
-
-    // SECURITY: Check if dietitian owns this diet
-    const hasAccess = await requireOwnDiet(dietId, auth);
-    if (!hasAccess) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Access denied" }, { status: 403 })
-      );
-    }
-
-    await prisma.diet.delete({
-      where: { id: dietId },
-    });
-
-    return addCorsHeaders(
-      NextResponse.json({ message: "Diet deleted successfully" })
-    );
-  } catch (error: any) {
-    console.error("Error deleting diet:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error.message || "Failed to delete diet" },
-        { status: 500 }
-      )
-    );
-  }
-}
+  },
+});

@@ -1,47 +1,51 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getCachedBesinGroups, invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
-// GET /api/besin-gruplari - Get all besin groups
-export async function GET() {
-  try {
-    const besinGroups = await getCachedBesinGroups();
-    return NextResponse.json(besinGroups);
-  } catch (error) {
-    console.error("Error fetching besin groups:", error);
-    return NextResponse.json(
-      { error: "Besin grupları yüklenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+const CreateBesinGroupBody = z.object({
+  name: z.string().optional(),
+  description: z.string().min(1, "Geçerli bir açıklama gerekmektedir"),
+});
 
-// POST /api/besin-gruplari - Create a new besin group
-export async function POST(request: NextRequest) {
-  try {
-    const data = await request.json();
-
-    if (!data.description || typeof data.description !== "string") {
+export const GET = route({
+  auth: "any",
+  scope: "besin-gruplari.list",
+  handler: async ({ log }) => {
+    try {
+      const groups = await getCachedBesinGroups();
+      return NextResponse.json(groups);
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return NextResponse.json(
-        { error: "Geçerli bir açıklama gerekmektedir" },
-        { status: 400 }
+        { error: "Besin grupları yüklenirken bir hata oluştu" },
+        { status: 500 },
       );
     }
+  },
+});
 
-    const besinGroup = await prisma.besinGroup.create({
-      data: {
-        name: data.name,
-        description: data.description,
-      },
-    });
-
-    invalidate.besinGroups();
-    return NextResponse.json(besinGroup, { status: 201 });
-  } catch (error) {
-    console.error("Error creating besin group:", error);
-    return NextResponse.json(
-      { error: "Besin grubu oluşturulurken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+export const POST = route({
+  auth: "dietitian",
+  schema: CreateBesinGroupBody,
+  scope: "besin-gruplari.create",
+  handler: async ({ body, log }) => {
+    try {
+      const group = await prisma.besinGroup.create({
+        data: {
+          name: body.name ?? "",
+          description: body.description,
+        },
+      });
+      invalidate.besinGroups();
+      return NextResponse.json(group, { status: 201 });
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Besin grubu oluşturulurken bir hata oluştu" },
+        { status: 500 },
+      );
+    }
+  },
+});

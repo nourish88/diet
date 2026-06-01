@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 import {
   KVKK_PORTAL_CONSENT_TYPE,
   KVKK_PORTAL_CONSENT_VERSION,
 } from "@/lib/kvkk-consent-config";
+import { route } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
 
@@ -26,26 +26,19 @@ export async function OPTIONS(request: NextRequest) {
   return corsResponse ?? addCorsHeaders(new NextResponse(null, { status: 204 }));
 }
 
-export async function POST(request: NextRequest) {
-  const corsResponse = handleCors(request);
-  if (corsResponse) return corsResponse;
-
+export const POST = route({
+  auth: "client",
+  scope: "consent.kvkk",
+  handler: async ({ request, auth, log }) => {
   try {
-    const auth = await authenticateRequest(request);
-    if (!auth.user || auth.user.role !== "client") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    if (!auth.user.isApproved) {
+    if (!auth.user!.isApproved) {
       return addCorsHeaders(
         NextResponse.json({ error: "Not approved" }, { status: 403 })
       );
     }
 
     const client = await prisma.client.findFirst({
-      where: { userId: auth.user.id },
+      where: { userId: auth.user!.id },
       select: { id: true },
     });
 
@@ -88,7 +81,7 @@ export async function POST(request: NextRequest) {
       prisma.clientConsentRecord.create({
         data: {
           clientId: client.id,
-          userId: auth.user.id,
+          userId: auth.user!.id,
           consentVersion: KVKK_PORTAL_CONSENT_VERSION,
           consentType: KVKK_PORTAL_CONSENT_TYPE,
           channel,
@@ -111,10 +104,11 @@ export async function POST(request: NextRequest) {
         version: KVKK_PORTAL_CONSENT_VERSION,
       })
     );
-  } catch (error: unknown) {
-    console.error("KVKK consent POST error:", error);
+  } catch (err) {
+    log.error("consent failed", err instanceof Error ? err.message : err);
     return addCorsHeaders(
       NextResponse.json({ error: "Failed to record consent" }, { status: 500 })
     );
   }
-}
+  },
+});

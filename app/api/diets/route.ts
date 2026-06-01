@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextResponse, after } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult, requireOwnClient } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { requireOwnClient } from "@/lib/api-auth";
+import { addCorsHeaders } from "@/lib/cors";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -48,18 +50,15 @@ async function logDietAction({
   }
 }
 
-export const POST = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
-    // Handle CORS preflight
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
+export const POST = route({
+  auth: "dietitian",
+  scope: "diets.create",
+  handler: async ({ request, auth }) => {
     // Parse request body once (can't read twice)
     let data: any;
     try {
       data = await request.json();
-      console.log("Received data:", data);
-    } catch (parseError) {
+    } catch {
       return addCorsHeaders(
         NextResponse.json(
           { error: "Invalid request body" },
@@ -309,20 +308,22 @@ export const POST = requireDietitian(
         )
       );
     }
-  }
-);
+  },
+});
 
-export const GET = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+export const GET = route({
+  auth: "dietitian",
+  scope: "diets.list",
+  handler: async ({ request, auth, log }) => {
     try {
       const searchParams = request.nextUrl.searchParams;
       const clientId = searchParams.get("clientId");
-      const skip = parseInt(searchParams.get("skip") || "0");
-      const take = parseInt(searchParams.get("take") || "50");
+      const skip = parseInt(searchParams.get("skip") || "0", 10);
+      const take = parseInt(searchParams.get("take") || "50", 10);
       const search = searchParams.get("search");
 
       // Build where clause based on filters
-      const where: any = {
+      const where: Prisma.DietWhereInput = {
         dietitianId: auth.user!.id, // SECURITY: Only show own diets
       };
 
@@ -398,14 +399,14 @@ export const GET = requireDietitian(
           take,
         })
       );
-    } catch (error: any) {
-      console.error("Error fetching diets:", error);
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
-          { error: error.message || "Failed to fetch diets" },
+          { error: "Failed to fetch diets" },
           { status: 500 }
         )
       );
     }
-  }
-);
+  },
+});

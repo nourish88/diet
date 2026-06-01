@@ -1,112 +1,74 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { route } from "@/lib/api/handler";
 
-interface UsageItem {
-  besinId: number;
-  miktar: string;
-  birim: string;
-}
+const UsageItem = z.object({
+  besinId: z.coerce.number().int().positive(),
+  miktar: z.string().optional().default(""),
+  birim: z.string().optional().default(""),
+});
+const Body = z.object({
+  items: z.array(UsageItem).min(1),
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { items } = body as { items: UsageItem[] };
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "stats.track-usage",
+  handler: async ({ body, log }) => {
+    try {
+      await Promise.all(
+        body.items.map(async (item) => {
+          const existing = await prisma.besinUsageStats.findUnique({
+            where: { besinId: item.besinId },
+          });
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
+          if (existing) {
+            return prisma.besinUsageStats.update({
+              where: { besinId: item.besinId },
+              data: {
+                usageCount: { increment: 1 },
+                avgMiktar: averageMiktar(existing.avgMiktar, item.miktar, existing.usageCount),
+                commonBirim: mostCommonBirim(existing.commonBirim, item.birim, existing.usageCount),
+                lastUsed: new Date(),
+              },
+            });
+          }
+          return prisma.besinUsageStats.create({
+            data: {
+              besinId: item.besinId,
+              usageCount: 1,
+              avgMiktar: item.miktar || null,
+              commonBirim: item.birim || null,
+              lastUsed: new Date(),
+            },
+          });
+        }),
+      );
+
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      log.error("track failed", err instanceof Error ? err.message : err);
       return NextResponse.json(
-        { error: "Geçersiz veri formatı" },
-        { status: 400 }
+        { error: "İstatistik kaydedilirken bir hata oluştu" },
+        { status: 500 },
       );
     }
+  },
+});
 
-    // Process each item
-    const updatePromises = items.map(async (item) => {
-      if (!item.besinId) return null;
-
-      // Check if stats exist
-      const existingStats = await prisma.besinUsageStats.findUnique({
-        where: { besinId: item.besinId },
-      });
-
-      if (existingStats) {
-        // Update existing stats
-        return prisma.besinUsageStats.update({
-          where: { besinId: item.besinId },
-          data: {
-            usageCount: { increment: 1 },
-            avgMiktar: calculateAvgMiktar(
-              existingStats.avgMiktar,
-              item.miktar,
-              existingStats.usageCount
-            ),
-            commonBirim: getMostCommonBirim(
-              existingStats.commonBirim,
-              item.birim,
-              existingStats.usageCount
-            ),
-            lastUsed: new Date(),
-          },
-        });
-      } else {
-        // Create new stats
-        return prisma.besinUsageStats.create({
-          data: {
-            besinId: item.besinId,
-            usageCount: 1,
-            avgMiktar: item.miktar || null,
-            commonBirim: item.birim || null,
-            lastUsed: new Date(),
-          },
-        });
-      }
-    });
-
-    await Promise.all(updatePromises);
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error tracking usage:", error);
-    return NextResponse.json(
-      { error: "İstatistik kaydedilirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
+function averageMiktar(current: string | null, next: string, count: number): string {
+  if (!next) return current ?? "";
+  if (!current) return next;
+  const c = parseFloat(current);
+  const n = parseFloat(next);
+  if (Number.isNaN(c) || Number.isNaN(n)) return current;
+  return ((c * count + n) / (count + 1)).toFixed(1);
 }
 
-// Helper: Calculate average miktar (simple approach)
-function calculateAvgMiktar(
-  currentAvg: string | null,
-  newValue: string,
-  count: number
-): string {
-  // If no value, keep current or use new
-  if (!newValue) return currentAvg || "";
-  if (!currentAvg) return newValue;
-
-  // Try to parse as numbers and average
-  const currentNum = parseFloat(currentAvg);
-  const newNum = parseFloat(newValue);
-
-  if (!isNaN(currentNum) && !isNaN(newNum)) {
-    const avg = (currentNum * count + newNum) / (count + 1);
-    return avg.toFixed(1);
-  }
-
-  // If not numeric, keep most common (current one)
-  return currentAvg;
-}
-
-// Helper: Get most common birim
-function getMostCommonBirim(
-  currentBirim: string | null,
-  newBirim: string,
-  count: number
-): string {
-  if (!newBirim) return currentBirim || "";
-  if (!currentBirim) return newBirim;
-
-  // Simple majority rule: if used more than 3 times, stick with current
-  if (count > 3) return currentBirim;
-
-  return newBirim;
+function mostCommonBirim(current: string | null, next: string, count: number): string {
+  if (!next) return current ?? "";
+  if (!current) return next;
+  return count > 3 ? current : next;
 }

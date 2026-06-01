@@ -1,58 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
-import { addCorsHeaders } from "@/lib/cors";
-import { markAsCongratulated } from "@/services/BirthdayService";
+import { NextResponse } from "next/server";
 import { z } from "zod";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
+import { markAsCongratulated } from "@/services/BirthdayService";
 
-const schema = z.object({
+const Body = z.object({
   clientId: z.number().int().positive(),
 });
 
-/**
- * POST /api/birthdays/congratulate
- *
- * Mark a client as congratulated today.
- * Prevents repeat push notification retries for already-congratulated clients.
- * Auth: Dietitian only
- */
-export async function POST(request: NextRequest) {
-  try {
-    const auth = await authenticateRequest(request);
-
-    if (!auth.user) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      );
-    }
-
-    if (auth.user.role !== "dietitian") {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      );
-    }
-
-    const body = await request.json();
-    const parsed = schema.safeParse(body);
-
-    if (!parsed.success) {
+/** POST /api/birthdays/congratulate — mark a client as congratulated today (dietitian only). */
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "birthdays.congratulate",
+  handler: async ({ body, auth, log }) => {
+    try {
+      await markAsCongratulated(body.clientId, auth.user!.id);
+      return addCorsHeaders(NextResponse.json({ success: true }));
+    } catch (err) {
+      log.error("congratulate failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
         NextResponse.json(
-          { error: "Invalid request", details: parsed.error.issues },
-          { status: 400 }
-        )
+          { error: err instanceof Error ? err.message : "Internal server error" },
+          { status: 500 },
+        ),
       );
     }
-
-    await markAsCongratulated(parsed.data.clientId, auth.user.id);
-
-    return addCorsHeaders(NextResponse.json({ success: true }));
-  } catch (error: any) {
-    console.error("❌ Congratulate error:", error);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: error?.message || "Internal server error" },
-        { status: 500 }
-      )
-    );
-  }
-}
+  },
+});

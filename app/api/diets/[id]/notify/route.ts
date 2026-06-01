@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult, requireOwnDiet } from "@/lib/api-auth";
+import { requireOwnDiet } from "@/lib/api-auth";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { sendMealReminderForOgun } from "@/services/MealReminderService";
+import { route } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
+
+type Params = { id: string };
 
 type NotifyBody =
   | { type: "new-diet" }
@@ -43,17 +46,11 @@ export const OPTIONS = async (request: NextRequest) => {
  * the buttons preemptively with a clear reason instead of waiting for a
  * failed send.
  */
-export const GET = requireDietitian(
-  async (
-    request: NextRequest,
-    auth: AuthResult,
-    { params }: { params: Promise<{ id: string }> }
-  ) => {
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
-    const { id } = await params;
-    const dietId = Number.parseInt(id, 10);
+export const GET = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "diets.notify.status",
+  handler: async ({ params, auth }) => {
+    const dietId = Number.parseInt(params.id, 10);
     if (Number.isNaN(dietId)) {
       return addCorsHeaders(
         NextResponse.json({ ok: false, error: "Invalid diet id" }, { status: 400 })
@@ -111,20 +108,14 @@ export const GET = requireDietitian(
         mealRemindersEnabled,
       })
     );
-  }
-);
+  },
+});
 
-export const POST = requireDietitian(
-  async (
-    request: NextRequest,
-    auth: AuthResult,
-    { params }: { params: Promise<{ id: string }> }
-  ) => {
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
-    const { id } = await params;
-    const dietId = Number.parseInt(id, 10);
+export const POST = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "diets.notify.send",
+  handler: async ({ request, params, auth }) => {
+    const dietId = Number.parseInt(params.id, 10);
     if (Number.isNaN(dietId)) {
       return addCorsHeaders(
         NextResponse.json({ ok: false, error: "Invalid diet id" }, { status: 400 })
@@ -222,5 +213,5 @@ export const POST = requireDietitian(
         { status: 400 }
       )
     );
-  }
-);
+  },
+});

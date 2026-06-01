@@ -1,120 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { requireOwnClient } from "@/lib/api-auth";
+import { route } from "@/lib/api/handler";
 
-interface BannedBesinInput {
-  besinId: number;
-  reason: string;
+type Params = { id: string };
+
+const BannedBesinItem = z.object({
+  besinId: z.coerce.number().int().positive(),
+  reason: z.string().nullable().optional(),
+});
+
+const ReplaceBannedFoodsBody = z.object({
+  bannedBesins: z.array(BannedBesinItem).default([]),
+});
+
+function parseClientId(raw: string) {
+  const id = parseInt(raw, 10);
+  return Number.isNaN(id) ? null : id;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const clientId = parseInt(id, 10);
-
-    if (isNaN(clientId)) {
-      return new NextResponse(JSON.stringify({ error: "Invalid client ID" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+/**
+ * POST /api/clients/[id]/banned-foods
+ * Replace the full banned-foods list for a client (transaction-safe).
+ */
+export const POST = route<typeof ReplaceBannedFoodsBody, Params>({
+  auth: "dietitian",
+  schema: ReplaceBannedFoodsBody,
+  scope: "banned-foods.replace",
+  handler: async ({ body, params, auth, log }) => {
+    const clientId = parseClientId(params.id);
+    if (clientId === null) {
+      return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
-
-    let validBesins: BannedBesinInput[] = [];
+    if (!(await requireOwnClient(clientId, auth))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     try {
-      const { bannedBesins } = await request.json();
+      const created = await prisma.$transaction(async (tx) => {
+        await tx.bannedFood.deleteMany({ where: { clientId } });
+        const made: Array<
+          Awaited<ReturnType<typeof tx.bannedFood.create>>
+        > = [];
+        for (const banned of body.bannedBesins) {
+          const row = await tx.bannedFood.create({
+            data: {
+              clientId,
+              besinId: banned.besinId,
+              reason: banned.reason ?? null,
+            },
+            include: { besin: { select: { id: true, name: true } } },
+          });
+          made.push(row);
+        }
+        return made;
+      });
 
-      // Ensure bannedBesins is an array
-      const besinsArray = Array.isArray(bannedBesins) ? bannedBesins : [];
-
-      // Filter out any invalid entries and ensure besinId is a number
-      validBesins = besinsArray
-        .filter(
-          (item): item is { besinId: number | string; reason?: string } =>
-            item && typeof item === "object" && "besinId" in item
-        )
-        .map((item) => ({
-          besinId:
-            typeof item.besinId === "string"
-              ? parseInt(item.besinId, 10)
-              : item.besinId,
-          reason: item.reason,
-        }))
-        .filter(
-          (item): item is BannedBesinInput =>
-            typeof item.besinId === "number" && !isNaN(item.besinId)
-        );
-
-      console.log("Valid besins:", validBesins);
-    } catch (error) {
-      console.error(
-        "Error processing bannedBesins: " +
-          ((error as Error).message || "Unknown error")
+      return NextResponse.json({ bannedFoods: created });
+    } catch (err) {
+      log.error("replace failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Failed to update banned foods" },
+        { status: 500 },
       );
     }
-
-    // Delete existing banned foods for this client
-    await prisma.bannedFood.deleteMany({
-      where: {
-        clientId: clientId,
-      },
-    });
-
-    // Add new banned foods
-    const createdBannedFoods: Array<{
-      id: number;
-      createdAt: Date;
-      updatedAt: Date;
-      clientId: number;
-      besinId: number;
-      reason: string | null;
-      besin: {
-        id: number;
-        name: string;
-      };
-    }> = [];
-
-    // Create banned foods one by one to better handle errors
-    for (const banned of validBesins) {
-      try {
-        const createdBannedFood = await prisma.bannedFood.create({
-          data: {
-            clientId: clientId,
-            besinId: banned.besinId,
-            reason: banned.reason || null,
-          },
-          include: {
-            besin: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        });
-
-        createdBannedFoods.push(createdBannedFood as any);
-      } catch (error) {
-        console.error(
-          `Error creating banned food for besinId ${banned.besinId}: ` +
-            ((error as Error).message || "Unknown error")
-        );
-      }
-    }
-
-    return new NextResponse(
-      JSON.stringify({ bannedFoods: createdBannedFoods }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error(
-      "Error updating banned foods: " +
-        ((error as Error).message || "Unknown error")
-    );
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to update banned foods" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
-  }
-}
+  },
+});

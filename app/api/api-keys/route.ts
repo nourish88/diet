@@ -1,15 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { requireDietitian, AuthResult } from "@/lib/api-auth";
 import { generateApiKey, hashApiKey } from "@/lib/api-key-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { addCorsHeaders } from "@/lib/cors";
+import { route } from "@/lib/api/handler";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// GET /api/api-keys - List all API keys for the authenticated dietitian
-export const GET = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+const CreateApiKeyBody = z.object({
+  name: z.string().min(1),
+  appName: z.string().min(1),
+  permissions: z.array(z.string()).optional(),
+  expiresAt: z.string().nullish(),
+});
+
+const UpdateApiKeyBody = z.object({
+  id: z.coerce.number().int().positive(),
+  name: z.string().optional(),
+  appName: z.string().optional(),
+  permissions: z.array(z.string()).optional(),
+  isActive: z.boolean().optional(),
+  expiresAt: z.string().nullish(),
+});
+
+/** GET /api/api-keys — list the dietitian's API keys. */
+export const GET = route({
+  auth: "dietitian",
+  scope: "api-keys.list",
+  handler: async ({ auth, log }) => {
     try {
       const apiKeys = await prisma.apiKey.findMany({
         where: { dietitianId: auth.user!.id },
@@ -26,51 +44,33 @@ export const GET = requireDietitian(
         },
         orderBy: { createdAt: "desc" },
       });
-
       return addCorsHeaders(NextResponse.json({ apiKeys }));
-    } catch (error) {
-      console.error("Error fetching API keys:", error);
+    } catch (err) {
+      log.error("list failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to fetch API keys" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to fetch API keys" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});
 
-// POST /api/api-keys - Create a new API key
-export const POST = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
-    // Handle CORS preflight
-    const corsResponse = handleCors(request);
-    if (corsResponse) return corsResponse;
-
+/** POST /api/api-keys — create a new API key (plaintext returned once). */
+export const POST = route({
+  auth: "dietitian",
+  schema: CreateApiKeyBody,
+  scope: "api-keys.create",
+  handler: async ({ body, auth, log }) => {
     try {
-      const { name, appName, permissions, expiresAt } = await request.json();
-
-      if (!name || !appName) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Name and appName are required" },
-            { status: 400 }
-          )
-        );
-      }
-
-      // Generate API key
       const apiKey = generateApiKey();
       const hashedKey = hashApiKey(apiKey);
 
-      // Create API key record
       const apiKeyRecord = await prisma.apiKey.create({
         data: {
           key: hashedKey,
-          name,
-          appName,
-          permissions: permissions || ["*:*"], // Default to all permissions
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          name: body.name,
+          appName: body.appName,
+          permissions: body.permissions || ["*:*"],
+          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
           dietitianId: auth.user!.id,
         },
         select: {
@@ -84,63 +84,47 @@ export const POST = requireDietitian(
         },
       });
 
-      // Return the API key (only shown once)
       return addCorsHeaders(
         NextResponse.json({
           apiKey: apiKeyRecord,
-          key: apiKey, // Only returned on creation
+          key: apiKey,
           message:
             "API key created successfully. Save this key securely as it won't be shown again.",
-        })
+        }),
       );
-    } catch (error) {
-      console.error("Error creating API key:", error);
+    } catch (err) {
+      log.error("create failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to create API key" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to create API key" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});
 
-// PUT /api/api-keys - Update an API key
-export const PUT = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+/** PUT /api/api-keys — update an existing API key (owner only). */
+export const PUT = route({
+  auth: "dietitian",
+  schema: UpdateApiKeyBody,
+  scope: "api-keys.update",
+  handler: async ({ body, auth, log }) => {
     try {
-      const { id, name, appName, permissions, isActive, expiresAt } =
-        await request.json();
-
-      if (!id) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "API key ID is required" },
-            { status: 400 }
-          )
-        );
-      }
-
-      // Verify ownership
-      const existingKey = await prisma.apiKey.findFirst({
-        where: { id, dietitianId: auth.user!.id },
+      const existing = await prisma.apiKey.findFirst({
+        where: { id: body.id, dietitianId: auth.user!.id },
       });
-
-      if (!existingKey) {
+      if (!existing) {
         return addCorsHeaders(
-          NextResponse.json({ error: "API key not found" }, { status: 404 })
+          NextResponse.json({ error: "API key not found" }, { status: 404 }),
         );
       }
 
-      // Update API key
       const updatedKey = await prisma.apiKey.update({
-        where: { id },
+        where: { id: body.id },
         data: {
-          name,
-          appName,
-          permissions,
-          isActive,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          name: body.name,
+          appName: body.appName,
+          permissions: body.permissions,
+          isActive: body.isActive,
+          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
         },
         select: {
           id: true,
@@ -155,61 +139,53 @@ export const PUT = requireDietitian(
       });
 
       return addCorsHeaders(NextResponse.json({ apiKey: updatedKey }));
-    } catch (error) {
-      console.error("Error updating API key:", error);
+    } catch (err) {
+      log.error("update failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to update API key" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to update API key" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});
 
-// DELETE /api/api-keys - Delete an API key
-export const DELETE = requireDietitian(
-  async (request: NextRequest, auth: AuthResult) => {
+/** DELETE /api/api-keys?id= — delete an API key (owner only). */
+export const DELETE = route({
+  auth: "dietitian",
+  scope: "api-keys.delete",
+  handler: async ({ request, auth, log }) => {
     try {
-      const searchParams = request.nextUrl.searchParams;
-      const id = searchParams.get("id");
-
-      if (!id) {
+      const idParam = request.nextUrl.searchParams.get("id");
+      if (!idParam) {
         return addCorsHeaders(
-          NextResponse.json(
-            { error: "API key ID is required" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "API key ID is required" }, { status: 400 }),
+        );
+      }
+      const id = parseInt(idParam, 10);
+      if (Number.isNaN(id)) {
+        return addCorsHeaders(
+          NextResponse.json({ error: "API key ID is required" }, { status: 400 }),
         );
       }
 
-      // Verify ownership
-      const existingKey = await prisma.apiKey.findFirst({
-        where: { id: parseInt(id), dietitianId: auth.user!.id },
+      const existing = await prisma.apiKey.findFirst({
+        where: { id, dietitianId: auth.user!.id },
       });
-
-      if (!existingKey) {
+      if (!existing) {
         return addCorsHeaders(
-          NextResponse.json({ error: "API key not found" }, { status: 404 })
+          NextResponse.json({ error: "API key not found" }, { status: 404 }),
         );
       }
 
-      // Delete API key
-      await prisma.apiKey.delete({
-        where: { id: parseInt(id) },
-      });
+      await prisma.apiKey.delete({ where: { id } });
 
       return addCorsHeaders(
-        NextResponse.json({ message: "API key deleted successfully" })
+        NextResponse.json({ message: "API key deleted successfully" }),
       );
-    } catch (error) {
-      console.error("Error deleting API key:", error);
+    } catch (err) {
+      log.error("delete failed", err instanceof Error ? err.message : err);
       return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to delete API key" },
-          { status: 500 }
-        )
+        NextResponse.json({ error: "Failed to delete API key" }, { status: 500 }),
       );
     }
-  }
-);
+  },
+});

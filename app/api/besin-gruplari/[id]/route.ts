@@ -1,148 +1,102 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { invalidate } from "@/lib/cache";
+import { route } from "@/lib/api/handler";
 
-// GET /api/besin-gruplari/[id] - Get a specific besin group
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const besinGroupId = Number(id);
+type Params = { id: string };
 
-    if (isNaN(besinGroupId)) {
-      return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
-    }
+const UpdateBesinGroupBody = z.object({
+  description: z.string().min(1, "Geçerli bir açıklama gerekmektedir"),
+});
 
-    const besinGroup = await prisma.besinGroup.findUnique({
-      where: { id: besinGroupId },
-      include: {
-        besins: true,
-      },
-    });
-
-    if (!besinGroup) {
-      return NextResponse.json(
-        { error: "Besin grubu bulunamadı" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(besinGroup);
-  } catch (error) {
-    console.error("Error fetching besin group:", error);
-    return NextResponse.json(
-      { error: "Besin grubu yüklenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
+function parseId(raw: string) {
+  const id = Number(raw);
+  return Number.isNaN(id) ? null : id;
 }
 
-// PUT /api/besin-gruplari/[id] - Update a besin group
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const besinGroupId = Number(id);
-
-    if (isNaN(besinGroupId)) {
+export const GET = route<undefined, Params>({
+  auth: "any",
+  scope: "besin-gruplari.get",
+  handler: async ({ params }) => {
+    const id = parseId(params.id);
+    if (id === null) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
-
-    const data = await request.json();
-
-    // Validate request body
-    if (!data.description || typeof data.description !== "string") {
-      return NextResponse.json(
-        { error: "Geçerli bir açıklama gerekmektedir" },
-        { status: 400 }
-      );
-    }
-
-    // Check if besin group exists
-    const existingGroup = await prisma.besinGroup.findUnique({
-      where: { id: besinGroupId },
+    const group = await prisma.besinGroup.findUnique({
+      where: { id },
+      include: { besins: true },
     });
-
-    if (!existingGroup) {
-      return NextResponse.json(
-        { error: "Besin grubu bulunamadı" },
-        { status: 404 }
-      );
+    if (!group) {
+      return NextResponse.json({ error: "Besin grubu bulunamadı" }, { status: 404 });
     }
+    return NextResponse.json(group);
+  },
+});
 
-    // Update besin group
-    const updatedGroup = await prisma.besinGroup.update({
-      where: { id: besinGroupId },
-      data: {
-        description: data.description,
-      },
-    });
-
-    invalidate.besinGroups();
-    invalidate.besinler(); // besinGroup relation appears in besin payloads
-    return NextResponse.json(updatedGroup);
-  } catch (error) {
-    console.error("Error updating besin group:", error);
-    return NextResponse.json(
-      { error: "Besin grubu güncellenirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE /api/besin-gruplari/[id] - Delete a besin group
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const besinGroupId = Number(id);
-
-    if (isNaN(besinGroupId)) {
+export const PUT = route<typeof UpdateBesinGroupBody, Params>({
+  auth: "dietitian",
+  schema: UpdateBesinGroupBody,
+  scope: "besin-gruplari.update",
+  handler: async ({ body, params, log }) => {
+    const id = parseId(params.id);
+    if (id === null) {
       return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
     }
-
-    // Check if besin group exists
-    const existingGroup = await prisma.besinGroup.findUnique({
-      where: { id: besinGroupId },
-      include: {
-        besins: true,
-      },
-    });
-
-    if (!existingGroup) {
-      return NextResponse.json(
-        { error: "Besin grubu bulunamadı" },
-        { status: 404 }
-      );
-    }
-
-    // If there are besins in this group, update them to remove the group reference
-    if (existingGroup.besins.length > 0) {
-      await prisma.besin.updateMany({
-        where: { groupId: besinGroupId },
-        data: { groupId: null },
+    try {
+      const existing = await prisma.besinGroup.findUnique({ where: { id } });
+      if (!existing) {
+        return NextResponse.json({ error: "Besin grubu bulunamadı" }, { status: 404 });
+      }
+      const updated = await prisma.besinGroup.update({
+        where: { id },
+        data: { description: body.description },
       });
+      invalidate.besinGroups();
+      invalidate.besinler();
+      return NextResponse.json(updated);
+    } catch (err) {
+      log.error("update failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Besin grubu güncellenirken bir hata oluştu" },
+        { status: 500 },
+      );
     }
+  },
+});
 
-    // Delete besin group
-    await prisma.besinGroup.delete({
-      where: { id: besinGroupId },
-    });
-
-    invalidate.besinGroups();
-    invalidate.besinler(); // any besin previously in this group now has groupId=null
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting besin group:", error);
-    return NextResponse.json(
-      { error: "Besin grubu silinirken bir hata oluştu" },
-      { status: 500 }
-    );
-  }
-}
+export const DELETE = route<undefined, Params>({
+  auth: "dietitian",
+  scope: "besin-gruplari.delete",
+  handler: async ({ params, log }) => {
+    const id = parseId(params.id);
+    if (id === null) {
+      return NextResponse.json({ error: "Geçersiz ID" }, { status: 400 });
+    }
+    try {
+      const existing = await prisma.besinGroup.findUnique({
+        where: { id },
+        select: { id: true, besins: { select: { id: true } } },
+      });
+      if (!existing) {
+        return NextResponse.json({ error: "Besin grubu bulunamadı" }, { status: 404 });
+      }
+      if (existing.besins.length > 0) {
+        await prisma.besin.updateMany({
+          where: { groupId: id },
+          data: { groupId: null },
+        });
+      }
+      await prisma.besinGroup.delete({ where: { id } });
+      invalidate.besinGroups();
+      invalidate.besinler();
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      log.error("delete failed", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Besin grubu silinirken bir hata oluştu" },
+        { status: 500 },
+      );
+    }
+  },
+});
