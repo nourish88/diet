@@ -1,12 +1,31 @@
-const SW_VERSION = "diet-pwa-v3-offline";
-const PUSH_CACHE = "diet-pwa-cache-v3";
-const RUNTIME_CACHE = "diet-runtime-v2";
+const SW_VERSION = "diet-pwa-v4-offline";
+const PUSH_CACHE = "diet-pwa-cache-v4";
+const RUNTIME_CACHE = "diet-runtime-v3";
 const BLOB_CACHE = "diet-blob-v1";
+const SHELL_CACHE = "diet-shell-v1";
 const NETWORK_TIMEOUT_MS = 4000;
+
+const APP_SHELL = [
+  "/",
+  "/client",
+  "/login",
+  "/manifest.json",
+  "/image.png",
+];
 
 self.addEventListener("install", (event) => {
   console.log(`[ServiceWorker] Installing ${SW_VERSION}`);
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    (async () => {
+      try {
+        const cache = await caches.open(SHELL_CACHE);
+        await cache.addAll(APP_SHELL.map((p) => new Request(p, { cache: "reload" })));
+      } catch (err) {
+        console.warn("[ServiceWorker] App shell precache failed:", err);
+      }
+      await self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -14,7 +33,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const cacheNames = await caches.keys();
-      const currentCaches = new Set([PUSH_CACHE, RUNTIME_CACHE, BLOB_CACHE]);
+      const currentCaches = new Set([PUSH_CACHE, RUNTIME_CACHE, BLOB_CACHE, SHELL_CACHE]);
       await Promise.all(
         cacheNames
           .filter((cacheName) => !currentCaches.has(cacheName))
@@ -41,6 +60,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(navigationHandler(request));
     return;
   }
 
@@ -149,6 +173,26 @@ self.addEventListener("notificationclick", (event) => {
     })()
   );
 });
+
+async function navigationHandler(request) {
+  try {
+    const response = await fetchWithTimeout(request, NETWORK_TIMEOUT_MS);
+    if (response && response.ok) {
+      const cache = await caches.open(SHELL_CACHE);
+      cache.put(request, response.clone()).catch(() => {});
+      return response;
+    }
+    if (response) return response;
+  } catch {
+    // fall through to cache
+  }
+  const cached =
+    (await caches.match(request)) ||
+    (await caches.match("/client")) ||
+    (await caches.match("/"));
+  if (cached) return cached;
+  return new Response("Offline", { status: 503, statusText: "Offline" });
+}
 
 function isNetworkFirstPath(pathname) {
   return (
