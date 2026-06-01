@@ -1,9 +1,8 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
-import prisma from "@/lib/prisma";
-import { authenticateRequest } from "@/lib/api-auth";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
