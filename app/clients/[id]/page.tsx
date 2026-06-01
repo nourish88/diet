@@ -62,16 +62,6 @@ const ExerciseChart = dynamic(
   }
 );
 
-const TanitaProgressChart = dynamic(
-  () => import("@/components/progress/TanitaProgressChart"),
-  {
-    loading: () => (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    ),
-  }
-);
 import {
   Card,
   CardContent,
@@ -209,28 +199,6 @@ export default function ClientDetailPage() {
         );
       } catch (error: any) {
         if (error?.status === 404) return null;
-        throw error;
-      }
-    },
-    enabled: !!clientId,
-  });
-
-  // Fetch Tanita measurements
-  const { data: tanitaMeasurements, isLoading: tanitaLoading } = useQuery({
-    queryKey: ["tanita-measurements", clientId],
-    queryFn: async () => {
-      if (!clientId) return null;
-      try {
-        const data = await apiClient.get<{
-          success: boolean;
-          measurements: any[];
-        }>(`/tanita/measurements?clientId=${clientId}`);
-        return data.measurements || [];
-      } catch (error: any) {
-        // If client is not mapped to Tanita, return empty array
-        if (error?.status === 400 || error?.status === 404) {
-          return [];
-        }
         throw error;
       }
     },
@@ -755,38 +723,7 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      {/* 1. Tanita Progress Charts Section - EN ÜSTTE */}
-      {client.tanitaMemberId && (
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-brand" />
-              <CardTitle>Kilo ve Vücut Kompozisyonu (Tanita)</CardTitle>
-            </div>
-            <CardDescription>
-              Tanita ölçüm cihazından gelen detaylı vücut kompozisyonu analizi
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {tanitaLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 text-brand animate-spin" />
-              </div>
-            ) : tanitaMeasurements && tanitaMeasurements.length > 0 ? (
-              <TanitaProgressChart data={tanitaMeasurements} />
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-muted-foreground">
-                  Henüz Tanita ölçüm verisi bulunmuyor. Ölçümleri çekmek için
-                  "Ölçümleri Çek" butonunu kullanın.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 2. Progress Tracking Section - ORTADA */}
+      {/* Progress Tracking Section */}
       <Card className="mb-8">
         <CardHeader>
           <div className="flex items-center justify-between">
