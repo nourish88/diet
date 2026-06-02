@@ -8,7 +8,7 @@ import { NotificationTestPanel } from "./NotificationTestPanel";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formSchema } from "../schemas/formSchema";
-import { Diet, Ogun, Birim, Besin, BannedFood } from "../types/types";
+import { Diet, BannedFood } from "../types/types";
 import { OGUN, initialDiet } from "../models/dietModels";
 import DietTable from "./DietTable";
 import DietFormActions from "./DietFormActions";
@@ -19,16 +19,12 @@ import { useToast } from "@/components/ui/use-toast";
 import ClientSelector from "./ClientSelector";
 import { useFontStore } from "@/store/store";
 import ClientWarnings from "./ClientWarnings";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Textarea } from "./ui/textarea";
-import { EmojiPickerButton } from "@/components/ui/EmojiPickerButton";
 import TemplateService, { type DietTemplate } from "@/services/TemplateService";
 import { TemplateSelector } from "./sablonlar/TemplateSelector";
 import { Button } from "./ui/button";
 import { FileText } from "lucide-react";
-import { createClient } from "@/lib/supabase-browser";
 import { useDietLogging } from "@/hooks/useDietLogging";
-import { sortMealsByTime, stripEmojis } from "@/lib/diet-utils";
+import { sortMealsByTime } from "@/lib/diet-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import {
@@ -36,10 +32,12 @@ import {
   getClientFullName as getClientFullNameUtil,
   convertTemplateToDiet,
   prepareDietDataForPDF,
-  createNewOgun,
 } from "./diet/utils/dietFormUtils";
 import { useDietFormHandlers } from "./diet/hooks/useDietFormHandlers";
 import { useDietFormDraft } from "./diet/hooks/useDietFormDraft";
+import { DietDraftRestorePrompt } from "./diet/DietDraftRestorePrompt";
+import { DietMeasurementFields } from "./diet/DietMeasurementFields";
+import { DietProgressIndicator } from "./diet/DietProgressIndicator";
 
 interface ClientResp {
   id: number;
@@ -56,7 +54,6 @@ interface DietFormProps {
 }
 
 const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
-  const supabase = createClient();
   const router = useRouter();
   const [diet, setDiet] = useState<Diet>({
     ...initialDiet,
@@ -87,10 +84,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // - Update mode: User clicked "Güncelle" button -> Should UPDATE existing diet
   // - New diet mode: User clicked "Yeni Program Ekle" -> Should CREATE new diet even if loadLatestDiet loaded an existing diet
   const [isUpdateMode, setIsUpdateMode] = useState(false);
-  const [updateDietId, setUpdateDietId] = useState<number | undefined>(
-    undefined
-  );
-
   // Initialize diet logging - use refs to track changes
   const [currentDietId, setCurrentDietId] = useState<number | undefined>(
     diet.id
@@ -466,7 +459,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
       if (data && data.id) {
         // Set update mode flags
         setIsUpdateMode(true);
-        setUpdateDietId(dietId);
         setCurrentDietId(dietId);
 
         // Get client ID from diet
@@ -788,16 +780,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClientId, diet, isUpdateMode]);
 
-  // ─── Progress indicator (Madde 1-F) ───
-  const filledMeals = diet.Oguns.filter((o) =>
-    o.items.some((item) => {
-      const besin = typeof item.besin === "string" ? item.besin : (item.besin as any)?.name;
-      return besin && besin.trim();
-    })
-  ).length;
-  const totalMeals = diet.Oguns.length;
-  const progressPercent = totalMeals > 0 ? Math.round((filledMeals / totalMeals) * 100) : 0;
-
   return (
     <div className="container mx-auto px-2 sm:px-4 max-w-7xl">
       <div style={{ fontSize: `${fontSize}px` }}>
@@ -810,50 +792,17 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
             {/* Draft restore prompt (Madde 1-G) */}
             {showDraftPrompt && (
-              <div className="flex items-center gap-3 p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm no-print">
-                <span className="text-foreground flex-1">
-                  Kaydedilmemiş bir diyet taslağı var. Kaldığın yerden devam et mi?
-                </span>
-                <button
-                  type="button"
-                  onClick={restoreDraft}
-                  className="px-3 py-1 bg-warning text-warning-foreground rounded hover:opacity-90 text-xs font-medium transition-opacity"
-                >
-                  Devam Et
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowDraftPrompt(false); clearDraft(); }}
-                  className="px-3 py-1 bg-muted text-foreground rounded hover:bg-accent text-xs transition-colors"
-                >
-                  Yoksay
-                </button>
-              </div>
+              <DietDraftRestorePrompt
+                onRestore={restoreDraft}
+                onDismiss={() => {
+                  setShowDraftPrompt(false);
+                  clearDraft();
+                }}
+              />
             )}
 
             {/* Progress indicator (Madde 1-F) */}
-            {selectedClientId && totalMeals > 0 && (
-              <div className="no-print space-y-1">
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>
-                    Dolu öğün: <span className="font-semibold text-foreground">{filledMeals}/{totalMeals}</span>
-                  </span>
-                  <span className={progressPercent === 100 ? "text-success font-semibold" : ""}>
-                    {progressPercent}%
-                    {progressPercent === 100 && " ✓ Tüm öğünler dolu"}
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="h-1.5 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${progressPercent}%`,
-                      backgroundColor: progressPercent === 100 ? "#16a34a" : progressPercent > 50 ? "#3b82f6" : "#f59e0b",
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+            {selectedClientId && <DietProgressIndicator diet={diet} />}
 
             {/* Client selector with improved styling */}
             <div className="mb-4">
@@ -1032,41 +981,13 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
               {/* Measurement entry — only shown when a client is selected */}
               {selectedClientId && (
-                <div className="mb-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/20">
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
-                    Bu tarihe ölçüm ekle (isteğe bağlı)
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">Kilo (kg)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        placeholder="ör. 72.5"
-                        className="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        value={measurementWeight}
-                        onChange={(e) => setMeasurementWeight(e.target.value)}
-                        disabled={isFormDisabled}
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">Yağ (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        placeholder="ör. 24.3"
-                        className="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        value={measurementBodyFat}
-                        onChange={(e) => setMeasurementBodyFat(e.target.value)}
-                        disabled={isFormDisabled}
-                      />
-                    </div>
-                    <p className="text-[11px] text-slate-400 self-center">Diyet kaydedilirken otomatik olarak da kaydedilir.</p>
-                  </div>
-                </div>
+                <DietMeasurementFields
+                  weight={measurementWeight}
+                  bodyFat={measurementBodyFat}
+                  disabled={isFormDisabled}
+                  onWeightChange={setMeasurementWeight}
+                  onBodyFatChange={setMeasurementBodyFat}
+                />
               )}
 
               <div id="content" className="mb-8">
