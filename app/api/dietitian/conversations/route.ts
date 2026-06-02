@@ -22,9 +22,9 @@ export const GET = route<undefined, {}>({
           diets: {
             select: {
               id: true,
-              name: true,
+              tarih: true,
               createdAt: true,
-              dietComments: {
+              comments: {
                 select: {
                   id: true,
                   content: true,
@@ -44,7 +44,7 @@ export const GET = route<undefined, {}>({
               },
             },
             where: {
-              dietComments: {
+              comments: {
                 some: {},
               },
             },
@@ -55,18 +55,19 @@ export const GET = route<undefined, {}>({
       // Transform data to include last message and unread count
       const transformedConversations = conversations.flatMap((client) =>
         client.diets.map((diet) => {
-          const lastMessage = diet.dietComments[0];
-          const unreadCount = diet.dietComments.filter(
+          const lastMessage = diet.comments[0];
+          const unreadCount = diet.comments.filter(
             (msg) => !msg.isRead && msg.userId !== dietitianId
           ).length;
+          const dietDate = diet.tarih ?? diet.createdAt;
 
           return {
             clientId: client.id,
             clientName: `${client.name} ${client.surname}`,
             dietId: diet.id,
-            dietName: diet.name,
+            dietName: `Diyet #${diet.id}`,
             lastMessage: lastMessage?.content || "",
-            lastMessageTime: lastMessage?.createdAt || diet.createdAt,
+            lastMessageTime: lastMessage?.createdAt || dietDate,
             lastMessageFromClient: lastMessage?.userId !== dietitianId,
             unreadCount,
           };
