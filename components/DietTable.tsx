@@ -10,7 +10,7 @@ import {
 } from "@hello-pangea/dnd";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Diet, Ogun, MenuItem as MenuItemType } from "@/types/types";
+import { Diet, Ogun } from "@/types/types";
 import MenuItemComponent from "@/components/MenuItem";
 import { Button } from "@/components/ui/button";
 import "react-resizable/css/styles.css";
@@ -28,6 +28,10 @@ import { OgunQuickActions } from "@/components/OgunQuickActions";
 import { MealPreset } from "@/services/PresetService";
 import { SmartBesinInput } from "@/components/SmartBesinInput";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  reorderMeals,
+  sortMenuItemsByPriority,
+} from "@/components/diet/utils/dietTableUtils";
 
 interface DietTableProps {
   setDiet: (diet: Diet | ((prevDiet: Diet) => Diet)) => void;
@@ -63,7 +67,6 @@ const DietTable = ({
   handleAddMenuItem,
   handleMenuItemChange,
   disabled = false,
-  bannedFoods = [],
   clientId,
   onAddOgun,
   onItemRemoved,
@@ -82,13 +85,6 @@ const DietTable = ({
   });
   const [isBrowser, setIsBrowser] = useState(false);
   const { toast } = useToast();
-
-  const isFoodBanned = (besinId: number) => {
-    return (
-      Array.isArray(bannedFoods) &&
-      bannedFoods.some((banned) => banned.besin && banned.besin.id === besinId)
-    );
-  };
 
   useEffect(() => {
     setIsBrowser(true);
@@ -123,13 +119,6 @@ const DietTable = ({
     }
   };
 
-  const reorder = (list: Ogun[], startIndex: number, endIndex: number) => {
-    const result = Array.from(list);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-    return result;
-  };
-
   const onDragEnd = (result: DropResult) => {
     if (
       !result.destination ||
@@ -138,7 +127,7 @@ const DietTable = ({
       return;
     }
 
-    const reorderedOguns = reorder(
+    const reorderedOguns = reorderMeals(
       diet.Oguns,
       result.source.index,
       result.destination.index
@@ -217,51 +206,6 @@ const DietTable = ({
     return 100;
   };
 
-  const renderBirimValue = (item: any) => {
-    if (typeof item.birim === "object" && item.birim && item.birim.name) {
-      return item.birim.name;
-    }
-    return item.birim || "";
-  };
-
-  const renderBesinValue = (item: any) => {
-    if (typeof item.besin === "object" && item.besin && item.besin.name) {
-      return item.besin.name;
-    }
-    return item.besin || "";
-  };
-
-  const getItemPriority = (item: MenuItemType) => {
-    if (
-      typeof item.besinPriority === "number" &&
-      !Number.isNaN(item.besinPriority)
-    ) {
-      return item.besinPriority;
-    }
-    if (
-      typeof item.besin === "object" &&
-      item.besin &&
-      typeof (item.besin as any).priority === "number"
-    ) {
-      return (item.besin as any).priority ?? Number.POSITIVE_INFINITY;
-    }
-    return Number.POSITIVE_INFINITY;
-  };
-
-  const getItemName = (item: MenuItemType) => {
-    if (typeof item.besin === "string") {
-      return item.besin || "";
-    }
-    if (
-      typeof item.besin === "object" &&
-      item.besin &&
-      typeof item.besin.name === "string"
-    ) {
-      return item.besin.name;
-    }
-    return "";
-  };
-
   const handleSortMenuItems = (ogunIndex: number) => {
     const ogunName = diet.Oguns[ogunIndex]?.name || "Öğün";
 
@@ -271,25 +215,7 @@ const DietTable = ({
           return ogun;
         }
 
-        const sortedItems = ogun.items
-          .map((item, originalIndex) => ({ item, originalIndex }))
-          .sort((a, b) => {
-            const priorityDiff =
-              getItemPriority(a.item) - getItemPriority(b.item);
-            if (priorityDiff !== 0) {
-              return priorityDiff;
-            }
-            const nameDiff = getItemName(a.item).localeCompare(
-              getItemName(b.item),
-              "tr",
-              { sensitivity: "base" }
-            );
-            if (nameDiff !== 0) {
-              return nameDiff;
-            }
-            return a.originalIndex - b.originalIndex;
-          })
-          .map(({ item }) => item);
+        const sortedItems = sortMenuItemsByPriority(ogun.items);
 
         return {
           ...ogun,
