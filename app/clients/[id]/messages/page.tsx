@@ -205,9 +205,9 @@ export default function ClientMessagesPage() {
         return;
       }
 
-      const data = await apiClient.get<{ success: boolean; client: { name: string; surname: string } }>(`/clients/${clientId}`);
-      if (data.success) {
-        setClientName(`${data.client.name} ${data.client.surname}`);
+      const client = await apiClient.get<{ name: string; surname: string }>(`/clients/${clientId}`);
+      if (client?.name) {
+        setClientName(`${client.name} ${client.surname}`);
       }
     } catch (error) {
       console.error("Error loading client info:", error);
