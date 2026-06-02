@@ -56,7 +56,7 @@ export function OfficeSocialMediaPlanner() {
   const { databaseUser } = useAuth();
   const { toast } = useToast();
   const [openTaskId, setOpenTaskId] = useState("instagram-profile");
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [openIdeaId, setOpenIdeaId] = useState("next-monday-education");
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const [permission, setPermission] =
@@ -84,8 +84,8 @@ export function OfficeSocialMediaPlanner() {
     }
 
     const panelOpen = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    if (panelOpen === "false") {
-      setIsPanelOpen(false);
+    if (panelOpen === "true") {
+      setIsPanelOpen(true);
     }
 
     setPermission(getNotificationPermission());

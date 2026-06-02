@@ -224,6 +224,13 @@ export default function ClientDetailPage() {
     );
   }, [progressData, progressDateFrom, progressDateTo]);
 
+  const lastProgressEntry = useMemo(() => {
+    if (!progressData || progressData.length === 0) return null;
+    return [...progressData].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    )[0];
+  }, [progressData]);
+
   const progressFlags = useMemo(() => {
     if (!progressData)
       return {
@@ -471,6 +478,24 @@ export default function ClientDetailPage() {
             Düzenle
           </Button>
         </div>
+
+        {lastProgressEntry && (lastProgressEntry.weight !== null || lastProgressEntry.bodyFat !== null) && (
+          <div className="px-6 py-3 bg-indigo-50/60 border-b border-indigo-100 flex flex-wrap gap-4 text-sm">
+            <span className="text-muted-foreground font-medium">Son ölçüm ({new Date(lastProgressEntry.date).toLocaleDateString("tr-TR")}):</span>
+            {lastProgressEntry.weight !== null && (
+              <span className="flex items-center gap-1.5 font-semibold text-indigo-700">
+                <TrendingUp className="h-4 w-4" />
+                {lastProgressEntry.weight.toFixed(1)} kg
+              </span>
+            )}
+            {lastProgressEntry.bodyFat !== null && (
+              <span className="flex items-center gap-1.5 font-semibold text-rose-600">
+                <Activity className="h-4 w-4" />
+                %{lastProgressEntry.bodyFat.toFixed(1)} yağ
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
