@@ -90,7 +90,7 @@ const Navbar = () => {
   // Management menu items (in dropdown for dietitians)
   const getManagementItems = () => {
     return [
-      { href: "/diyet", label: "Sohbetler", icon: MessageCircle },
+      { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
       { href: "/birthdays", label: "Doğum Günleri", icon: Gift },
