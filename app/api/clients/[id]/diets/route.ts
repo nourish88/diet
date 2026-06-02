@@ -1,25 +1,19 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 type Params = { id: string };
 
 /** GET /api/clients/[id]/diets — diets for a client (owner client/dietitian). */
 export const GET = route<undefined, Params>({
+  cors: true,
   auth: "any",
   scope: "clients.diets.list",
-  handler: async ({ params, auth, log }) => {
-  try {
+  handler: async ({ params, auth }) => {
     const clientId = parseInt(params.id, 10);
-
-    if (isNaN(clientId)) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid client ID" }, { status: 400 })
-      );
+    if (Number.isNaN(clientId)) {
+      throw new HttpError("bad_request", "Invalid client ID");
     }
 
-    // Verify client exists
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: {
@@ -31,31 +25,16 @@ export const GET = route<undefined, Params>({
         dietitianId: true,
       },
     });
+    if (!client) throw new HttpError("not_found", "Client not found");
 
-    if (!client) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Client not found" }, { status: 404 })
-      );
-    }
-
-    // SECURITY: Check authorization
-    // - Client can only access their own diets
-    // - Dietitian can access their own clients' diets
     const user = auth.user!;
     const isOwnClient = user.role === "client" && client.userId === user.id;
     const isOwnDietitian =
       user.role === "dietitian" && client.dietitianId === user.id;
-
     if (!isOwnClient && !isOwnDietitian) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Access denied to this client's diets" },
-          { status: 403 },
-        ),
-      );
+      throw new HttpError("forbidden", "Access denied to this client's diets");
     }
 
-    // Projection: only fetch what the UI actually consumes.
     const diets = await prisma.diet.findMany({
       where: { clientId },
       orderBy: { createdAt: "desc" },
@@ -116,26 +95,6 @@ export const GET = route<undefined, Params>({
       },
     });
 
-    return addCorsHeaders(
-      NextResponse.json({
-        success: true,
-        client,
-        diets,
-      })
-    );
-  } catch (err) {
-    log.error("list failed", err instanceof Error ? err.message : err);
-    return addCorsHeaders(
-      NextResponse.json(
-        { success: false, error: "Failed to fetch client diets" },
-        { status: 500 }
-      )
-    );
-  }
+    return { success: true, client, diets };
   },
 });
-
-
-
-
-

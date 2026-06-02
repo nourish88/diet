@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders } from "@/lib/cors";
 import { route } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
@@ -9,25 +7,26 @@ export const GET = route({
   cors: true,
   auth: "dietitian",
   scope: "analytics.diet-logs-summary",
-  handler: async ({ auth, log: logger }) => {
-  try {
+  handler: async ({ auth }) => {
     const dietitianId = auth.user!.id;
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch all logs for the last 30 days
     const logs = await prisma.dietFormLog.findMany({
       where: { dietitianId, createdAt: { gte: since } },
       select: { sessionId: true, action: true, fieldName: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     });
 
-    // --- Average session duration ---
     const sessionMap = new Map<string, { opened?: Date; saved?: Date }>();
-    for (const log of logs) {
-      if (!sessionMap.has(log.sessionId)) sessionMap.set(log.sessionId, {});
-      const entry = sessionMap.get(log.sessionId)!;
-      if (log.action === "form_opened" && !entry.opened) entry.opened = log.createdAt;
-      if (log.action === "diet_saved" && !entry.saved) entry.saved = log.createdAt;
+    for (const entry of logs) {
+      if (!sessionMap.has(entry.sessionId)) sessionMap.set(entry.sessionId, {});
+      const session = sessionMap.get(entry.sessionId)!;
+      if (entry.action === "form_opened" && !session.opened) {
+        session.opened = entry.createdAt;
+      }
+      if (entry.action === "diet_saved" && !session.saved) {
+        session.saved = entry.createdAt;
+      }
     }
 
     const durations: number[] = [];
@@ -41,14 +40,16 @@ export const GET = route({
         ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
         : 0;
 
-    // --- Most removed / changed fields ---
     const fieldCounts = new Map<string, number>();
-    for (const log of logs) {
+    for (const entry of logs) {
       if (
-        (log.action === "item_removed" || log.action === "field_changed") &&
-        log.fieldName
+        (entry.action === "item_removed" || entry.action === "field_changed") &&
+        entry.fieldName
       ) {
-        fieldCounts.set(log.fieldName, (fieldCounts.get(log.fieldName) ?? 0) + 1);
+        fieldCounts.set(
+          entry.fieldName,
+          (fieldCounts.get(entry.fieldName) ?? 0) + 1,
+        );
       }
     }
     const topFrictionFields = [...fieldCounts.entries()]
@@ -56,27 +57,12 @@ export const GET = route({
       .slice(0, 5)
       .map(([field, count]) => ({ field, count }));
 
-    // --- Total sessions with saved diets ---
-    const completedSessions = durations.length;
-    const totalSessions = sessionMap.size;
-
-    return addCorsHeaders(
-      NextResponse.json({
-        avgMinutes,
-        completedSessions,
-        totalSessions,
-        topFrictionFields,
-        periodDays: 30,
-      })
-    );
-  } catch (err) {
-    logger.error("summary failed", err instanceof Error ? err.message : err);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: "Yazma analizi yüklenirken bir hata oluştu" },
-        { status: 500 }
-      )
-    );
-  }
+    return {
+      avgMinutes,
+      completedSessions: durations.length,
+      totalSessions: sessionMap.size,
+      topFrictionFields,
+      periodDays: 30,
+    };
   },
 });

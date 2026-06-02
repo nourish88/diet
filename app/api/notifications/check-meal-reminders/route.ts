@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-import { addCorsHeaders } from "@/lib/cors";
 import prisma from "@/lib/prisma";
 import {
   formatMealNotificationMessage,
@@ -20,10 +18,8 @@ export const GET = route({
   auth: "any",
   scope: "notifications.check-meal-reminders",
   handler: async ({ auth, log }) => {
-  try {
     const userId = auth.user!.id;
 
-    // Get user's client info
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -36,18 +32,13 @@ export const GET = route({
                   not: null,
                 },
               },
-              orderBy: {
-                tarih: "desc",
-              },
+              orderBy: { tarih: "desc" },
               take: 1,
               include: {
                 oguns: {
                   include: {
                     items: {
-                      include: {
-                        besin: true,
-                        birim: true,
-                      },
+                      include: { besin: true, birim: true },
                     },
                   },
                 },
@@ -61,50 +52,35 @@ export const GET = route({
     });
 
     if (!user || !user.client) {
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          reminders: [],
-          message: "No client found for user",
-        })
-      );
+      return { success: true, reminders: [], message: "No client found for user" };
     }
 
-    // Check notification preference
     const preference = user.notificationPreference;
     if (preference && !preference.mealReminders) {
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          reminders: [],
-          message: "Meal reminders disabled by user",
-        })
-      );
+      return {
+        success: true,
+        reminders: [],
+        message: "Meal reminders disabled by user",
+      };
     }
 
-    // Check if user has push subscriptions
     if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          reminders: [],
-          message: "No push subscriptions found",
-        })
-      );
+      return {
+        success: true,
+        reminders: [],
+        message: "No push subscriptions found",
+      };
     }
 
     const latestDiet = user.client.diets[0];
     if (!latestDiet || !latestDiet.tarih || !latestDiet.oguns) {
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          reminders: [],
-          message: "No active diet found",
-        })
-      );
+      return {
+        success: true,
+        reminders: [],
+        message: "No active diet found",
+      };
     }
 
-    // Find meals that need reminders
     const now = new Date();
     const pendingReminders: Array<{
       ogunId: number;
@@ -116,60 +92,51 @@ export const GET = route({
     }> = [];
 
     for (const ogun of latestDiet.oguns) {
-      if (!ogun.time) {
-        continue;
-      }
+      if (!ogun.time) continue;
+      if (!shouldSendReminder(ogun.time, now)) continue;
 
-      // Check if reminder should be sent (within next 15 minutes window)
-      if (shouldSendReminder(ogun.time, now)) {
-        const menuItems = ogun.items.map((item) => ({
-          miktar: item.miktar,
-          birim: item.birim?.name || null,
-          besinName: item.besin.name,
-        }));
+      const menuItems = ogun.items.map((item) => ({
+        miktar: item.miktar,
+        birim: item.birim?.name || null,
+        besinName: item.besin.name,
+      }));
 
-        const reminder: MealReminder = {
-          userId: user.id,
-          clientId: user.client.id,
-          clientName: user.client.name,
-          clientSurname: user.client.surname,
-          dietId: latestDiet.id,
-          dietDate: latestDiet.tarih,
-          ogunId: ogun.id,
-          ogunName: ogun.name,
-          ogunTime: ogun.time,
-          ogunDetail: ogun.detail,
-          menuItems,
-        };
+      const reminder: MealReminder = {
+        userId: user.id,
+        clientId: user.client.id,
+        clientName: user.client.name,
+        clientSurname: user.client.surname,
+        dietId: latestDiet.id,
+        dietDate: latestDiet.tarih,
+        ogunId: ogun.id,
+        ogunName: ogun.name,
+        ogunTime: ogun.time,
+        ogunDetail: ogun.detail,
+        menuItems,
+      };
 
-        const message = formatMealNotificationMessage(reminder);
-        const shortMessage = formatShortMealNotificationMessage(reminder);
-        pendingReminders.push({
-          ogunId: ogun.id,
-          ogunName: ogun.name,
-          ogunTime: ogun.time,
-          message,
-          shortMessage,
-          reminder,
-        });
-      }
+      pendingReminders.push({
+        ogunId: ogun.id,
+        ogunName: ogun.name,
+        ogunTime: ogun.time,
+        message: formatMealNotificationMessage(reminder),
+        shortMessage: formatShortMealNotificationMessage(reminder),
+        reminder,
+      });
     }
-
-    // Send push notifications for pending reminders
-    let sent = 0;
-    let failed = 0;
 
     if (!isWebPushConfigured()) {
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          reminders: pendingReminders,
-          sent: 0,
-          failed: 0,
-          message: "Web push is not configured",
-        })
-      );
+      return {
+        success: true,
+        reminders: pendingReminders,
+        sent: 0,
+        failed: 0,
+        message: "Web push is not configured",
+      };
     }
+
+    let sent = 0;
+    let failed = 0;
 
     for (const reminderData of pendingReminders) {
       const title = `${reminderData.ogunName} zamanı yaklaşıyor!`;
@@ -196,54 +163,31 @@ export const GET = route({
                 dietId: latestDiet.id,
                 ogunId: reminderData.ogunId,
               },
-            }
+            },
           );
           sent++;
-          console.log(
-            `✅ Sent meal reminder to user ${userId} for meal ${reminderData.ogunName}`
-          );
-        } catch (error: any) {
-          console.error(
-            `❌ Failed to send reminder for meal ${reminderData.ogunName}:`,
-            error
-          );
+        } catch (error) {
+          log.warn("reminder push failed", {
+            endpoint: subscription.endpoint,
+            ogun: reminderData.ogunName,
+          });
           failed++;
-
-          // Delete invalid/expired subscriptions
-          if (error?.statusCode === 404 || error?.statusCode === 410) {
-            try {
-              await prisma.pushSubscription.delete({
-                where: { endpoint: subscription.endpoint },
-              });
-              console.log(
-                `🗑️ Deleted invalid subscription: ${subscription.endpoint}`
-              );
-            } catch (deleteError) {
-              console.error("Failed to delete invalid subscription:", deleteError);
-            }
+          const status = (error as { statusCode?: number })?.statusCode;
+          if (status === 404 || status === 410) {
+            await prisma.pushSubscription
+              .delete({ where: { endpoint: subscription.endpoint } })
+              .catch(() => undefined);
           }
         }
       }
     }
 
-    return addCorsHeaders(
-      NextResponse.json({
-        success: true,
-        reminders: pendingReminders,
-        sent,
-        failed,
-        message: `Found ${pendingReminders.length} pending reminders, sent ${sent} notifications`,
-      })
-    );
-  } catch (err) {
-    log.error("check failed", err instanceof Error ? err.message : err);
-    return addCorsHeaders(
-      NextResponse.json(
-        { error: "Failed to check meal reminders" },
-        { status: 500 }
-      )
-    );
-  }
+    return {
+      success: true,
+      reminders: pendingReminders,
+      sent,
+      failed,
+      message: `Found ${pendingReminders.length} pending reminders, sent ${sent} notifications`,
+    };
   },
 });
-

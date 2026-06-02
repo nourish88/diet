@@ -6,7 +6,7 @@ import {
   KVKK_PORTAL_CONSENT_TYPE,
   KVKK_PORTAL_CONSENT_VERSION,
 } from "@/lib/kvkk-consent-config";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
 
@@ -30,23 +30,17 @@ export const POST = route({
   cors: true,
   auth: "client",
   scope: "consent.kvkk",
-  handler: async ({ request, auth, log }) => {
-  try {
+  handler: async ({ request, auth }) => {
     if (!auth.user!.isApproved) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Not approved" }, { status: 403 })
-      );
+      throw new HttpError("forbidden", "Not approved");
     }
 
     const client = await prisma.client.findFirst({
       where: { userId: auth.user!.id },
       select: { id: true },
     });
-
     if (!client) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Client profile not found" }, { status: 404 })
-      );
+      throw new HttpError("not_found", "Client profile not found");
     }
 
     let body: { consentVersion?: string; channel?: string } = {};
@@ -57,20 +51,12 @@ export const POST = route({
     }
 
     const channel =
-      body.channel === "mobile" || body.channel === "web"
-        ? body.channel
-        : "web";
+      body.channel === "mobile" || body.channel === "web" ? body.channel : "web";
 
     if (body.consentVersion !== KVKK_PORTAL_CONSENT_VERSION) {
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            error: "Invalid consent version",
-            requiredVersion: KVKK_PORTAL_CONSENT_VERSION,
-          },
-          { status: 400 }
-        )
-      );
+      throw new HttpError("bad_request", "Invalid consent version", {
+        requiredVersion: KVKK_PORTAL_CONSENT_VERSION,
+      });
     }
 
     const forwarded = request.headers.get("x-forwarded-for");
@@ -99,17 +85,6 @@ export const POST = route({
       }),
     ]);
 
-    return addCorsHeaders(
-      NextResponse.json({
-        success: true,
-        version: KVKK_PORTAL_CONSENT_VERSION,
-      })
-    );
-  } catch (err) {
-    log.error("consent failed", err instanceof Error ? err.message : err);
-    return addCorsHeaders(
-      NextResponse.json({ error: "Failed to record consent" }, { status: 500 })
-    );
-  }
+    return { success: true, version: KVKK_PORTAL_CONSENT_VERSION };
   },
 });

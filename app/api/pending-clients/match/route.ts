@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 const Body = z.object({
   referenceCode: z.string().min(1),
@@ -15,57 +13,40 @@ export const POST = route({
   auth: "dietitian",
   schema: Body,
   scope: "pending-clients.match",
-  handler: async ({ body, log }) => {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { referenceCode: body.referenceCode },
-      });
-      if (!user) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Invalid reference code" }, { status: 404 }),
-        );
-      }
-      if (user.isApproved) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "User already approved" }, { status: 400 }),
-        );
-      }
+  handler: async ({ body }) => {
+    const user = await prisma.user.findUnique({
+      where: { referenceCode: body.referenceCode },
+    });
+    if (!user) throw new HttpError("not_found", "Invalid reference code");
+    if (user.isApproved) {
+      throw new HttpError("bad_request", "User already approved");
+    }
 
-      const existingClient = await prisma.client.findUnique({
-        where: { id: body.clientId },
-        select: { userId: true },
-      });
-      if (existingClient?.userId) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Client is already linked to another user" },
-            { status: 400 },
-          ),
-        );
-      }
-
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: user.id },
-          data: { isApproved: true, approvedAt: new Date() },
-        }),
-        prisma.client.update({
-          where: { id: body.clientId },
-          data: { userId: user.id },
-        }),
-      ]);
-
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          message: "Client matched and approved successfully",
-        }),
-      );
-    } catch (err) {
-      log.error("match failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json({ error: "Failed to match user" }, { status: 500 }),
+    const existingClient = await prisma.client.findUnique({
+      where: { id: body.clientId },
+      select: { userId: true },
+    });
+    if (existingClient?.userId) {
+      throw new HttpError(
+        "bad_request",
+        "Client is already linked to another user",
       );
     }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { isApproved: true, approvedAt: new Date() },
+      }),
+      prisma.client.update({
+        where: { id: body.clientId },
+        data: { userId: user.id },
+      }),
+    ]);
+
+    return {
+      success: true,
+      message: "Client matched and approved successfully",
+    };
   },
 });

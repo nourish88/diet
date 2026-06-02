@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { requireOwnDiet } from "@/lib/api-auth";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { handleCors } from "@/lib/cors";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { sendMealReminderForOgun } from "@/services/MealReminderService";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
 
 type Params = { id: string };
 
-type NotifyBody =
-  | { type: "new-diet" }
-  | { type: "meal-reminder"; ogunId: number };
+const NotifyBody = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("new-diet") }),
+  z.object({
+    type: z.literal("meal-reminder"),
+    ogunId: z.coerce.number().int().positive(),
+  }),
+]);
 
 function reasonToMessage(reason?: string): string {
   switch (reason) {
@@ -35,6 +40,12 @@ function reasonToMessage(reason?: string): string {
   }
 }
 
+function parseDietId(raw: string): number {
+  const id = Number.parseInt(raw, 10);
+  if (Number.isNaN(id)) throw new HttpError("bad_request", "Invalid diet id");
+  return id;
+}
+
 export const OPTIONS = async (request: NextRequest) => {
   const corsResponse = handleCors(request);
   return corsResponse ?? new NextResponse(null, { status: 204 });
@@ -47,24 +58,13 @@ export const OPTIONS = async (request: NextRequest) => {
  * failed send.
  */
 export const GET = route<undefined, Params>({
+  cors: true,
   auth: "dietitian",
   scope: "diets.notify.status",
   handler: async ({ params, auth }) => {
-    const dietId = Number.parseInt(params.id, 10);
-    if (Number.isNaN(dietId)) {
-      return addCorsHeaders(
-        NextResponse.json({ ok: false, error: "Invalid diet id" }, { status: 400 })
-      );
-    }
-
-    const ownsDiet = await requireOwnDiet(dietId, auth);
-    if (!ownsDiet) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { ok: false, error: "Access denied to this diet" },
-          { status: 403 }
-        )
-      );
+    const dietId = parseDietId(params.id);
+    if (!(await requireOwnDiet(dietId, auth))) {
+      throw new HttpError("forbidden", "Access denied to this diet");
     }
 
     const diet = await prisma.diet.findUnique({
@@ -82,136 +82,87 @@ export const GET = route<undefined, Params>({
         },
       },
     });
-
-    if (!diet) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { ok: false, error: "Diet not found" },
-          { status: 404 }
-        )
-      );
-    }
+    if (!diet) throw new HttpError("not_found", "Diet not found");
 
     const user = diet.client.user;
-    const subscriptionCount = user?.pushSubscriptions.length ?? 0;
-    const dietUpdatesEnabled =
-      user?.notificationPreference?.dietUpdates ?? true;
-    const mealRemindersEnabled =
-      user?.notificationPreference?.mealReminders ?? true;
-
-    return addCorsHeaders(
-      NextResponse.json({
-        ok: true,
-        hasUser: Boolean(user),
-        subscriptionCount,
-        dietUpdatesEnabled,
-        mealRemindersEnabled,
-      })
-    );
+    return {
+      ok: true,
+      hasUser: Boolean(user),
+      subscriptionCount: user?.pushSubscriptions.length ?? 0,
+      dietUpdatesEnabled: user?.notificationPreference?.dietUpdates ?? true,
+      mealRemindersEnabled: user?.notificationPreference?.mealReminders ?? true,
+    };
   },
 });
 
-export const POST = route<undefined, Params>({
+export const POST = route<typeof NotifyBody, Params>({
+  cors: true,
   auth: "dietitian",
+  schema: NotifyBody,
   scope: "diets.notify.send",
-  handler: async ({ request, params, auth }) => {
-    const dietId = Number.parseInt(params.id, 10);
-    if (Number.isNaN(dietId)) {
-      return addCorsHeaders(
-        NextResponse.json({ ok: false, error: "Invalid diet id" }, { status: 400 })
-      );
-    }
-
-    // SECURITY: the dietitian must own this diet.
-    const ownsDiet = await requireOwnDiet(dietId, auth);
-    if (!ownsDiet) {
-      return addCorsHeaders(
-        NextResponse.json(
-          { ok: false, error: "Access denied to this diet" },
-          { status: 403 }
-        )
-      );
-    }
-
-    let body: NotifyBody;
-    try {
-      body = (await request.json()) as NotifyBody;
-    } catch {
-      return addCorsHeaders(
-        NextResponse.json(
-          { ok: false, error: "Invalid request body" },
-          { status: 400 }
-        )
-      );
+  handler: async ({ body, params, auth }) => {
+    const dietId = parseDietId(params.id);
+    if (!(await requireOwnDiet(dietId, auth))) {
+      throw new HttpError("forbidden", "Access denied to this diet");
     }
 
     if (body.type === "new-diet") {
       const result = await notifyClientOfNewDiet(dietId, { force: true });
-      return addCorsHeaders(
-        NextResponse.json(
+      if (!result.ok) {
+        throw new HttpError(
+          "bad_request",
+          reasonToMessage(result.reason),
           {
-            ok: result.ok,
+            ok: false,
             sent: result.sent,
             failed: result.failed,
-            ...(result.reason
-              ? { code: result.reason, message: reasonToMessage(result.reason) }
-              : {}),
+            code: result.reason,
           },
-          { status: result.ok ? 200 : 400 }
-        )
+        );
+      }
+      return {
+        ok: true,
+        sent: result.sent,
+        failed: result.failed,
+        ...(result.reason
+          ? { code: result.reason, message: reasonToMessage(result.reason) }
+          : {}),
+      };
+    }
+
+    // meal-reminder
+    const ogun = await prisma.ogun.findUnique({
+      where: { id: body.ogunId },
+      select: { dietId: true },
+    });
+    if (!ogun || ogun.dietId !== dietId) {
+      throw new HttpError(
+        "bad_request",
+        reasonToMessage("ogun-mismatch"),
+        { ok: false, code: "ogun-mismatch" },
       );
     }
 
-    if (body.type === "meal-reminder") {
-      const ogunId = Number(body.ogunId);
-      if (!Number.isInteger(ogunId) || ogunId <= 0) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { ok: false, error: "ogunId is required" },
-            { status: 400 }
-          )
-        );
-      }
-
-      // Make sure the ogun belongs to the diet the dietitian owns.
-      const ogun = await prisma.ogun.findUnique({
-        where: { id: ogunId },
-        select: { dietId: true },
-      });
-      if (!ogun || ogun.dietId !== dietId) {
-        return addCorsHeaders(
-          NextResponse.json(
-            {
-              ok: false,
-              code: "ogun-mismatch",
-              message: reasonToMessage("ogun-mismatch"),
-            },
-            { status: 400 }
-          )
-        );
-      }
-
-      const result = await sendMealReminderForOgun(ogunId);
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            ok: result.ok,
-            sent: result.sent,
-            failed: result.failed,
-            ...(result.reason
-              ? { code: result.reason, message: reasonToMessage(result.reason) }
-              : {}),
-          },
-          { status: result.ok ? 200 : 400 }
-        )
+    const result = await sendMealReminderForOgun(body.ogunId);
+    if (!result.ok) {
+      throw new HttpError(
+        "bad_request",
+        reasonToMessage(result.reason),
+        {
+          ok: false,
+          sent: result.sent,
+          failed: result.failed,
+          code: result.reason,
+        },
       );
     }
-
-    return addCorsHeaders(
-      NextResponse.json(
-        { ok: false, error: "Unknown notify type" },
-        { status: 400 }
-      )
-    );
+    return {
+      ok: true,
+      sent: result.sent,
+      failed: result.failed,
+      ...(result.reason
+        ? { code: result.reason, message: reasonToMessage(result.reason) }
+        : {}),
+    };
   },
 });

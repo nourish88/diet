@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 export async function OPTIONS() {
   return addCorsHeaders(new NextResponse(null, { status: 200 }));
@@ -48,104 +48,86 @@ export const GET = route({
   cors: true,
   auth: "any",
   scope: "unread-messages.list",
-  handler: async ({ auth, log }) => {
-    try {
-      const user = auth.user!;
-      let unreadMessages: UnreadMessage[];
+  handler: async ({ auth }) => {
+    const user = auth.user!;
+    let unreadMessages: UnreadMessage[];
 
-      if (user.role === "client") {
-        const client = await prisma.client.findUnique({
-          where: { userId: user.id },
-          select: { id: true },
-        });
-        if (!client) {
-          return addCorsHeaders(
-            NextResponse.json({ error: "Client not found" }, { status: 404 }),
-          );
-        }
-        unreadMessages = await prisma.dietComment.findMany({
-          where: {
-            diet: { clientId: client.id },
-            isRead: false,
-            userId: { not: user.id },
-          },
-          include: MESSAGE_INCLUDE,
-          orderBy: { createdAt: "desc" },
-        });
-      } else {
-        unreadMessages = await prisma.dietComment.findMany({
-          where: {
-            diet: { client: { dietitianId: user.id } },
-            isRead: false,
-            userId: { not: user.id },
-          },
-          include: MESSAGE_INCLUDE,
-          orderBy: { createdAt: "desc" },
-        });
-      }
-
-      const groupedMessages = unreadMessages.reduce<Record<string, Conversation>>(
-        (acc, msg) => {
-          const clientId = msg.diet.client.id;
-          const dietId = msg.diet.id;
-          const key = `${clientId}-${dietId}`;
-
-          if (!acc[key]) {
-            acc[key] = {
-              clientId,
-              clientName: `${msg.diet.client.name} ${msg.diet.client.surname}`,
-              dietId,
-              dietDate: msg.diet.tarih,
-              messages: [],
-              unreadCount: 0,
-              latestMessage: null,
-            };
-          }
-
-          const messageData: MessageData = {
-            id: msg.id,
-            content: msg.content,
-            createdAt: msg.createdAt,
-            ogun: msg.ogun,
-            senderName:
-              msg.user.role === "client"
-                ? `${msg.diet.client.name} ${msg.diet.client.surname}`
-                : "Diyetisyen",
-          };
-
-          acc[key].messages.push(messageData);
-          acc[key].unreadCount++;
-
-          if (
-            !acc[key].latestMessage ||
-            new Date(msg.createdAt) > new Date(acc[key].latestMessage!.createdAt)
-          ) {
-            acc[key].latestMessage = messageData;
-          }
-
-          return acc;
+    if (user.role === "client") {
+      const client = await prisma.client.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      if (!client) throw new HttpError("not_found", "Client not found");
+      unreadMessages = await prisma.dietComment.findMany({
+        where: {
+          diet: { clientId: client.id },
+          isRead: false,
+          userId: { not: user.id },
         },
-        {},
-      );
-
-      const conversations = Object.values(groupedMessages);
-
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          totalUnread: unreadMessages.length,
-          conversations,
-          messages: unreadMessages,
-        }),
-      );
-    } catch (err) {
-      log.error("list failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to fetch unread messages" },
-          { status: 500 },
-        ),
-      );
+        include: MESSAGE_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      });
+    } else {
+      unreadMessages = await prisma.dietComment.findMany({
+        where: {
+          diet: { client: { dietitianId: user.id } },
+          isRead: false,
+          userId: { not: user.id },
+        },
+        include: MESSAGE_INCLUDE,
+        orderBy: { createdAt: "desc" },
+      });
     }
+
+    const groupedMessages = unreadMessages.reduce<Record<string, Conversation>>(
+      (acc, msg) => {
+        const clientId = msg.diet.client.id;
+        const dietId = msg.diet.id;
+        const key = `${clientId}-${dietId}`;
+
+        if (!acc[key]) {
+          acc[key] = {
+            clientId,
+            clientName: `${msg.diet.client.name} ${msg.diet.client.surname}`,
+            dietId,
+            dietDate: msg.diet.tarih,
+            messages: [],
+            unreadCount: 0,
+            latestMessage: null,
+          };
+        }
+
+        const messageData: MessageData = {
+          id: msg.id,
+          content: msg.content,
+          createdAt: msg.createdAt,
+          ogun: msg.ogun,
+          senderName:
+            msg.user.role === "client"
+              ? `${msg.diet.client.name} ${msg.diet.client.surname}`
+              : "Diyetisyen",
+        };
+
+        acc[key].messages.push(messageData);
+        acc[key].unreadCount++;
+
+        if (
+          !acc[key].latestMessage ||
+          new Date(msg.createdAt) > new Date(acc[key].latestMessage!.createdAt)
+        ) {
+          acc[key].latestMessage = messageData;
+        }
+
+        return acc;
+      },
+      {},
+    );
+
+    return {
+      success: true,
+      totalUnread: unreadMessages.length,
+      conversations: Object.values(groupedMessages),
+      messages: unreadMessages,
+    };
   },
 });

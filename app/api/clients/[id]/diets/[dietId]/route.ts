@@ -1,7 +1,5 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 type Params = { id: string; dietId: string };
 
@@ -10,93 +8,92 @@ type Params = { id: string; dietId: string };
  * Full diet detail for the owning client or dietitian.
  */
 export const GET = route<undefined, Params>({
+  cors: true,
   auth: "any",
   scope: "clients.diet.get",
-  handler: async ({ params, auth, log }) => {
-    try {
-      const clientId = parseInt(params.id, 10);
-      const dietId = parseInt(params.dietId, 10);
-      if (Number.isNaN(clientId) || Number.isNaN(dietId)) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Invalid ID" }, { status: 400 }),
-        );
-      }
+  handler: async ({ params, auth }) => {
+    const clientId = parseInt(params.id, 10);
+    const dietId = parseInt(params.dietId, 10);
+    if (Number.isNaN(clientId) || Number.isNaN(dietId)) {
+      throw new HttpError("bad_request", "Invalid ID");
+    }
 
-      const client = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: { id: true, name: true, surname: true, userId: true, dietitianId: true },
-      });
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 }),
-        );
-      }
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        userId: true,
+        dietitianId: true,
+      },
+    });
+    if (!client) throw new HttpError("not_found", "Client not found");
 
-      const user = auth.user!;
-      const isOwnClient = user.role === "client" && client.userId === user.id;
-      const isOwnDietitian =
-        user.role === "dietitian" && client.dietitianId === user.id;
-      if (!isOwnClient && !isOwnDietitian) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Access denied to this client" }, { status: 403 }),
-        );
-      }
+    const user = auth.user!;
+    const isOwnClient = user.role === "client" && client.userId === user.id;
+    const isOwnDietitian =
+      user.role === "dietitian" && client.dietitianId === user.id;
+    if (!isOwnClient && !isOwnDietitian) {
+      throw new HttpError("forbidden", "Access denied to this client");
+    }
 
-      const diet = await prisma.diet.findUnique({
-        where: { id: dietId, clientId },
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              surname: true,
-              phoneNumber: true,
-              birthdate: true,
-            },
-          },
-          oguns: {
-            orderBy: { order: "asc" },
-            include: {
-              items: {
-                include: {
-                  besin: { select: { id: true, name: true } },
-                  birim: { select: { id: true, name: true } },
-                },
-              },
-              comments: {
-                include: { user: { select: { id: true, email: true, role: true } } },
-                orderBy: { createdAt: "asc" },
-              },
-              mealPhotos: { orderBy: { uploadedAt: "desc" } },
-            },
-          },
-          comments: {
-            include: { user: { select: { id: true, email: true, role: true } } },
-            orderBy: { createdAt: "asc" },
-          },
-          mealPhotos: {
-            include: { ogun: { select: { id: true, name: true } } },
-            orderBy: { uploadedAt: "desc" },
-          },
-          importantDate: {
-            select: {
-              id: true,
-              name: true,
-              message: true,
-              startDate: true,
-              endDate: true,
-            },
+    const diet = await prisma.diet.findUnique({
+      where: { id: dietId, clientId },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            phoneNumber: true,
+            birthdate: true,
           },
         },
-      });
+        oguns: {
+          orderBy: { order: "asc" },
+          include: {
+            items: {
+              include: {
+                besin: { select: { id: true, name: true } },
+                birim: { select: { id: true, name: true } },
+              },
+            },
+            comments: {
+              include: {
+                user: { select: { id: true, email: true, role: true } },
+              },
+              orderBy: { createdAt: "asc" },
+            },
+            mealPhotos: { orderBy: { uploadedAt: "desc" } },
+          },
+        },
+        comments: {
+          include: {
+            user: { select: { id: true, email: true, role: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        mealPhotos: {
+          include: { ogun: { select: { id: true, name: true } } },
+          orderBy: { uploadedAt: "desc" },
+        },
+        importantDate: {
+          select: {
+            id: true,
+            name: true,
+            message: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+      },
+    });
+    if (!diet) throw new HttpError("not_found", "Diet not found");
 
-      if (!diet) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Diet not found" }, { status: 404 }),
-        );
-      }
-
-      const responseDiet = {
+    return {
+      success: true,
+      diet: {
         id: diet.id,
         createdAt: diet.createdAt,
         updatedAt: diet.updatedAt,
@@ -127,19 +124,7 @@ export const GET = route<undefined, Params>({
         })),
         comments: diet.comments,
         mealPhotos: diet.mealPhotos,
-      };
-
-      return addCorsHeaders(
-        NextResponse.json({ success: true, diet: responseDiet }),
-      );
-    } catch (err) {
-      log.error("diet detail failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json(
-          { success: false, error: "Failed to fetch diet details" },
-          { status: 500 },
-        ),
-      );
-    }
+      },
+    };
   },
 });

@@ -60,7 +60,7 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
 
   return async (
     request: NextRequest,
-    ctx?: { params: Promise<TParams> | TParams },
+    ctx: { params: Promise<TParams> },
   ): Promise<Response> => {
     try {
       const mode: AuthMode = opts.auth ?? "any";

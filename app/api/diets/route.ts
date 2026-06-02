@@ -1,14 +1,12 @@
-import { NextResponse, after } from "next/server";
+import { after } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requireOwnClient } from "@/lib/api-auth";
-import { addCorsHeaders } from "@/lib/cors";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { invalidate } from "@/lib/cache";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type DietLogAction = "diet_overridden" | "diet_saved" | "diet_save_failed";
@@ -24,14 +22,13 @@ async function logDietAction({
   clientId: number | null;
   dietId?: number | null;
   dietitianId: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     const config = await prisma.systemConfig.findUnique({
       where: { key: "diet_form_logging_enabled" },
       select: { value: true },
     });
-
     if (!config || config.value !== "true") return;
 
     await prisma.dietFormLog.create({
@@ -42,7 +39,7 @@ async function logDietAction({
         dietId: dietId ?? null,
         action,
         source: "server",
-        metadata,
+        metadata: metadata as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (logError) {
@@ -50,45 +47,50 @@ async function logDietAction({
   }
 }
 
+interface DietItemInput {
+  miktar?: string;
+  birim?: string;
+  besin?: string;
+}
+interface OgunInput {
+  name?: string;
+  time?: string;
+  detail?: string;
+  order?: number;
+  items?: DietItemInput[];
+}
+interface DietCreateBody {
+  clientId: number;
+  tarih?: string | null;
+  su?: string;
+  sonuc?: string;
+  hedef?: string;
+  fizik?: string;
+  isBirthdayCelebration?: boolean;
+  isImportantDateCelebrated?: boolean;
+  importantDateId?: number | null;
+  dietitianNote?: string;
+  oguns?: OgunInput[];
+}
+
 export const POST = route({
   cors: true,
   auth: "dietitian",
   scope: "diets.create",
-  handler: async ({ request, auth }) => {
-    // Parse request body once (can't read twice)
-    let data: any;
+  handler: async ({ request, auth, log }) => {
+    let data: DietCreateBody;
     try {
-      data = await request.json();
+      data = (await request.json()) as DietCreateBody;
     } catch {
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Invalid request body" },
-          { status: 400 }
-        )
-      );
+      throw new HttpError("bad_request", "Invalid request body");
+    }
+
+    if (!(await requireOwnClient(data.clientId, auth))) {
+      throw new HttpError("forbidden", "Access denied to this client");
     }
 
     try {
-
-      // SECURITY: Check if dietitian owns this client
-      const hasAccess = await requireOwnClient(data.clientId, auth);
-      if (!hasAccess) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Access denied to this client" },
-            { status: 403 }
-          )
-        );
-      }
-
-      // Get client to inherit their dietitian (for backward compatibility)
-      const client = await prisma.client.findUnique({
-        where: { id: data.clientId },
-        select: { dietitianId: true },
-      });
-
-      // Duplicate guard: if a diet already exists for the same client + dietitian
-      // on the same calendar day (tarih), override it instead of creating a new row.
+      // Duplicate guard: same client + dietitian on the same calendar day → override.
       let existingDietId: number | null = null;
       if (data.tarih) {
         const target = new Date(data.tarih);
@@ -108,88 +110,74 @@ export const POST = route({
         existingDietId = existing?.id ?? null;
       }
 
-      // Resolve every distinct besin and birim name to an id BEFORE we
-      // touch the diet transaction. Previously the override path did a
-      // `connectOrCreate` for every menu item inside the transaction; with
-      // 6 öğün × ~5 items that's ~60 sequential round-trips to Neon and
-      // routinely blew through the 5 sn interactive-tx limit (P2028).
-      // After this pass the transaction only runs deleteMany + a single
-      // nested-create — well under a second.
-      const ogunsInput: any[] = Array.isArray(data.oguns) ? data.oguns : [];
-      const besinNameSet = new Set<string>();
-      const birimNameSet = new Set<string>();
+      // Pre-resolve besin/birim ids outside the transaction so the interactive
+      // transaction stays short (Neon serverless P2028 budget).
+      const ogunsInput = Array.isArray(data.oguns) ? data.oguns : [];
+      const besinNames = new Set<string>();
+      const birimNames = new Set<string>();
       for (const ogun of ogunsInput) {
-        for (const item of (ogun.items || [])) {
-          besinNameSet.add(item.besin || "");
-          birimNameSet.add(item.birim || "");
+        for (const item of ogun.items ?? []) {
+          besinNames.add(item.besin ?? "");
+          birimNames.add(item.birim ?? "");
         }
       }
       const [besinRecords, birimRecords] = await Promise.all([
         Promise.all(
-          Array.from(besinNameSet).map((name) =>
+          Array.from(besinNames).map((name) =>
             prisma.besin.upsert({
               where: { name },
               create: { name },
               update: {},
               select: { id: true, name: true },
-            })
-          )
+            }),
+          ),
         ),
         Promise.all(
-          Array.from(birimNameSet).map((name) =>
+          Array.from(birimNames).map((name) =>
             prisma.birim.upsert({
               where: { name },
               create: { name },
               update: {},
               select: { id: true, name: true },
-            })
-          )
+            }),
+          ),
         ),
       ]);
       const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
       const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
 
-      // Upserts above may have inserted new besin/birim rows; invalidate
-      // dictionary caches so autocomplete sees them on the next read.
       invalidate.besinler();
       invalidate.birims();
 
-      const ogunsCreate = ogunsInput.map((ogun: any) => ({
-        name: ogun.name || "",
-        time: ogun.time || "",
-        detail: ogun.detail || "",
-        order: ogun.order || 0,
+      const ogunsCreate = ogunsInput.map((ogun) => ({
+        name: ogun.name ?? "",
+        time: ogun.time ?? "",
+        detail: ogun.detail ?? "",
+        order: ogun.order ?? 0,
         items: {
-          create: (ogun.items || []).map((item: any) => ({
-            miktar: item.miktar || "",
-            birim: { connect: { id: birimIdByName.get(item.birim || "")! } },
-            besin: { connect: { id: besinIdByName.get(item.besin || "")! } },
+          create: (ogun.items ?? []).map((item) => ({
+            miktar: item.miktar ?? "",
+            birim: { connect: { id: birimIdByName.get(item.birim ?? "")! } },
+            besin: { connect: { id: besinIdByName.get(item.besin ?? "")! } },
           })),
         },
       }));
 
       const dietFields = {
         tarih: data.tarih ? new Date(data.tarih) : null,
-        su: data.su || "",
-        sonuc: data.sonuc || "",
-        hedef: data.hedef || "",
-        fizik: data.fizik || "",
-        isBirthdayCelebration: data.isBirthdayCelebration || false,
-        isImportantDateCelebrated: data.isImportantDateCelebrated || false,
-        importantDateId: data.importantDateId || null,
-        dietitianNote: data.dietitianNote || "",
+        su: data.su ?? "",
+        sonuc: data.sonuc ?? "",
+        hedef: data.hedef ?? "",
+        fizik: data.fizik ?? "",
+        isBirthdayCelebration: data.isBirthdayCelebration ?? false,
+        isImportantDateCelebrated: data.isImportantDateCelebrated ?? false,
+        importantDateId: data.importantDateId ?? null,
+        dietitianNote: data.dietitianNote ?? "",
       };
 
       const include = {
         oguns: {
-          include: {
-            items: {
-              include: {
-                birim: true,
-                besin: true,
-              },
-            },
-          },
+          include: { items: { include: { birim: true, besin: true } } },
         },
         client: true,
       } as const;
@@ -197,27 +185,23 @@ export const POST = route({
       const diet = existingDietId
         ? await prisma.$transaction(
             async (tx) => {
-              // Override: replace meals (cascades menu items) and update fields
               await tx.ogun.deleteMany({ where: { dietId: existingDietId } });
               return tx.diet.update({
                 where: { id: existingDietId },
                 data: {
                   ...dietFields,
                   oguns: { create: ogunsCreate },
-                  notifiedAt: null, // re-notify since the diet changed
+                  notifiedAt: null,
                 },
                 include,
               });
             },
-            // Safety net for cold-starts on Neon serverless. The actual work
-            // here is fast (~1 sn) since besin/birim are pre-resolved above;
-            // this bigger budget only matters when the connection warms up.
-            { timeout: 15_000, maxWait: 5_000 }
+            { timeout: 15_000, maxWait: 5_000 },
           )
         : await prisma.diet.create({
             data: {
               clientId: data.clientId,
-              dietitianId: auth.user!.id, // SECURITY: Assign to authenticated dietitian
+              dietitianId: auth.user!.id,
               ...dietFields,
               oguns: { create: ogunsCreate },
             },
@@ -226,11 +210,7 @@ export const POST = route({
 
       const wasOverridden = existingDietId !== null;
 
-      // Push notification to the client — runs after response is sent
       after(() => notifyClientOfNewDiet(diet.id));
-
-      // Log after the response is sent. Saving the diet should not wait for
-      // non-critical telemetry, especially on serverless cold starts.
       after(() =>
         logDietAction({
           dietitianId: auth.user!.id,
@@ -240,74 +220,47 @@ export const POST = route({
           metadata: {
             ogunCount: diet.oguns.length,
             totalItems: diet.oguns.reduce(
-              (sum, ogun) => sum + (ogun.items?.length || 0),
-              0
+              (sum, ogun) => sum + (ogun.items?.length ?? 0),
+              0,
             ),
             overridden: wasOverridden,
           },
-        })
+        }),
       );
 
-      return addCorsHeaders(
-        NextResponse.json({ ...diet, _overridden: wasOverridden })
-      );
+      return { ...diet, _overridden: wasOverridden };
     } catch (error) {
-      // Enhanced error logging with detailed information
-      const errorDetails: any = {
-        message: error instanceof Error ? error.message : String(error),
-        type: error instanceof Error ? error.constructor.name : typeof error,
-        stack: error instanceof Error ? error.stack : undefined,
-      };
+      const message = error instanceof Error ? error.message : String(error);
+      const type = error instanceof Error ? error.constructor.name : typeof error;
+      const prismaCode =
+        error instanceof Prisma.PrismaClientKnownRequestError
+          ? error.code
+          : undefined;
+      const prismaMeta =
+        error instanceof Prisma.PrismaClientKnownRequestError
+          ? error.meta
+          : undefined;
 
-      // Extract Prisma-specific error details
-      if (error && typeof error === 'object' && 'code' in error) {
-        errorDetails.prismaCode = (error as any).code;
-        errorDetails.meta = (error as any).meta;
-      }
+      log.error("create failed", { message, type, prismaCode });
 
-      console.error("Error creating diet:", {
-        error: errorDetails,
-        clientId: data?.clientId,
-        dietitianId: auth.user!.id,
-        timestamp: new Date().toISOString(),
-      });
-      
       after(() =>
         logDietAction({
           dietitianId: auth.user!.id,
-          clientId: data?.clientId || null,
+          clientId: data.clientId ?? null,
           action: "diet_save_failed",
-          metadata: {
-            error: errorDetails.message,
-            errorType: errorDetails.type,
-            prismaCode: errorDetails.prismaCode,
-            prismaMeta: errorDetails.meta,
-            stack: errorDetails.stack?.substring(0, 500),
-          },
-        })
+          metadata: { error: message, errorType: type, prismaCode, prismaMeta },
+        }),
       );
 
-      // Return structured error response
-      const errorMessage = errorDetails.message || "Unknown error occurred";
-      const isPrismaError = !!errorDetails.prismaCode;
-      
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            success: false,
-            error: errorMessage,
-            details: isPrismaError 
-              ? `Database error (${errorDetails.prismaCode})` 
-              : "Failed to create diet",
-            errorType: errorDetails.type,
-            ...(process.env.NODE_ENV === 'development' && {
-              stack: errorDetails.stack,
-              prismaMeta: errorDetails.meta,
-            }),
-          },
-          { status: 500 }
-        )
-      );
+      throw new HttpError("internal", message, {
+        errorType: type,
+        details: prismaCode
+          ? `Database error (${prismaCode})`
+          : "Failed to create diet",
+        ...(process.env.NODE_ENV === "development"
+          ? { stack: error instanceof Error ? error.stack : undefined, prismaMeta }
+          : {}),
+      });
     }
   },
 });
@@ -316,99 +269,53 @@ export const GET = route({
   cors: true,
   auth: "dietitian",
   scope: "diets.list",
-  handler: async ({ request, auth, log }) => {
-    try {
-      const searchParams = request.nextUrl.searchParams;
-      const clientId = searchParams.get("clientId");
-      const skip = parseInt(searchParams.get("skip") || "0", 10);
-      const take = parseInt(searchParams.get("take") || "50", 10);
-      const search = searchParams.get("search");
+  handler: async ({ request, auth }) => {
+    const searchParams = request.nextUrl.searchParams;
+    const clientId = searchParams.get("clientId");
+    const skip = parseInt(searchParams.get("skip") || "0", 10);
+    const take = parseInt(searchParams.get("take") || "50", 10);
+    const search = searchParams.get("search");
 
-      // Build where clause based on filters
-      const where: Prisma.DietWhereInput = {
-        dietitianId: auth.user!.id, // SECURITY: Only show own diets
-      };
+    const where: Prisma.DietWhereInput = { dietitianId: auth.user!.id };
 
-      // Add client filter if provided
-      if (clientId) {
-        const clientIdNum = Number(clientId);
-
-        // SECURITY: Verify dietitian owns this client
-        const hasAccess = await requireOwnClient(clientIdNum, auth);
-        if (!hasAccess) {
-          return addCorsHeaders(
-            NextResponse.json(
-              { error: "Access denied to this client" },
-              { status: 403 }
-            )
-          );
-        }
-
-        where.clientId = clientIdNum;
+    if (clientId) {
+      const clientIdNum = Number(clientId);
+      if (!(await requireOwnClient(clientIdNum, auth))) {
+        throw new HttpError("forbidden", "Access denied to this client");
       }
-
-      // Add search filter if provided (tokenized AND over tokens; each token matches name OR surname)
-      if (search) {
-        const tokens = search
-          .trim()
-          .split(/\s+/)
-          .filter((t) => t.length > 0);
-        if (tokens.length > 0) {
-          where.AND = tokens.map((token: string) => ({
-            OR: [
-              { client: { name: { contains: token, mode: "insensitive" } } },
-              { client: { surname: { contains: token, mode: "insensitive" } } },
-            ],
-          }));
-        }
-
-        // Also allow direct id lookup
-        const asNum = Number(search);
-        if (!isNaN(asNum)) {
-          where.OR = [{ id: { equals: asNum } }];
-        }
-      }
-
-      // Get total count for pagination
-      const total = await prisma.diet.count({ where });
-
-      const diets = await prisma.diet.findMany({
-        where,
-        include: {
-          client: {
-            select: {
-              id: true,
-              name: true,
-              surname: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take,
-      });
-
-      const hasMore = skip + take < total;
-
-      return addCorsHeaders(
-        NextResponse.json({
-          diets,
-          total,
-          hasMore,
-          skip,
-          take,
-        })
-      );
-    } catch (err) {
-      log.error("list failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to fetch diets" },
-          { status: 500 }
-        )
-      );
+      where.clientId = clientIdNum;
     }
+
+    if (search) {
+      const tokens = search
+        .trim()
+        .split(/\s+/)
+        .filter((t) => t.length > 0);
+      if (tokens.length > 0) {
+        where.AND = tokens.map((token) => ({
+          OR: [
+            { client: { name: { contains: token, mode: "insensitive" } } },
+            { client: { surname: { contains: token, mode: "insensitive" } } },
+          ],
+        }));
+      }
+      const asNum = Number(search);
+      if (!Number.isNaN(asNum)) {
+        where.OR = [{ id: { equals: asNum } }];
+      }
+    }
+
+    const total = await prisma.diet.count({ where });
+    const diets = await prisma.diet.findMany({
+      where,
+      include: {
+        client: { select: { id: true, name: true, surname: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    });
+
+    return { diets, total, hasMore: skip + take < total, skip, take };
   },
 });

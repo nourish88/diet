@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
+import { ok } from "@/lib/api/response";
 
 export const dynamic = "force-dynamic";
 
@@ -33,68 +32,48 @@ export const GET = route({
   scope: "progress.list",
   handler: async ({ request, auth }) => {
     const user = auth.user!;
-    const searchParams = request.nextUrl.searchParams;
-    const clientIdParam = searchParams.get("clientId");
-    const dateFromParam = searchParams.get("dateFrom");
-    const dateToParam = searchParams.get("dateTo");
+    const sp = request.nextUrl.searchParams;
+    const clientIdParam = sp.get("clientId");
+    const dateFromParam = sp.get("dateFrom");
+    const dateToParam = sp.get("dateTo");
 
     let clientId: number | undefined;
     let userId: number | undefined;
 
     if (user.role === "dietitian") {
       if (!clientIdParam) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "clientId is required for dietitian" },
-            { status: 400 },
-          ),
-        );
+        throw new HttpError("bad_request", "clientId is required for dietitian");
       }
       clientId = parseInt(clientIdParam, 10);
       const client = await prisma.client.findUnique({
         where: { id: clientId },
         select: { dietitianId: true, userId: true },
       });
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 }),
-        );
-      }
+      if (!client) throw new HttpError("not_found", "Client not found");
       if (client.dietitianId !== user.id) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-        );
+        throw new HttpError("forbidden", "Forbidden");
       }
-      userId = client.userId || undefined;
-    } else if (user.role === "client") {
+      userId = client.userId ?? undefined;
+    } else {
       const client = await prisma.client.findUnique({
         where: { userId: user.id },
         select: { id: true },
       });
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 }),
-        );
-      }
+      if (!client) throw new HttpError("not_found", "Client not found");
       clientId = client.id;
       userId = user.id;
-    } else {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Invalid role" }, { status: 403 }),
-      );
     }
 
     if (!clientId || !userId) {
-      return addCorsHeaders(
-        NextResponse.json({ error: "Client or user not found" }, { status: 404 }),
-      );
+      throw new HttpError("not_found", "Client or user not found");
     }
 
     const where: Prisma.ProgressEntryWhereInput = { clientId, userId };
     if (dateFromParam || dateToParam) {
-      where.date = {};
-      if (dateFromParam) where.date.gte = new Date(dateFromParam);
-      if (dateToParam) where.date.lte = new Date(dateToParam);
+      where.date = {
+        ...(dateFromParam ? { gte: new Date(dateFromParam) } : {}),
+        ...(dateToParam ? { lte: new Date(dateToParam) } : {}),
+      };
     }
 
     const entries = await prisma.progressEntry.findMany({
@@ -102,7 +81,7 @@ export const GET = route({
       orderBy: { date: "desc" },
     });
 
-    return addCorsHeaders(NextResponse.json({ success: true, entries }));
+    return { success: true, entries };
   },
 });
 
@@ -112,41 +91,25 @@ export const POST = route({
   auth: "client",
   schema: CreateProgressBody,
   scope: "progress.create",
-  handler: async ({ body, auth, log }) => {
-    try {
-      const client = await prisma.client.findUnique({
-        where: { userId: auth.user!.id },
-        select: { id: true },
-      });
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json({ error: "Client not found" }, { status: 404 }),
-        );
-      }
+  handler: async ({ body, auth }) => {
+    const client = await prisma.client.findUnique({
+      where: { userId: auth.user!.id },
+      select: { id: true },
+    });
+    if (!client) throw new HttpError("not_found", "Client not found");
 
-      const entry = await prisma.progressEntry.create({
-        data: {
-          userId: auth.user!.id,
-          clientId: client.id,
-          date: new Date(body.date),
-          weight: toNum(body.weight),
-          waist: toNum(body.waist),
-          hip: toNum(body.hip),
-          bodyFat: toNum(body.bodyFat),
-        },
-      });
+    const entry = await prisma.progressEntry.create({
+      data: {
+        userId: auth.user!.id,
+        clientId: client.id,
+        date: new Date(body.date),
+        weight: toNum(body.weight),
+        waist: toNum(body.waist),
+        hip: toNum(body.hip),
+        bodyFat: toNum(body.bodyFat),
+      },
+    });
 
-      return addCorsHeaders(
-        NextResponse.json({ success: true, entry }, { status: 201 }),
-      );
-    } catch (err) {
-      log.error("create failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to create progress entry" },
-          { status: 500 },
-        ),
-      );
-    }
+    return ok({ success: true, entry }, { status: 201 });
   },
 });
