@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { handleCors } from "@/lib/cors";
+import { route, HttpError } from "@/lib/api/handler";
 import {
   getOfficeSocialMediaTask,
   officeSocialMediaTasks,
@@ -21,51 +21,38 @@ export const OPTIONS = async (request: NextRequest) => {
 };
 
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "office-reminders.status",
   handler: async ({ auth }) => {
     const subscriptionCount = await prisma.pushSubscription.count({
       where: { userId: auth.user!.id },
     });
-    return addCorsHeaders(
-      NextResponse.json({
-        ok: true,
-        configured: isWebPushConfigured(),
-        subscriptionCount,
-      }),
-    );
+    return {
+      ok: true,
+      configured: isWebPushConfigured(),
+      subscriptionCount,
+    };
   },
 });
 
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: TriggerBody,
   scope: "office-reminders.trigger",
   handler: async ({ body, auth, log }) => {
     const task = getOfficeSocialMediaTask(body.taskId);
     if (!task) {
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            ok: false,
-            message: "Hatırlatıcı bulunamadı.",
-            availableTaskIds: officeSocialMediaTasks.map((t) => t.id),
-          },
-          { status: 400 },
-        ),
-      );
+      throw new HttpError("bad_request", "Hatırlatıcı bulunamadı.", {
+        availableTaskIds: officeSocialMediaTasks.map((t) => t.id),
+      });
     }
-
     if (!isWebPushConfigured()) {
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            ok: false,
-            code: "push-not-configured",
-            message: "Sunucuda web push ayarları eksik.",
-          },
-          { status: 503 },
-        ),
+      throw new HttpError(
+        "internal",
+        "Sunucuda web push ayarları eksik.",
+        { code: "push-not-configured" },
       );
     }
 
@@ -78,16 +65,10 @@ export const POST = route({
       },
     });
     if (!user || user.pushSubscriptions.length === 0) {
-      return addCorsHeaders(
-        NextResponse.json(
-          {
-            ok: false,
-            code: "no-subscriptions",
-            message:
-              "Bu diyetisyen hesabına kayıtlı PWA bildirim aboneliği bulunamadı.",
-          },
-          { status: 400 },
-        ),
+      throw new HttpError(
+        "bad_request",
+        "Bu diyetisyen hesabına kayıtlı PWA bildirim aboneliği bulunamadı.",
+        { code: "no-subscriptions" },
       );
     }
 
@@ -128,16 +109,14 @@ export const POST = route({
       }
     }
 
-    return addCorsHeaders(
-      NextResponse.json({
-        ok: sent > 0,
-        sent,
-        failed,
-        message:
-          sent > 0
-            ? "Ofis hatırlatıcısı telefon bildirimlerine gönderildi."
-            : "Hatırlatıcı gönderilemedi.",
-      }),
-    );
+    return {
+      ok: sent > 0,
+      sent,
+      failed,
+      message:
+        sent > 0
+          ? "Ofis hatırlatıcısı telefon bildirimlerine gönderildi."
+          : "Hatırlatıcı gönderilemedi.",
+    };
   },
 });

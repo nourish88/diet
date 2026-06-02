@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 import { createWhatsAppMessage, getWhatsAppURL } from "@/utils/whatsapp";
 
 const Body = z.object({
@@ -21,10 +20,7 @@ export const POST = route({
       select: { phoneNumber: true, name: true, surname: true },
     });
     if (!client?.phoneNumber) {
-      return NextResponse.json(
-        { error: "Client phone number not found" },
-        { status: 400 },
-      );
+      throw new HttpError("bad_request", "Client phone number not found");
     }
 
     const diet = await prisma.diet.findUnique({
@@ -32,7 +28,7 @@ export const POST = route({
       select: { tarih: true },
     });
     if (!diet) {
-      return NextResponse.json({ error: "Diet not found" }, { status: 404 });
+      throw new HttpError("not_found", "Diet not found");
     }
 
     const clientName = `${client.name} ${client.surname}`;
@@ -46,12 +42,12 @@ export const POST = route({
 
     log.info("url generated", { clientId, dietId });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "WhatsApp URL generated successfully",
       whatsappURL,
       clientName,
       dietDate,
-    });
+    };
   },
 });

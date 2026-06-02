@@ -16,6 +16,7 @@ import { route } from "@/lib/api/handler";
  * Called client-side when the user opens the app or visits the dashboard.
  */
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "notifications.check-meal-reminders",
   handler: async ({ auth, log }) => {

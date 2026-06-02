@@ -13,6 +13,7 @@ type TanitaClient = {
 };
 
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "tanita.measurements",
   handler: async ({ request, auth, log }) => {

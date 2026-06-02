@@ -11,6 +11,7 @@ const Body = z.object({
 
 /** POST /api/pending-clients/match — link a pending user to a client and approve (dietitian only). */
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: Body,
   scope: "pending-clients.match",

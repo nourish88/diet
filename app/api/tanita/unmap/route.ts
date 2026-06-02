@@ -11,6 +11,7 @@ const Body = z.object({
 });
 
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: Body,
   scope: "tanita.unmap",

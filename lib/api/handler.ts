@@ -1,12 +1,21 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import type { ZodTypeAny, z } from "zod";
 import {
   authenticateRequest,
   type AuthResult,
   type AuthenticatedUser,
 } from "../api-auth";
+import { addCorsHeaders } from "../cors";
 import { createLogger, type Logger } from "../logger";
-import { fail, ok, type ApiErrorCode } from "./response";
+import {
+  fail,
+  isApiEnvelope,
+  legacyErrorMessage,
+  ok,
+  statusToErrorCode,
+  type ApiErrorCode,
+} from "./response";
 
 type Role = "dietitian" | "client";
 type AuthMode = "none" | "any" | Role | Role[];
@@ -22,6 +31,8 @@ export interface RouteContext<TBody, TParams> {
 
 export interface RouteOptions<TSchema extends ZodTypeAny | undefined, TParams> {
   auth?: AuthMode;
+  /** Apply CORS headers to every response from this route. */
+  cors?: boolean;
   schema?: TSchema;
   scope?: string;
   handler: (
@@ -29,7 +40,7 @@ export interface RouteOptions<TSchema extends ZodTypeAny | undefined, TParams> {
       TSchema extends ZodTypeAny ? z.infer<TSchema> : undefined,
       TParams
     >,
-  ) => Promise<Response> | Response;
+  ) => Promise<Response | unknown> | Response | unknown;
 }
 
 export class HttpError extends Error {
@@ -59,11 +70,11 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
           : await authenticateRequest(request);
 
       if (mode !== "none") {
-        if (!auth.user) return fail("unauthorized", "Unauthorized");
+        if (!auth.user) return withCors(fail("unauthorized", "Unauthorized"), opts.cors);
         if (mode !== "any") {
           const allowed = Array.isArray(mode) ? mode : [mode];
           if (!allowed.includes(auth.user.role)) {
-            return fail("forbidden", "Forbidden");
+            return withCors(fail("forbidden", "Forbidden"), opts.cors);
           }
         }
       }
@@ -73,7 +84,10 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
         const raw = await safeJson(request);
         const parsed = opts.schema.safeParse(raw);
         if (!parsed.success) {
-          return fail("validation_failed", "Validation failed", parsed.error.flatten());
+          return withCors(
+            fail("validation_failed", "Validation failed", parsed.error.flatten()),
+            opts.cors,
+          );
         }
         body = parsed.data;
       }
@@ -82,21 +96,56 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
 
       const result = await opts.handler({
         request,
-        body: body as any,
+        body: body as never,
         params,
         auth,
         user: auth.user,
         log,
       });
-      return result;
+
+      return withCors(await normalizeHandlerResult(result), opts.cors);
     } catch (err) {
       if (err instanceof HttpError) {
-        return fail(err.code, err.message, err.details);
+        return withCors(fail(err.code, err.message, err.details), opts.cors);
       }
       log.error("unhandled", err instanceof Error ? err.message : String(err));
-      return fail("internal", "Internal server error");
+      return withCors(fail("internal", "Internal server error"), opts.cors);
     }
   };
+}
+
+async function normalizeHandlerResult(result: Response | unknown): Promise<Response> {
+  if (!(result instanceof Response)) {
+    return ok(result);
+  }
+
+  const contentType = result.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return result;
+  }
+
+  let body: unknown;
+  try {
+    body = await result.clone().json();
+  } catch {
+    return result;
+  }
+
+  if (isApiEnvelope(body)) {
+    return result;
+  }
+
+  if (!result.ok) {
+    const message = legacyErrorMessage(body, result.statusText || "Request failed");
+    return fail(statusToErrorCode(result.status), message, body, { status: result.status });
+  }
+
+  return ok(body, { status: result.status });
+}
+
+function withCors(response: Response, cors?: boolean): Response {
+  if (!cors) return response;
+  return addCorsHeaders(response as NextResponse);
 }
 
 async function safeJson(req: NextRequest): Promise<unknown> {

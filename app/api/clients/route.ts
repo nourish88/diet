@@ -15,6 +15,7 @@ const PHONE_INVALID_MESSAGE =
 
 /** GET /api/clients — paginated, tokenized search over the dietitian's own clients. */
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "clients.list",
   handler: async ({ request, auth, log }) => {
@@ -78,6 +79,7 @@ export const GET = route({
 
 /** POST /api/clients — create a client, optionally linking a Tanita member (dietitian). */
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   scope: "clients.create",
   handler: async ({ request, auth, log }) => {

@@ -1,7 +1,5 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { addCorsHeaders } from "@/lib/cors";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 import {
   formatBirthdayMessage,
   generateWhatsAppURL,
@@ -15,49 +13,28 @@ const Body = z.object({
 
 /** POST /api/birthdays/whatsapp — generate WhatsApp deep link (dietitian only). */
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: Body,
   scope: "birthdays.whatsapp",
-  handler: async ({ body, auth, log }) => {
-    try {
-      const birthdayClients = await getClientsWithBirthdaysToday(auth.user!.id);
-      const client = birthdayClients.find((c) => c.id === body.clientId);
-      if (!client) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Client not found or not a birthday client" },
-            { status: 404 },
-          ),
-        );
-      }
-      if (client.phoneNumber !== body.phoneNumber) {
-        return addCorsHeaders(
-          NextResponse.json(
-            { error: "Phone number does not match client" },
-            { status: 400 },
-          ),
-        );
-      }
-
-      const message = formatBirthdayMessage(client.name);
-      const whatsappUrl = generateWhatsAppURL(body.phoneNumber, message);
-
-      return addCorsHeaders(
-        NextResponse.json({
-          success: true,
-          whatsappUrl,
-          message,
-          clientName: client.name,
-        }),
-      );
-    } catch (err) {
-      log.error("whatsapp failed", err instanceof Error ? err.message : err);
-      return addCorsHeaders(
-        NextResponse.json(
-          { error: "Failed to generate WhatsApp URL" },
-          { status: 500 },
-        ),
-      );
+  handler: async ({ body, auth }) => {
+    const birthdayClients = await getClientsWithBirthdaysToday(auth.user!.id);
+    const client = birthdayClients.find((c) => c.id === body.clientId);
+    if (!client) {
+      throw new HttpError("not_found", "Client not found or not a birthday client");
     }
+    if (client.phoneNumber !== body.phoneNumber) {
+      throw new HttpError("bad_request", "Phone number does not match client");
+    }
+
+    const message = formatBirthdayMessage(client.name);
+    const whatsappUrl = generateWhatsAppURL(body.phoneNumber, message);
+
+    return {
+      success: true,
+      whatsappUrl,
+      message,
+      clientName: client.name,
+    };
   },
 });

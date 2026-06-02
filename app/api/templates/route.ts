@@ -32,6 +32,7 @@ const CreateTemplateBody = z.object({
 });
 
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "templates.list",
   handler: async ({ request, auth, log }) => {
@@ -52,6 +53,7 @@ export const GET = route({
 });
 
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: CreateTemplateBody,
   scope: "templates.create",

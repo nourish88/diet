@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  * Fail-safe: body is read defensively and logging is skipped when disabled.
  */
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   scope: "diet-logs.create",
   handler: async ({ request, auth, log }) => {
@@ -73,6 +74,7 @@ export const POST = route({
 
 /** GET /api/diet-logs — list a dietitian's own diet form logs (filtered). */
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "diet-logs.list",
   handler: async ({ request, auth, log }) => {

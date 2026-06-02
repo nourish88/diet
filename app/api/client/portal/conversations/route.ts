@@ -33,6 +33,7 @@ export interface Conversation {
  *   - Last message information
  */
 export const GET = route({
+  cors: true,
   auth: "client",
   scope: "portal.conversations",
   handler: async ({ auth, log }) => {

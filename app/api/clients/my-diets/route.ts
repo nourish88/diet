@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/clients/my-diets — diets for the signed-in client. */
 export const GET = route({
+  cors: true,
   auth: "client",
   scope: "clients.my-diets",
   handler: async ({ auth, log }) => {

@@ -21,6 +21,7 @@ const UnsubscribeBody = z.object({
 
 /** POST /api/push/subscribe — store/refresh a web-push subscription for the signed-in user. */
 export const POST = route({
+  cors: true,
   auth: "any",
   schema: SubscribeBody,
   scope: "push.subscribe",
@@ -53,6 +54,7 @@ export const POST = route({
 
 /** DELETE /api/push/subscribe — remove a web-push subscription owned by the signed-in user. */
 export const DELETE = route({
+  cors: true,
   auth: "any",
   schema: UnsubscribeBody,
   scope: "push.unsubscribe",

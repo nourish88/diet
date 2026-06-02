@@ -5,6 +5,7 @@ import { route } from "@/lib/api/handler";
 
 /** GET /api/client/portal/overview — diet summary + unread counts for the signed-in client. */
 export const GET = route({
+  cors: true,
   auth: "client",
   scope: "portal.overview",
   handler: async ({ auth, log }) => {

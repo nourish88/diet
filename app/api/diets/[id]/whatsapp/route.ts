@@ -1,70 +1,55 @@
-import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
+import { route, HttpError } from "@/lib/api/handler";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const dietId = parseInt(id);
-    const { phoneNumber } = await request.json();
+const Body = z.object({
+  phoneNumber: z.string().min(1, "Phone number is required"),
+});
 
-    if (!dietId || !phoneNumber) {
-      return NextResponse.json(
-        { message: "Diet ID and phone number are required" },
-        { status: 400 }
-      );
+export const POST = route({
+  auth: "dietitian",
+  schema: Body,
+  scope: "diets.whatsapp",
+  handler: async ({ body, params, log }) => {
+    const dietId = parseInt(String(params.id), 10);
+    if (!dietId || Number.isNaN(dietId)) {
+      throw new HttpError("bad_request", "Invalid diet ID");
     }
 
-    // Fetch the diet data
+    const { phoneNumber } = body;
+
     const diet = await prisma.diet.findUnique({
       where: { id: dietId },
       include: {
         client: true,
-        oguns: {
-          include: {
-            items: true,
-          },
-        },
+        oguns: { include: { items: true } },
       },
     });
 
     if (!diet) {
-      return NextResponse.json({ message: "Diet not found" }, { status: 404 });
+      throw new HttpError("not_found", "Diet not found");
     }
 
-    // Get the host from headers
     const headersList = await headers();
     const host = headersList.get("host");
     const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-
-    // Construct the diet report URL
     const dietReportUrl = `${protocol}://${host}/api/diets/${dietId}/pdf`;
 
-    // Create WhatsApp message with the report link
     const message =
       `Merhaba ${diet.client?.name || "Değerli Danışanımız"},\n\n` +
       `Beslenme programınız hazır. Aşağıdaki linkten ulaşabilirsiniz:\n\n` +
       `${dietReportUrl}\n\n` +
       `İyi günler dileriz.`;
 
-    // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
-      message
-    )}`;
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
-    return NextResponse.json({
+    log.info("whatsapp url generated", { dietId });
+
+    return {
       success: true,
       message: "WhatsApp message sent successfully",
       whatsappUrl,
-    });
-  } catch (error) {
-    console.error("WhatsApp sending error:", error);
-    return NextResponse.json(
-      { message: "Failed to send WhatsApp message" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+});

@@ -28,6 +28,7 @@ function toNum(value: string | number | null | undefined): number | null {
  * Client: own entries. Dietitian: requires clientId query param (must own client).
  */
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "progress.list",
   handler: async ({ request, auth }) => {
@@ -107,6 +108,7 @@ export const GET = route({
 
 /** POST /api/progress — create a progress entry (client only). */
 export const POST = route({
+  cors: true,
   auth: "client",
   schema: CreateProgressBody,
   scope: "progress.create",

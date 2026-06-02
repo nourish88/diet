@@ -25,6 +25,7 @@ const UpdateApiKeyBody = z.object({
 
 /** GET /api/api-keys — list the dietitian's API keys. */
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "api-keys.list",
   handler: async ({ auth, log }) => {
@@ -56,6 +57,7 @@ export const GET = route({
 
 /** POST /api/api-keys — create a new API key (plaintext returned once). */
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   schema: CreateApiKeyBody,
   scope: "api-keys.create",
@@ -103,6 +105,7 @@ export const POST = route({
 
 /** PUT /api/api-keys — update an existing API key (owner only). */
 export const PUT = route({
+  cors: true,
   auth: "dietitian",
   schema: UpdateApiKeyBody,
   scope: "api-keys.update",
@@ -150,6 +153,7 @@ export const PUT = route({
 
 /** DELETE /api/api-keys?id= — delete an API key (owner only). */
 export const DELETE = route({
+  cors: true,
   auth: "dietitian",
   scope: "api-keys.delete",
   handler: async ({ request, auth, log }) => {

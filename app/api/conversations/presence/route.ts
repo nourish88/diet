@@ -13,6 +13,7 @@ const PresenceBody = z.object({
 });
 
 export const POST = route({
+  cors: true,
   auth: "any",
   schema: PresenceBody,
   scope: "presence.update",
@@ -54,6 +55,7 @@ export const POST = route({
 });
 
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "presence.get",
   handler: async ({ request, auth, log }) => {

@@ -45,6 +45,7 @@ interface Conversation {
  * Clients see messages from their dietitian; dietitians see messages from their clients.
  */
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "unread-messages.list",
   handler: async ({ auth, log }) => {

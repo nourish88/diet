@@ -27,6 +27,7 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 export const POST = route({
+  cors: true,
   auth: "client",
   scope: "consent.kvkk",
   handler: async ({ request, auth, log }) => {

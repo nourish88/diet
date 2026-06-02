@@ -48,3 +48,38 @@ export function fail(
     { ...init, status },
   );
 }
+
+/** True when the body matches `{ data, error, meta }`. */
+export function isApiEnvelope(body: unknown): body is ApiEnvelope<unknown> {
+  if (!body || typeof body !== "object") return false;
+  const o = body as Record<string, unknown>;
+  if (!("data" in o) || !("error" in o) || !("meta" in o)) return false;
+  const meta = o.meta;
+  return meta !== null && typeof meta === "object" && "ts" in meta;
+}
+
+const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
+  400: "bad_request",
+  401: "unauthorized",
+  403: "forbidden",
+  404: "not_found",
+  409: "conflict",
+  422: "validation_failed",
+  429: "rate_limited",
+};
+
+export function statusToErrorCode(status: number): ApiErrorCode {
+  return STATUS_TO_CODE[status] ?? "internal";
+}
+
+export function legacyErrorMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== "object") return fallback;
+  const o = body as Record<string, unknown>;
+  if (typeof o.message === "string") return o.message;
+  if (typeof o.error === "string") return o.error;
+  if (o.error && typeof o.error === "object") {
+    const nested = o.error as { message?: string };
+    if (typeof nested.message === "string") return nested.message;
+  }
+  return fallback;
+}

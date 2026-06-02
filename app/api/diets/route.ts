@@ -51,6 +51,7 @@ async function logDietAction({
 }
 
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   scope: "diets.create",
   handler: async ({ request, auth }) => {
@@ -312,6 +313,7 @@ export const POST = route({
 });
 
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "diets.list",
   handler: async ({ request, auth, log }) => {

@@ -18,6 +18,7 @@ interface MealPattern {
 }
 
 export const POST = route({
+  cors: true,
   auth: "dietitian",
   scope: "presets.auto-generate",
   handler: async ({ auth, log }) => {

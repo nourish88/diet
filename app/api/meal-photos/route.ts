@@ -26,6 +26,7 @@ const getMealPhotosSchema = z.object({
 
 /** POST /api/meal-photos — upload a meal photo (owner client or dietitian). */
 export const POST = route({
+  cors: true,
   auth: "any",
   scope: "meal-photos.create",
   handler: async ({ request, auth, log }) => {
@@ -109,6 +110,7 @@ export const POST = route({
 
 /** GET /api/meal-photos — list non-expired photos for an accessible diet. */
 export const GET = route({
+  cors: true,
   auth: "any",
   scope: "meal-photos.list",
   handler: async ({ request, auth, log }) => {
@@ -180,6 +182,7 @@ export const GET = route({
 
 /** DELETE /api/meal-photos?id= — delete a photo owned by the client or its dietitian. */
 export const DELETE = route({
+  cors: true,
   auth: "any",
   scope: "meal-photos.delete",
   handler: async ({ request, auth, log }) => {

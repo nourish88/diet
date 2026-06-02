@@ -6,6 +6,7 @@ import { route } from "@/lib/api/handler";
 export const dynamic = 'force-dynamic';
 
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "analytics.stats",
   handler: async ({ request, auth, log }) => {

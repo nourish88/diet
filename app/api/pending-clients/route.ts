@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/pending-clients — list pending client registrations (dietitian only). */
 export const GET = route({
+  cors: true,
   auth: "dietitian",
   scope: "pending-clients.list",
   handler: async ({ log }) => {
