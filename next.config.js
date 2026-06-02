@@ -67,6 +67,12 @@ const nextConfig = {
       crypto: false,
     };
 
+    // Optimize webpack cache for large strings
+    config.cache = {
+      ...config.cache,
+      managedPaths: undefined,
+    };
+
     return config;
   },
   pageExtensions: ["tsx", "ts", "jsx", "js"],
