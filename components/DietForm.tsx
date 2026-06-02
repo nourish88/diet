@@ -39,6 +39,7 @@ import {
   createNewOgun,
 } from "./diet/utils/dietFormUtils";
 import { useDietFormHandlers } from "./diet/hooks/useDietFormHandlers";
+import { useDietFormDraft } from "./diet/hooks/useDietFormDraft";
 
 interface ClientResp {
   id: number;
@@ -764,53 +765,15 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Add this helper function to check if form should be disabled
   const isFormDisabled = !selectedClientId;
 
-  // ─── Auto-save draft to localStorage (Madde 1-G) ───
-  const [showDraftPrompt, setShowDraftPrompt] = useState(false);
   const [measurementWeight, setMeasurementWeight] = useState("");
   const [measurementBodyFat, setMeasurementBodyFat] = useState("");
-  const DRAFT_KEY = selectedClientId
-    ? `diet-draft-${selectedClientId}`
-    : "diet-draft-new";
 
-  // Check for existing draft on mount (only for new diets)
-  useEffect(() => {
-    if (!selectedClientId || isUpdateMode) return;
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Only prompt if draft has meaningful data (non-empty meals)
-        const hasData = parsed?.Oguns?.some((o: any) => o.items?.length > 0);
-        if (hasData) setShowDraftPrompt(true);
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClientId]);
-
-  // Auto-save every 30 seconds
-  useEffect(() => {
-    if (!selectedClientId || isUpdateMode) return;
-    const interval = setInterval(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(diet));
-      } catch {}
-    }, 30000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diet, selectedClientId, isUpdateMode]);
-
-  // Clear draft after successful save
-  const clearDraft = () => {
-    try { localStorage.removeItem(DRAFT_KEY); } catch {}
-  };
-
-  const restoreDraft = () => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) setDiet(JSON.parse(saved));
-    } catch {}
-    setShowDraftPrompt(false);
-  };
+  const {
+    showDraftPrompt,
+    setShowDraftPrompt,
+    clearDraft,
+    restoreDraft,
+  } = useDietFormDraft(diet, setDiet, selectedClientId, isUpdateMode);
 
   // ─── Keyboard shortcuts (Madde 1-A) ───
   useEffect(() => {

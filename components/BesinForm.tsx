@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { parseApiResponse } from "@/lib/api/parse-response";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "./ui/button";
@@ -52,10 +53,8 @@ const BesinForm = ({
   const fetchGroups = async () => {
     try {
       const response = await fetch("/api/besin-gruplari");
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data);
-      }
+      const data = await parseApiResponse<BesinGroup[]>(response);
+      setGroups(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching besin groups:", error);
       toast({
@@ -113,11 +112,7 @@ const BesinForm = ({
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        throw new Error("Besin kaydedilirken bir hata oluştu");
-      }
-
-      const data = await response.json();
+      const data = await parseApiResponse<{ id: number }>(response);
 
       toast({
         title: "Başarılı",

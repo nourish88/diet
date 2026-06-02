@@ -1,5 +1,9 @@
 import { createClient } from "./supabase-browser";
 import type { Session } from "@supabase/supabase-js";
+import type { ApiEnvelope } from "./api/response";
+import { isApiEnvelope, legacyErrorMessage } from "./api/response";
+
+export { isApiEnvelope };
 
 /**
  * API Error interface
@@ -8,16 +12,15 @@ export interface ApiError extends Error {
   status?: number;
   statusText?: string;
   endpoint?: string;
+  /** Present when the server returned an {@link ApiEnvelope} error body. */
+  code?: string;
   details?: unknown;
 }
 
-/**
- * Error details from API response
- */
-interface ErrorDetails {
-  message?: string;
-  error?: string;
-  details?: string;
+function envelopeErrorMessage(
+  err: NonNullable<ApiEnvelope<never>["error"]>,
+): string {
+  return err.message || err.code || "Request failed";
 }
 
 /**
@@ -254,65 +257,76 @@ class ApiClient {
     }
   }
 
-  private async handleResponse<T = unknown>(response: Response, endpoint: string): Promise<T> {
-    // Step 5: Handle auth errors before interceptors
+  private async readJsonBody(response: Response): Promise<unknown | null> {
+    const contentType = response.headers.get("content-type");
+    if (!contentType?.includes("application/json")) return null;
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  private throwApiError(
+    response: Response,
+    endpoint: string,
+    message: string,
+    extras?: { code?: string; details?: unknown },
+  ): never {
+    const error: ApiError = new Error(message);
+    error.status = response.status;
+    error.statusText = response.statusText;
+    error.endpoint = endpoint;
+    if (extras?.code) error.code = extras.code;
+    if (extras?.details !== undefined) error.details = extras.details;
+    throw error;
+  }
+
+  private async handleResponse<T = unknown>(
+    response: Response,
+    endpoint: string,
+  ): Promise<T> {
     await this.handleAuthError(response);
 
-    // Step 6: Apply response interceptors (allows modifying response)
     const interceptedResponse = await this.applyResponseInterceptors(response);
+    const body = await this.readJsonBody(interceptedResponse);
+    const fallback = `API Error: ${interceptedResponse.status} ${interceptedResponse.statusText}`;
 
-    // Step 7: Handle non-OK responses
-    if (!interceptedResponse.ok) {
-      // Try to extract detailed error information
-      let errorMessage = `API Error: ${interceptedResponse.status} ${interceptedResponse.statusText}`;
-      let errorDetails: ErrorDetails | null = null;
-
-      try {
-        const contentType = interceptedResponse.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          // Clone response for reading body (can only read once)
-          const clonedResponse = interceptedResponse.clone();
-          errorDetails = await clonedResponse.json() as ErrorDetails;
-          errorMessage =
-            errorDetails.message || errorDetails.error || errorMessage;
-
-          // Include additional context if available
-          if (errorDetails.details) {
-            errorMessage += ` - ${errorDetails.details}`;
-          }
-        } else {
-          // Non-JSON response, try to get text
-          const clonedResponse = interceptedResponse.clone();
-          const text = await clonedResponse.text();
-          if (text) {
-            errorMessage = `${errorMessage} - ${text.substring(0, 200)}`;
-          }
-        }
-      } catch (parseError) {
-        // If we can't parse the error response, include status and endpoint
-        console.error(
-          `Failed to parse error response from ${endpoint}:`,
-          parseError
+    // Standard envelope from route() auth/validation failures (and future ok() routes)
+    if (isApiEnvelope(body)) {
+      if (!interceptedResponse.ok || body.error) {
+        const err = body.error;
+        this.throwApiError(
+          interceptedResponse,
+          endpoint,
+          err ? envelopeErrorMessage(err) : fallback,
+          err ? { code: err.code, details: err.details } : undefined,
         );
-        errorMessage = `API Error ${interceptedResponse.status}: Failed to parse error response`;
       }
-
-      // Create error with detailed information
-      const error: ApiError = new Error(errorMessage);
-      error.status = interceptedResponse.status;
-      error.statusText = interceptedResponse.statusText;
-      error.endpoint = endpoint;
-      error.details = errorDetails;
-
-      throw error;
+      return body.data as T;
     }
 
-    // Step 8: Parse and return response
-    const contentType = interceptedResponse.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return interceptedResponse.json();
+    if (!interceptedResponse.ok) {
+      if (body && typeof body === "object") {
+        this.throwApiError(
+          interceptedResponse,
+          endpoint,
+          legacyErrorMessage(body, fallback),
+          { details: body },
+        );
+      }
+      const text =
+        body === null
+          ? await interceptedResponse.text().catch(() => "")
+          : "";
+      this.throwApiError(
+        interceptedResponse,
+        endpoint,
+        text ? `${fallback} - ${text.substring(0, 200)}` : fallback,
+      );
     }
 
+    if (body !== null) return body as T;
     return {} as T;
   }
 

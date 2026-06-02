@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { parseApiResponse } from "@/lib/api/parse-response";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "./ui/button";
@@ -67,11 +68,7 @@ const BesinGroupForm = ({
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        throw new Error("Besin grubu kaydedilirken bir hata oluştu");
-      }
-
-      const data = await response.json();
+      const data = await parseApiResponse<{ id: number }>(response);
 
       toast({
         title: "Başarılı",

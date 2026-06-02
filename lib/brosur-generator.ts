@@ -17,7 +17,8 @@ export async function generateQRCode(url: string, size: number = 200): Promise<s
     if (!response.ok) {
       throw new Error(`QR kod API hatası: ${response.statusText}`);
     }
-    const data = await response.json();
+    const { parseApiResponse } = await import("@/lib/api/parse-response");
+    const data = await parseApiResponse<{ dataUrl: string }>(response);
     return data.dataUrl;
   } catch (error) {
     console.error("QR kod oluşturma hatası:", error);
