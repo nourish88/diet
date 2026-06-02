@@ -9,7 +9,6 @@ export const GET = route<undefined, {}>({
     try {
       const dietitianId = auth.user!.id;
 
-      // Get all diets owned by this dietitian (or by their clients) that have comments
       const diets = await prisma.diet.findMany({
         where: {
           comments: { some: {} },
@@ -38,24 +37,18 @@ export const GET = route<undefined, {}>({
               userId: true,
             },
             orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-          _count: {
-            select: {
-              comments: {
-                where: {
-                  isRead: false,
-                  userId: { not: dietitianId },
-                },
-              },
-            },
           },
         },
       });
 
+      log.info(`Found ${diets.length} diets with comments for dietitian ${dietitianId}`);
+
       const transformedConversations = diets.map((diet) => {
         const lastMessage = diet.comments[0];
         const dietDate = diet.tarih ?? diet.createdAt;
+        const unreadCount = diet.comments.filter(
+          (c) => !c.isRead && c.userId !== dietitianId
+        ).length;
 
         return {
           clientId: diet.client.id,
@@ -65,7 +58,7 @@ export const GET = route<undefined, {}>({
           lastMessage: lastMessage?.content || "",
           lastMessageTime: lastMessage?.createdAt || dietDate,
           lastMessageFromClient: lastMessage?.userId !== dietitianId,
-          unreadCount: diet._count.comments,
+          unreadCount,
         };
       });
 
@@ -77,6 +70,7 @@ export const GET = route<undefined, {}>({
 
       return NextResponse.json({
         success: true,
+        count: transformedConversations.length,
         conversations: transformedConversations,
       });
     } catch (err) {
@@ -85,7 +79,10 @@ export const GET = route<undefined, {}>({
         err instanceof Error ? err.message : err
       );
       return NextResponse.json(
-        { error: "Failed to fetch conversations" },
+        {
+          error: "Failed to fetch conversations",
+          detail: err instanceof Error ? err.message : String(err),
+        },
         { status: 500 }
       );
     }
