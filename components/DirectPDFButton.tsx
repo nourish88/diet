@@ -9,98 +9,19 @@ import {
   X,
   Share,
 } from "lucide-react";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
 import { toast } from "@/components/ui/use-toast";
 import { ensurePdfMake } from "@/lib/pdfmake";
 import {
-  sanitizeMenuItems,
   sanitizeMealNote,
-  sortMealsByTime,
 } from "@/lib/diet-utils";
-
-const formatDateTR = (dateString: string | null | undefined | Date) => {
-  if (!dateString) return "Tarih Belirtilmemiş";
-  console.log(
-    "DirectPDF formatDateTR received:",
-    dateString,
-    typeof dateString
-  );
-  try {
-    const date =
-      typeof dateString === "string"
-        ? new Date(dateString)
-        : dateString instanceof Date
-        ? dateString
-        : new Date();
-    console.log(
-      "DirectPDF parsed date:",
-      date,
-      "isValid:",
-      !isNaN(date.getTime())
-    );
-    if (isNaN(date.getTime())) {
-      throw new Error("Invalid date");
-    }
-    return format(date, "d MMMM yyyy", { locale: tr });
-  } catch (error) {
-    console.error("DirectPDF date parsing error:", error, "Input:", dateString);
-    return "Geçersiz Tarih";
-  }
-};
-
-interface PDFData {
-  id?: number;
-  fullName: string;
-  dietDate: string;
-  weeklyResult: string;
-  target: string;
-  ogunler: {
-    name: string;
-    time: string;
-    menuItems: string[];
-    notes: string;
-  }[];
-  waterConsumption: string;
-  physicalActivity: string;
-  isBirthdayCelebration?: boolean;
-  isImportantDateCelebrated?: boolean;
-  importantDate?: {
-    message: string;
-  };
-  dietitianNote?: string;
-}
-
-const buildInlineColumns = (
-  parts: Array<{
-    text?: string;
-    image?: string;
-    width?: number;
-    height?: number;
-  }>,
-  options?: { textStyle?: string; imageMarginTop?: number }
-) => {
-  const columnGap = 3;
-  return {
-    columns: parts.map((part) => {
-      if (part.image) {
-        return {
-          image: part.image,
-          width: part.width || 12,
-          height: part.height || 12,
-          margin: [0, options?.imageMarginTop ?? -1, 0, 0],
-        };
-      }
-      return {
-        text: part.text ?? "",
-        width: "auto",
-        style: options?.textStyle,
-      };
-    }),
-    columnGap,
-  } as any;
-};
+import {
+  buildDietPdfFileName,
+  buildInlineColumns,
+  DietPdfData,
+  formatDateTR,
+  prepareDirectPdfData,
+} from "@/components/diet/pdf/pdfData";
 
 export interface DirectPDFButtonHandle {
   /**
@@ -115,7 +36,7 @@ export interface DirectPDFButtonHandle {
 
 interface DirectPDFButtonProps {
   diet?: Diet;
-  pdfData?: PDFData;
+  pdfData?: DietPdfData;
   phoneNumber?: string;
   isDietSaved?: boolean;
   dietId?: number;
@@ -251,7 +172,11 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
       }
       const pdfMake = await ensurePdfMake();
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
-      const pdfDataToUse = preparePdfData(diet, pdfData);
+      const pdfDataToUse = prepareDirectPdfData(
+        diet,
+        pdfData,
+        importantDateMessage
+      );
       if (!pdfDataToUse) throw new Error("Beslenme programı verisi bulunamadı");
 
       // Wait for nazar boncuğu image to load if weekly result exists
@@ -272,10 +197,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
         backgroundDataUrl,
         nazarBoncuguDataUrl
       );
-      const fileName = `Beslenme_Programi_${pdfDataToUse.fullName.replace(
-        /\s+/g,
-        "_"
-      )}_${formatDateForFileName(pdfDataToUse.dietDate)}.pdf`;
+      const fileName = buildDietPdfFileName(pdfDataToUse);
       pdfMake.createPdf(docDefinition).download(fileName);
       handleSuccess();
     } catch (error) {
@@ -296,81 +218,6 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
     }
   };
 
-  const formatDateForFileName = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date instanceof Date && !isNaN(date.getTime())
-      ? format(date, "yyyy-MM-dd")
-      : "tarihsiz";
-  };
-
-  const preparePdfData = (
-    diet: Diet | undefined,
-    pdfData: PDFData | undefined
-  ): PDFData | null => {
-    console.log("Starting preparePdfData with message:", importantDateMessage);
-  const normalizeMeals = (
-    meals: any[],
-    options: { fromDiet?: boolean } = {}
-  ) => {
-    const { fromDiet = false } = options;
-    const normalizedMeals = (meals || []).map((meal: any) => {
-      const sourceItems = fromDiet ? meal.items : meal.menuItems;
-      const menuItems = sanitizeMenuItems(
-        Array.isArray(sourceItems) ? sourceItems : []
-      );
-
-      const notesSource = fromDiet
-        ? meal.detail ?? meal.notes ?? ""
-        : meal.notes ?? meal.detail ?? "";
-
-      return {
-        name: (meal.name || "").toString().trim(),
-        time: (meal.time || "").toString().trim(),
-        menuItems: menuItems.length > 0 ? menuItems : ["-"],
-        notes: fromDiet
-          ? sanitizeMealNote(notesSource)
-          : sanitizeMealNote(notesSource),
-      };
-    });
-
-    return sortMealsByTime(normalizedMeals);
-  };
-
-    if (pdfData) {
-    return {
-        ...pdfData,
-      ogunler: normalizeMeals(pdfData.ogunler || []),
-        isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
-        isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
-        importantDate: pdfData.isImportantDateCelebrated
-        ? { message: importantDateMessage || pdfData.importantDate?.message || "" }
-          : undefined,
-      waterConsumption: pdfData.waterConsumption || "",
-      physicalActivity: pdfData.physicalActivity || "",
-      };
-    }
-
-    if (!diet) return null;
-
-    const clientName = (diet.AdSoyad || "İsimsiz Danışan").trim();
-
-    return {
-      fullName: clientName,
-      dietDate: diet.Tarih || new Date().toISOString(),
-      weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
-      target: diet.Hedef || "Hedef belirtilmemiş",
-    ogunler: normalizeMeals(diet.Oguns || [], { fromDiet: true }),
-      waterConsumption: diet.Su || "Belirtilmemiş",
-      physicalActivity: diet.Fizik || "Belirtilmemiş",
-      dietitianNote: diet.dietitianNote || "",
-      isBirthdayCelebration: diet.isBirthdayCelebration || false,
-      isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
-      importantDate: diet.isImportantDateCelebrated
-        ? { message: importantDateMessage }
-        : undefined,
-    };
-  };
-
   interface TableCell {
     text?: string | any[];
     style: string;
@@ -378,7 +225,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
     colSpan?: number;
   }
 
-  const buildMealTableRows = async (dietData: PDFData) => {
+  const buildMealTableRows = async (dietData: DietPdfData) => {
     const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
@@ -849,7 +696,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
   };
 
   const createDocDefinition = async (
-    pdfData: PDFData,
+    pdfData: DietPdfData,
     backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {

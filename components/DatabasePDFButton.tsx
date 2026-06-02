@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale/tr";
 import twemoji from "twemoji";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import { sanitizeMealNote } from "@/lib/diet-utils";
 import {
-  sanitizeMenuItems,
-  sanitizeMealNote,
-  sortMealsByTime,
-} from "@/lib/diet-utils";
+  buildDietPdfFileName,
+  buildInlineColumns,
+  DietPdfData,
+  formatDateTR,
+  prepareDatabasePdfData,
+} from "@/components/diet/pdf/pdfData";
 interface TableCell {
   text?: string | any[];
   style: string;
@@ -34,53 +35,6 @@ type PDFContentItem = {
   alignment?: string;
   absolutePosition?: { x: number; y: number };
 };
-interface PDFData {
-  fullName: string;
-  dietDate: string;
-  weeklyResult: string;
-  target: string;
-  ogunler: {
-    name: string;
-    time: string;
-    menuItems: string[];
-    notes: string;
-  }[];
-  waterConsumption: string;
-  physicalActivity: string;
-  isBirthdayCelebration?: boolean;
-  dietitianNote?: string;
-}
-
-const buildInlineColumns = (
-  parts: Array<{
-    text?: string;
-    image?: string;
-    width?: number;
-    height?: number;
-  }>,
-  options?: { textStyle?: string; imageMarginTop?: number }
-) => {
-  const columnGap = 3;
-  return {
-    columns: parts.map((part) => {
-      if (part.image) {
-        return {
-          image: part.image,
-          width: part.width || 12,
-          height: part.height || 12,
-          margin: [0, options?.imageMarginTop ?? -1, 0, 0],
-        };
-      }
-      return {
-        text: part.text ?? "",
-        width: "auto",
-        style: options?.textStyle,
-      };
-    }),
-    columnGap,
-  } as any;
-};
-
 interface DatabasePDFButtonProps extends ButtonProps {
   diet: any;
 }
@@ -123,29 +77,13 @@ const DatabasePDFButton = ({
     loadBackgroundImage();
   }, []);
 
-  const formatDateTR = (dateString: string | null | undefined) => {
-    if (!dateString) return "Tarih Belirtilmemiş";
-    console.log("formatDateTR received:", dateString, typeof dateString);
-    try {
-      const date = new Date(dateString);
-      console.log("Parsed date:", date, "isValid:", !isNaN(date.getTime()));
-      if (isNaN(date.getTime())) {
-        throw new Error("Invalid date");
-      }
-      return format(date, "d MMMM yyyy", { locale: tr });
-    } catch (error) {
-      console.error("Date parsing error:", error, "Input:", dateString);
-      return "Geçersiz Tarih";
-    }
-  };
-
   const generatePDF = async () => {
     try {
       setIsLoading(true);
       const pdfMake = await ensurePdfMake();
       if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
 
-      const pdfData = preparePdfDataFromDatabase(diet);
+      const pdfData = prepareDatabasePdfData(diet);
       if (!pdfData) throw new Error("Beslenme programı verisi bulunamadı");
 
       console.log("PDF data prepared:", pdfData);
@@ -166,10 +104,7 @@ const DatabasePDFButton = ({
         backgroundDataUrl,
         nazarBoncuguDataUrl
       );
-      const fileName = `Beslenme_Programi_${pdfData.fullName.replace(
-        /\s+/g,
-        "_"
-      )}_${formatDateForFileName(pdfData.dietDate)}.pdf`;
+      const fileName = buildDietPdfFileName(pdfData);
       pdfMake.createPdf(docDefinition).download(fileName);
     } catch (error) {
       console.error("PDF oluşturma hatası:", error);
@@ -177,62 +112,6 @@ const DatabasePDFButton = ({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatDateForFileName = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date instanceof Date && !isNaN(date.getTime())
-      ? format(date, "yyyy-MM-dd")
-      : "tarihsiz";
-  };
-
-  const preparePdfDataFromDatabase = (diet: any): PDFData | null => {
-    if (!diet) return null;
-
-    console.log("Preparing PDF data from database diet:", diet);
-
-    const fallbackName = "İsimsiz Danışan";
-    let clientName = fallbackName;
-    if (diet.client) {
-      const c = diet.client;
-      const fromFull =
-        typeof c.fullName === "string" ? c.fullName.trim() : "";
-      const fromParts = `${c.name ?? ""} ${c.surname ?? ""}`.trim();
-      const resolved = fromFull || fromParts;
-      clientName = resolved || fallbackName;
-    }
-
-    const unsortedMeals: PDFData["ogunler"] = (diet.oguns || []).map(
-      (ogun: any) => {
-        const menuItems = sanitizeMenuItems(
-          Array.isArray(ogun.items) ? ogun.items : []
-        );
-
-      return {
-          name: (ogun.name || "Belirtilmemiş").toString(),
-          time: (ogun.time || "").toString(),
-          menuItems: menuItems.length > 0 ? menuItems : ["-"],
-          notes: sanitizeMealNote(ogun.detail || ogun.notes || ""),
-      };
-      }
-    ) as PDFData["ogunler"];
-
-    const sortedMeals = sortMealsByTime(unsortedMeals);
-
-    const pdfData = {
-      fullName: clientName,
-      dietDate: diet.tarih || diet.createdAt || new Date().toISOString(),
-      weeklyResult: diet.sonuc || "Sonuç belirtilmemiş",
-      target: diet.hedef || "Hedef belirtilmemiş",
-      ogunler: sortedMeals,
-      waterConsumption: diet.su || "Belirtilmemiş",
-      physicalActivity: diet.fizik || "Belirtilmemiş",
-      isBirthdayCelebration: diet.isBirthdayCelebration || false,
-      dietitianNote: diet.dietitianNote || "",
-    };
-
-    console.log("Prepared PDF data:", pdfData);
-    return pdfData;
   };
 
   // Convert emojis in text to base64 images using twemoji
@@ -528,7 +407,7 @@ const DatabasePDFButton = ({
     return parts.length > 0 ? parts : [{ text }];
   };
 
-  const buildMealTableRows = async (dietData: PDFData) => {
+  const buildMealTableRows = async (dietData: DietPdfData) => {
     const rows: TableCell[][] = [
       [
         { text: "ÖĞÜN", style: "tableHeader", alignment: "center" },
@@ -706,7 +585,7 @@ const DatabasePDFButton = ({
   };
 
   const createDocDefinition = async (
-    pdfData: PDFData,
+    pdfData: DietPdfData,
     backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {
