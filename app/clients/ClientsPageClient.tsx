@@ -10,6 +10,7 @@ import { tr } from "date-fns/locale/tr";
 import { fetchClients } from "@/services/ClientService";
 import { apiClient } from "@/lib/api-client";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
 
 interface Client {
   id: number;
@@ -34,6 +35,9 @@ export default function ClientsPageClient() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const clientsQueryKey = debouncedSearchTerm
+    ? qk.clients.list({ search: debouncedSearchTerm })
+    : qk.clients.list();
 
   // Debounce search term
   useEffect(() => {
@@ -55,7 +59,7 @@ export default function ClientsPageClient() {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['clients', debouncedSearchTerm],
+    queryKey: clientsQueryKey,
     queryFn: ({ pageParam = 0 }) =>
       fetchClients({
         skip: pageParam,
@@ -115,7 +119,7 @@ export default function ClientsPageClient() {
       });
 
       // Invalidate and refetch clients
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: qk.clients.root });
       refetch();
     } catch (error) {
       console.error("Error deleting client:", error);

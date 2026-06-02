@@ -8,6 +8,7 @@ import {
   fetchClientsListPage,
   getServerDietitianId,
 } from "@/lib/data/clients-list";
+import { qk } from "@/lib/query-keys";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -17,7 +18,7 @@ export default async function ClientsPage() {
 
   if (dietitianId) {
     await queryClient.prefetchInfiniteQuery({
-      queryKey: ["clients", ""],
+      queryKey: qk.clients.list(),
       queryFn: async ({ pageParam }) =>
         fetchClientsListPage(dietitianId, {
           skip: pageParam as number,
