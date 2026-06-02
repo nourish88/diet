@@ -9,72 +9,66 @@ export const GET = route<undefined, {}>({
     try {
       const dietitianId = auth.user!.id;
 
-      // Get all clients for this dietitian with their last message and conversation status
-      const conversations = await prisma.client.findMany({
+      // Get all diets owned by this dietitian (or by their clients) that have comments
+      const diets = await prisma.diet.findMany({
         where: {
-          dietitianId,
+          comments: { some: {} },
+          OR: [
+            { dietitianId },
+            { client: { dietitianId } },
+          ],
         },
         select: {
           id: true,
-          name: true,
-          surname: true,
-          userId: true,
-          diets: {
+          tarih: true,
+          createdAt: true,
+          client: {
             select: {
               id: true,
-              tarih: true,
-              createdAt: true,
-              comments: {
-                select: {
-                  id: true,
-                  content: true,
-                  createdAt: true,
-                  isRead: true,
-                  userId: true,
-                  user: {
-                    select: {
-                      role: true,
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "desc",
-                },
-                take: 1,
-              },
+              name: true,
+              surname: true,
             },
-            where: {
+          },
+          comments: {
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              isRead: true,
+              userId: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          _count: {
+            select: {
               comments: {
-                some: {},
+                where: {
+                  isRead: false,
+                  userId: { not: dietitianId },
+                },
               },
             },
           },
         },
       });
 
-      // Transform data to include last message and unread count
-      const transformedConversations = conversations.flatMap((client) =>
-        client.diets.map((diet) => {
-          const lastMessage = diet.comments[0];
-          const unreadCount = diet.comments.filter(
-            (msg) => !msg.isRead && msg.userId !== dietitianId
-          ).length;
-          const dietDate = diet.tarih ?? diet.createdAt;
+      const transformedConversations = diets.map((diet) => {
+        const lastMessage = diet.comments[0];
+        const dietDate = diet.tarih ?? diet.createdAt;
 
-          return {
-            clientId: client.id,
-            clientName: `${client.name} ${client.surname}`,
-            dietId: diet.id,
-            dietName: `Diyet #${diet.id}`,
-            lastMessage: lastMessage?.content || "",
-            lastMessageTime: lastMessage?.createdAt || dietDate,
-            lastMessageFromClient: lastMessage?.userId !== dietitianId,
-            unreadCount,
-          };
-        })
-      );
+        return {
+          clientId: diet.client.id,
+          clientName: `${diet.client.name} ${diet.client.surname}`,
+          dietId: diet.id,
+          dietName: `Diyet #${diet.id}`,
+          lastMessage: lastMessage?.content || "",
+          lastMessageTime: lastMessage?.createdAt || dietDate,
+          lastMessageFromClient: lastMessage?.userId !== dietitianId,
+          unreadCount: diet._count.comments,
+        };
+      });
 
-      // Sort by last message time (newest first)
       transformedConversations.sort(
         (a, b) =>
           new Date(b.lastMessageTime).getTime() -
@@ -86,7 +80,10 @@ export const GET = route<undefined, {}>({
         conversations: transformedConversations,
       });
     } catch (err) {
-      log.error("conversations list failed", err instanceof Error ? err.message : err);
+      log.error(
+        "conversations list failed",
+        err instanceof Error ? err.message : err
+      );
       return NextResponse.json(
         { error: "Failed to fetch conversations" },
         { status: 500 }
