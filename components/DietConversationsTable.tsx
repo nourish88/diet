@@ -46,8 +46,9 @@ export default function DietConversationsTable() {
         throw new Error("Sohbetler alınamadı");
       }
 
-      const data = await response.json();
-      setConversations(data.conversations || []);
+      const json = await response.json();
+      const payload = json?.data ?? json;
+      setConversations(payload?.conversations || []);
     } catch (error) {
       console.error("Error fetching conversations:", error);
       toast({
