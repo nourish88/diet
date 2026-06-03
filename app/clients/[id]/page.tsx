@@ -407,7 +407,7 @@ export default function ClientDetailPage() {
         </Link>
       </div>
 
-      <Card className="mb-6 border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-white">
+      <Card className="mb-6 border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-white dark:border-indigo-900/60 dark:from-indigo-950/40 dark:to-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-5 w-5 text-brand" />
@@ -428,9 +428,9 @@ export default function ClientDetailPage() {
                     locale: tr,
                   })}
                 </p>
-                <p className="text-muted-foreground mt-1">
+                <p className="text-muted-foreground mt-1 break-words">
                   Sürüm:{" "}
-                  <code className="text-xs bg-accent px-1 rounded">
+                  <code className="text-xs bg-accent text-accent-foreground px-1 rounded break-all">
                     {client.kvkkPortalConsentVersion}
                   </code>
                 </p>
@@ -460,19 +460,19 @@ export default function ClientDetailPage() {
       </Card>
 
       <div className="bg-card rounded-lg shadow-sm border-2 border-purple-700 overflow-hidden mb-8">
-        <div className="bg-brand-gradient px-6 py-4 text-white flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-medium">
+        <div className="bg-brand-gradient px-4 sm:px-6 py-4 text-white flex flex-wrap justify-between items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-medium break-words">
               {client.name} {client.surname}
             </h2>
-            <p className="text-sm text-blue-100 mt-1">
+            <p className="text-sm text-blue-100 mt-1 break-words">
               Danışan #{client.id} | Kayıt: {formatDate(client.createdAt)}
             </p>
           </div>
           <Button
             onClick={() => router.push(`/clients/${client.id}/edit`)}
             variant="outline"
-            className="bg-card text-brand hover:bg-brand-soft"
+            className="bg-card text-brand hover:bg-brand-soft shrink-0"
           >
             <Pencil className="h-4 w-4 mr-2" />
             Düzenle
@@ -549,7 +549,7 @@ export default function ClientDetailPage() {
                   <div className="text-sm font-medium text-muted-foreground">
                     E-posta
                   </div>
-                  <div className="text-foreground">
+                  <div className="text-foreground break-all">
                     {client.user?.email || "E-posta ilişkilendirilmemiş"}
                   </div>
                   {!client.user?.email && (
@@ -567,10 +567,10 @@ export default function ClientDetailPage() {
                   <div className="text-sm font-medium text-muted-foreground">
                     Telefon Giriş Eşleşmesi
                   </div>
-                  <div className="text-foreground">
+                  <div className="text-foreground break-all">
                     {client.phoneAuth?.phoneNormalized || "Telefon eşleşmesi yok"}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1 break-all">
                     {client.user?.email
                       ? `Aktif eşleşen hesap: ${client.user.email}`
                       : "Henüz danışan hesabı ile eşleşmemiş"}
@@ -656,7 +656,7 @@ export default function ClientDetailPage() {
 
           {/* Client diet history */}
           <div className="mt-8">
-            <div className="border-b border-border pb-2 mb-4 flex justify-between items-center">
+            <div className="border-b border-border pb-2 mb-4 flex flex-wrap justify-between items-center gap-2 pr-2 sm:pr-3">
               <h3 className="text-lg font-medium text-foreground flex items-center">
                 <ClipboardList className="h-5 w-5 text-indigo-500 mr-2" />
                 Beslenme Programları
@@ -678,19 +678,19 @@ export default function ClientDetailPage() {
                     key={diet.id}
                     className="border border-border rounded-md p-4 hover:bg-muted/30 transition-colors"
                   >
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap justify-between items-center gap-3">
                       <div
-                        className="flex-1 cursor-pointer"
+                        className="flex-1 min-w-0 cursor-pointer"
                         onClick={() => router.push(`/diets/${diet.id}`)}
                       >
-                        <div className="font-medium">
+                        <div className="font-medium break-words">
                           Beslenme Programı #{diet.id}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground break-words">
                           Oluşturulma: {formatDate(diet.createdAt)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         {diet.tarih && (
                           <div className="text-sm text-brand bg-brand-soft px-3 py-1 rounded-full">
                             Program Tarihi: {formatDate(diet.tarih)}
@@ -749,31 +749,29 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Progress Tracking Section */}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2 pr-1">
+        <Button
+          size="sm"
+          onClick={() => {
+            setMeasurementForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "" });
+            setShowMeasurementDialog(true);
+          }}
+          className="bg-brand hover:bg-brand/90 text-white shadow-sm"
+        >
+          <PlusCircle className="h-4 w-4 mr-1.5" />
+          Ölçüm Ekle (Kilo / Yağ)
+        </Button>
+        <DateRangePicker
+          dateFrom={progressDateFrom}
+          dateTo={progressDateTo}
+          onDateChange={handleProgressDateChange}
+        />
+      </div>
       <Card className="mb-8">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-brand" />
-              <CardTitle>Gelişim Takibi</CardTitle>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  setMeasurementForm({ date: new Date().toISOString().slice(0, 10), weight: "", bodyFat: "" });
-                  setShowMeasurementDialog(true);
-                }}
-                className="bg-brand hover:bg-brand/90 text-white shadow-sm"
-              >
-                <PlusCircle className="h-4 w-4 mr-1.5" />
-                Ölçüm Ekle (Kilo / Yağ)
-              </Button>
-              <DateRangePicker
-                dateFrom={progressDateFrom}
-                dateTo={progressDateTo}
-                onDateChange={handleProgressDateChange}
-              />
-            </div>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5 text-brand" />
+            <CardTitle>Gelişim Takibi</CardTitle>
           </div>
           <CardDescription>
             Danışanın kilo, ölçü ve vücut yağ oranı takibi
@@ -841,18 +839,18 @@ export default function ClientDetailPage() {
       </Card>
 
       {/* Exercise Tracking Section */}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2 pr-1">
+        <DateRangePicker
+          dateFrom={exerciseDateFrom}
+          dateTo={exerciseDateTo}
+          onDateChange={handleExerciseDateChange}
+        />
+      </div>
       <Card className="mb-8">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-brand" />
-              <CardTitle>Antrenman Takibi</CardTitle>
-            </div>
-            <DateRangePicker
-              dateFrom={exerciseDateFrom}
-              dateTo={exerciseDateTo}
-              onDateChange={handleExerciseDateChange}
-            />
+          <div className="flex items-center space-x-2">
+            <Activity className="h-5 w-5 text-brand" />
+            <CardTitle>Antrenman Takibi</CardTitle>
           </div>
           <CardDescription>
             Danışanın egzersiz ve aktivite kayıtları
