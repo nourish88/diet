@@ -137,7 +137,15 @@ export default function BildirimLoglariPage() {
                             );
                           }
                           if (log.status !== "success") {
-                            return <span className="text-xs text-muted-foreground">—</span>;
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200"
+                                title="Sunucu gönderemediği için cihaza ulaşmadı. Hata sütunundaki koda bakın."
+                              >
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                Ulaşmadı
+                              </span>
+                            );
                           }
                           const ageMs = Date.now() - new Date(log.sentAt).getTime();
                           if (ageMs < 30_000) {

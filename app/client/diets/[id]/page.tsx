@@ -120,6 +120,17 @@ export default function ClientDietDetailPage() {
   const unreadCount = diet?.unreadCount ?? 0;
   const clientId = diet?.clientId ?? null;
 
+  const trackedViewRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!diet?.id) return;
+    const key = String(diet.id);
+    if (trackedViewRef.current === key) return;
+    trackedViewRef.current = key;
+    apiClient
+      .post(`/diets/${diet.id}/track`, { event: "view" })
+      .catch((err) => console.warn("Diet view tracking failed", err));
+  }, [diet?.id]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("tr-TR", {
       day: "numeric",

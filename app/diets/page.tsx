@@ -15,6 +15,8 @@ import {
   Users,
   Calendar,
   X,
+  Eye,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
@@ -26,6 +28,8 @@ interface Diet {
   createdAt: string;
   tarih: string | null;
   clientId: number;
+  viewCount?: number;
+  downloadCount?: number;
   client: {
     id: number;
     name: string;
@@ -129,6 +133,15 @@ export default function DietsPage() {
     if (!dateString) return "Tarih Belirtilmemiş";
     try {
       return format(new Date(dateString), "PPP", { locale: tr });
+    } catch (error) {
+      return "Geçersiz Tarih";
+    }
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "Tarih Belirtilmemiş";
+    try {
+      return format(new Date(dateString), "d MMM yyyy HH:mm", { locale: tr });
     } catch (error) {
       return "Geçersiz Tarih";
     }
@@ -260,6 +273,12 @@ export default function DietsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Oluşturulma Tarihi
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Görüntülenme
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    İndirme
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
@@ -296,7 +315,19 @@ export default function DietsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {formatDate(diet.createdAt)}
+                      {formatDateTime(diet.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                        <Eye className="h-4 w-4 text-muted-foreground/70" />
+                        {diet.viewCount ?? 0}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                        <Download className="h-4 w-4 text-muted-foreground/70" />
+                        {diet.downloadCount ?? 0}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

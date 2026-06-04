@@ -3,6 +3,7 @@ import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
 import twemoji from "twemoji";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import { apiClient } from "@/lib/api-client";
 import { sanitizeMealNote } from "@/lib/diet-utils";
 import {
   buildDietPdfFileName,
@@ -106,6 +107,11 @@ const DatabasePDFButton = ({
       );
       const fileName = buildDietPdfFileName(pdfData);
       pdfMake.createPdf(docDefinition).download(fileName);
+      if (diet?.id) {
+        apiClient
+          .post(`/diets/${diet.id}/track`, { event: "download" })
+          .catch((err) => console.warn("Diet download tracking failed", err));
+      }
     } catch (error) {
       console.error("PDF oluşturma hatası:", error);
       alert(`PDF oluşturulamadı: ${(error as Error).message}`);

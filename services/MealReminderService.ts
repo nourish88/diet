@@ -3,6 +3,25 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
 
+/**
+ * web-push throws errors whose `.message` is often the unhelpful
+ * "Received unexpected response code". The real signal is on `.statusCode` and
+ * `.body`. Combine them so the dietitian's log column shows what FCM actually
+ * said (401 = VAPID mismatch, 410 = subscription gone, 413 = payload too big,
+ * etc.) instead of a generic string.
+ */
+function formatPushError(error: any): string {
+  const status = error?.statusCode;
+  const body =
+    typeof error?.body === "string"
+      ? error.body.trim().slice(0, 200)
+      : undefined;
+  const message = error?.message || String(error);
+  if (status && body) return `[${status}] ${message} — ${body}`;
+  if (status) return `[${status}] ${message}`;
+  return message;
+}
+
 export interface MealReminder {
   userId: number;
   clientId: number;
@@ -553,7 +572,7 @@ export async function sendMealReminders(): Promise<{
             where: { id: logEntry.id },
             data: {
               status: "failed",
-              errorMessage: error?.message || String(error),
+              errorMessage: formatPushError(error),
             },
           });
           failed++;

@@ -199,6 +199,12 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
       );
       const fileName = buildDietPdfFileName(pdfDataToUse);
       pdfMake.createPdf(docDefinition).download(fileName);
+      const trackId = dietId ?? diet?.id;
+      if (trackId) {
+        apiClient
+          .post(`/diets/${trackId}/track`, { event: "download" })
+          .catch((err) => console.warn("Diet download tracking failed", err));
+      }
       handleSuccess();
     } catch (error) {
       console.error("PDF oluşturma hatası:", error);

@@ -90,6 +90,9 @@ model Diet {
   isImportantDateCelebrated Boolean        @default(false)
 
   notifiedAt DateTime?
+
+  viewCount     Int @default(0)
+  downloadCount Int @default(0)
 }
 
 model Ogun {
