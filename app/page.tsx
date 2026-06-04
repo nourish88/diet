@@ -76,17 +76,20 @@ export default function Home() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [recentDiets, setRecentDiets] = useState<RecentDiet[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [recentLoading, setRecentLoading] = useState(true);
   const [unreadByDiet, setUnreadByDiet] = useState<UnreadMessagesByDiet>({});
   const [timeRange, setTimeRange] = useState("current_month");
   
   // Get user role from databaseUser
   const userRole = databaseUser?.role || null;
 
-  const loadDashboardData = useCallback(async () => {
+  // Stats and recent diets used to be loaded sequentially under a single
+  // loading flag, so the cards stayed blank until both finished. They are
+  // independent API calls — fire them in parallel and let each render as
+  // soon as its own response lands.
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
     try {
-      setStatsLoading(true);
-
-      // Load dashboard stats
       const statsData = await apiClient.get<DashboardStats>(`/analytics/stats?timeRange=${timeRange}`);
       setDashboardStats({
         totalClients: statsData.totalClients || 0,
@@ -94,16 +97,24 @@ export default function Home() {
         thisMonthDiets: statsData.periodDiets ?? statsData.thisMonthDiets ?? 0,
         pendingApprovals: statsData.pendingApprovals || 0,
       });
-
-      // Load recent diets
-      const dietsData = await apiClient.get<{ diets: RecentDiet[] }>("/diets?skip=0&take=5");
-      setRecentDiets(dietsData.diets || []);
     } catch (error) {
-      console.error("❌ Error loading dashboard data:", error);
+      console.error("❌ Error loading dashboard stats:", error);
     } finally {
       setStatsLoading(false);
     }
   }, [timeRange]);
+
+  const loadRecentDiets = useCallback(async () => {
+    setRecentLoading(true);
+    try {
+      const dietsData = await apiClient.get<{ diets: RecentDiet[] }>("/diets?skip=0&take=5");
+      setRecentDiets(dietsData.diets || []);
+    } catch (error) {
+      console.error("❌ Error loading recent diets:", error);
+    } finally {
+      setRecentLoading(false);
+    }
+  }, []);
 
   const loadUnreadMessages = useCallback(async () => {
     try {
@@ -136,7 +147,8 @@ export default function Home() {
   useEffect(() => {
     if (!authLoading && user && databaseUser) {
       if (databaseUser.role === "dietitian") {
-        loadDashboardData();
+        loadStats();
+        loadRecentDiets();
         loadUnreadMessages();
       } else if (databaseUser.role === "client") {
         // Client should not see this page - redirect to client page
@@ -146,18 +158,19 @@ export default function Home() {
       // No user, redirect to login
       router.push("/account");
     }
-  }, [authLoading, user, databaseUser, router, loadDashboardData, loadUnreadMessages]);
+  }, [authLoading, user, databaseUser, router, loadStats, loadRecentDiets, loadUnreadMessages]);
 
   // Set up polling for dietitian dashboard
   useEffect(() => {
     if (userRole === "dietitian") {
       const interval = setInterval(() => {
         loadUnreadMessages();
-        loadDashboardData();
+        loadStats();
+        loadRecentDiets();
       }, 30000);
       return () => clearInterval(interval);
     }
-  }, [userRole, loadUnreadMessages, loadDashboardData]);
+  }, [userRole, loadUnreadMessages, loadStats, loadRecentDiets]);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString("tr-TR", {
@@ -340,11 +353,27 @@ export default function Home() {
         </div>
 
         {/* Son Diyetler */}
-        {recentDiets.length > 0 && (
+        {(recentLoading || recentDiets.length > 0) && (
           <div className="mb-6">
             <h2 className="text-lg md:text-xl font-semibold text-foreground mb-4">
               Son Diyetler
             </h2>
+            {recentLoading && recentDiets.length === 0 ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-card rounded-xl shadow-md p-3 md:p-4 animate-pulse flex items-center justify-between"
+                  >
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                      <div className="h-3 bg-muted rounded w-1/3" />
+                    </div>
+                    <div className="h-5 w-5 bg-muted rounded-full ml-3" />
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="space-y-3">
               {recentDiets.map((diet) => {
                 const dietUnreadCount = unreadByDiet[diet.id] || 0;
@@ -374,6 +403,7 @@ export default function Home() {
                 );
               })}
             </div>
+            )}
           </div>
         )}
       </div>
