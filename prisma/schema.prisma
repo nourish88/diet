@@ -635,7 +635,8 @@ model NotificationLog {
   status       String   // "success", "failed"
   errorMessage String?
   sentAt       DateTime @default(now())
-  
+  receivedAt   DateTime? // Set when the device's service worker pings back acknowledging delivery
+
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   ogun         Ogun?    @relation(fields: [ogunId], references: [id], onDelete: SetNull)
@@ -643,4 +644,5 @@ model NotificationLog {
   @@index([userId, sentAt])
   @@index([clientId])
   @@index([sentAt])
+  @@index([receivedAt])
 }

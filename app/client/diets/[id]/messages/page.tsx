@@ -748,8 +748,9 @@ export default function ClientMessagesPage() {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Mesajınızı yazın..."
-                className="flex-1 border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                rows={3}
+                maxLength={4000}
+                className="flex-1 border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[110px] max-h-[260px]"
+                rows={4}
               />
 
               <button

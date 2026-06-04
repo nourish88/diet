@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, BellRing, CheckCircle2, AlertCircle, RefreshCw, Info } from "lucide-react";
+import { Loader2, BellRing, CheckCircle2, AlertCircle, RefreshCw, Info, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface NotificationLog {
   status: string;
   errorMessage: string | null;
   sentAt: string;
+  receivedAt: string | null;
   client: {
     name: string;
     surname: string;
@@ -85,7 +86,8 @@ export default function BildirimLoglariPage() {
                     <th className="px-6 py-4 font-medium">Danışan</th>
                     <th className="px-6 py-4 font-medium">Öğün</th>
                     <th className="px-6 py-4 font-medium">Tür</th>
-                    <th className="px-6 py-4 font-medium">Durum</th>
+                    <th className="px-6 py-4 font-medium">Sunucu</th>
+                    <th className="px-6 py-4 font-medium">Cihaz</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -107,7 +109,7 @@ export default function BildirimLoglariPage() {
                         {log.status === "success" ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                            Başarılı
+                            Gönderildi
                           </span>
                         ) : (
                           <div className="flex flex-col gap-1">
@@ -120,6 +122,45 @@ export default function BildirimLoglariPage() {
                             </span>
                           </div>
                         )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {(() => {
+                          if (log.receivedAt) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                title={`Telefon aldı: ${format(new Date(log.receivedAt), "dd MMM HH:mm:ss", { locale: tr })}`}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Ulaştı
+                              </span>
+                            );
+                          }
+                          if (log.status !== "success") {
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          }
+                          const ageMs = Date.now() - new Date(log.sentAt).getTime();
+                          if (ageMs < 30_000) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200"
+                                title="Cihazdan onay bekleniyor. Bildirim FCM tarafından alındı; telefon yanıtladığında 'Ulaştı'ya dönecek."
+                              >
+                                <Clock className="h-3.5 w-3.5" />
+                                Bekleniyor
+                              </span>
+                            );
+                          }
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                              title="Sunucu gönderdi ancak cihaz onaylamadı. Android'in Chrome'u arka planda öldürmesi veya bildirim izninin kapalı olması en sık sebep."
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              Cihaz onaylamadı
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

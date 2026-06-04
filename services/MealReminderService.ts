@@ -506,6 +506,17 @@ export async function sendMealReminders(): Promise<{
       const notificationTag = `meal-reminder-${reminder.ogunId}`;
 
       for (const subscription of userData.pushSubscriptions) {
+        const logEntry = await prisma.notificationLog.create({
+          data: {
+            userId,
+            clientId: reminder.clientId,
+            ogunId: reminder.ogunId,
+            type: "meal_reminder",
+            title,
+            body: shortMessage,
+            status: "success",
+          },
+        });
         try {
           await sendWebPushNotification(
             {
@@ -525,20 +536,10 @@ export async function sendMealReminders(): Promise<{
                 type: "meal_reminder",
                 dietId: reminder.dietId,
                 ogunId: reminder.ogunId,
+                logId: logEntry.id,
               },
             }
           );
-          await prisma.notificationLog.create({
-            data: {
-              userId,
-              clientId: reminder.clientId,
-              ogunId: reminder.ogunId,
-              type: "meal_reminder",
-              title,
-              body: shortMessage,
-              status: "success",
-            },
-          });
           sent++;
           console.log(
             `✅ Sent meal reminder to user ${userId} for meal ${reminder.ogunName}`
@@ -548,14 +549,9 @@ export async function sendMealReminders(): Promise<{
             `❌ Failed to send reminder to user ${userId} for meal ${reminder.ogunName}:`,
             error
           );
-          await prisma.notificationLog.create({
+          await prisma.notificationLog.update({
+            where: { id: logEntry.id },
             data: {
-              userId,
-              clientId: reminder.clientId,
-              ogunId: reminder.ogunId,
-              type: "meal_reminder",
-              title,
-              body: shortMessage,
               status: "failed",
               errorMessage: error?.message || String(error),
             },
@@ -692,6 +688,18 @@ export async function sendMealReminderForOgun(
   let failed = 0;
 
   for (const subscription of user.pushSubscriptions) {
+    // Create the log row up front so the service worker can ping back with the id.
+    const logEntry = await prisma.notificationLog.create({
+      data: {
+        userId: reminder.userId,
+        clientId: reminder.clientId,
+        ogunId: reminder.ogunId,
+        type: "manual_test",
+        title,
+        body,
+        status: "success",
+      },
+    });
     try {
       await sendWebPushNotification(
         {
@@ -712,34 +720,19 @@ export async function sendMealReminderForOgun(
             dietId: reminder.dietId,
             ogunId: reminder.ogunId,
             manual: true,
+            logId: logEntry.id,
           },
         }
       );
-      await prisma.notificationLog.create({
-        data: {
-          userId: reminder.userId,
-          clientId: reminder.clientId,
-          ogunId: reminder.ogunId,
-          type: "manual_test",
-          title,
-          body,
-          status: "success",
-        },
-      });
       sent++;
     } catch (error: any) {
       console.error(
         `Failed to send manual meal reminder to ${subscription.endpoint}:`,
         error
       );
-      await prisma.notificationLog.create({
+      await prisma.notificationLog.update({
+        where: { id: logEntry.id },
         data: {
-          userId: reminder.userId,
-          clientId: reminder.clientId,
-          ogunId: reminder.ogunId,
-          type: "manual_test",
-          title,
-          body,
           status: "failed",
           errorMessage: error?.message || String(error),
         },

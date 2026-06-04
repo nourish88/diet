@@ -666,9 +666,9 @@ export default function ClientMessagesPage() {
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={handleKeyPress}
-            rows={2}
-            maxLength={500}
-            className="flex-1 resize-none"
+            rows={4}
+            maxLength={4000}
+            className="flex-1 min-h-[110px] max-h-[260px] resize-y"
           />
           <Button
             onClick={sendMessage}

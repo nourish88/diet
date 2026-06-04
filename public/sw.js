@@ -1,4 +1,4 @@
-const SW_VERSION = "diet-pwa-v4-offline";
+const SW_VERSION = "diet-pwa-v5-pushack";
 const PUSH_CACHE = "diet-pwa-cache-v4";
 const RUNTIME_CACHE = "diet-runtime-v3";
 const BLOB_CACHE = "diet-blob-v1";
@@ -104,7 +104,24 @@ self.addEventListener("push", (event) => {
     requireInteraction: payload.requireInteraction || false, // Auto-dismiss after a few seconds
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Acknowledge delivery so the server knows the device actually received it,
+  // not just that FCM accepted the push. Fire-and-forget; we still must show
+  // the notification even if the ack fails (and Chrome will punish missing
+  // notifications by revoking push permission).
+  const ackLogId = payload.data?.logId;
+  const ackPromise =
+    typeof ackLogId === "number"
+      ? fetch("/api/push/ack", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logId: ackLogId }),
+          keepalive: true,
+        }).catch(() => undefined)
+      : Promise.resolve();
+
+  event.waitUntil(
+    Promise.all([self.registration.showNotification(title, options), ackPromise])
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
