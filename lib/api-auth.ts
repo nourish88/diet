@@ -2,8 +2,15 @@ import { NextRequest } from "next/server";
 import prisma from "./prisma";
 import { authenticateApiKey, AuthenticatedApiKey } from "./api-key-auth";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const jwt = require("jsonwebtoken") as {
+  verify: (token: string, secret: string) => string | SupabaseJwtPayload;
+};
+
+interface SupabaseJwtPayload {
+  sub?: string;
+  email?: string;
+  [key: string]: unknown;
+}
 
 export interface AuthenticatedUser {
   id: number;
@@ -126,25 +133,39 @@ export async function authenticateSupabase(
 
     console.log("✅ Token found:", token.substring(0, 20) + "...");
 
-    // Verify token with Supabase REST API (works in all runtimes)
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: supabaseAnonKey,
-      },
-    });
+    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
 
-    if (!response.ok) {
+    if (!supabaseJwtSecret) {
       console.log(
         "❌ Supabase token verification failed:",
-        response.status,
-        response.statusText
+        500,
+        "Missing SUPABASE_JWT_SECRET"
       );
       return null;
     }
 
-    const userData = await response.json();
-    const user = userData;
+    let verifiedToken: string | SupabaseJwtPayload;
+    try {
+      verifiedToken = jwt.verify(token, supabaseJwtSecret);
+    } catch (verifyError) {
+      console.log(
+        "❌ Supabase token verification failed:",
+        403,
+        verifyError instanceof Error ? verifyError.message : "Invalid token"
+      );
+      return null;
+    }
+
+    const user =
+      typeof verifiedToken === "string"
+        ? null
+        : {
+            id: verifiedToken.sub,
+            email:
+              typeof verifiedToken.email === "string"
+                ? verifiedToken.email
+                : "",
+          };
 
     if (!user || !user.id) {
       console.log("❌ No user in Supabase response");
@@ -377,5 +398,4 @@ export async function requireOwnClientDiet(
     return false;
   }
 }
-
 
