@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { requireOwnDiet, type AuthResult } from "@/lib/api-auth";
+import { requireOwnClientDiet, requireOwnDiet, type AuthResult } from "@/lib/api-auth";
 import { route, HttpError } from "@/lib/api/handler";
 
 export const maxDuration = 30;
@@ -11,12 +11,7 @@ interface TrackBody {
 }
 
 async function clientOwnsDiet(dietId: number, auth: AuthResult): Promise<boolean> {
-  if (!auth.user || auth.user.role !== "client") return false;
-  const diet = await prisma.diet.findUnique({
-    where: { id: dietId },
-    select: { clientId: true },
-  });
-  return diet ? diet.clientId === auth.user.id : false;
+  return requireOwnClientDiet(dietId, auth);
 }
 
 export const POST = route<undefined, Params>({

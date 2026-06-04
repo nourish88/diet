@@ -424,10 +424,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await removePushNotificationsForCurrentBrowser();
-    await supabase.auth.signOut();
+    try {
+      await Promise.race([
+        removePushNotificationsForCurrentBrowser(),
+        new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+      ]);
+    } catch (error) {
+      console.warn("Push cleanup skipped during sign out:", error);
+    }
+
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch (error) {
+      console.warn("Supabase sign out failed; clearing local auth state:", error);
+    }
+
+    apiClient.clearSessionCache();
+    setSession(null);
+    setUser(null);
     setDatabaseUser(null);
-    router.push("/login");
+    router.replace("/login");
+    router.refresh();
   };
 
   const value = {

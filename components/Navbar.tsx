@@ -98,7 +98,7 @@ const Navbar = () => {
       { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
       {
         href: "/management/diet-logs",
-        label: "Diyet Logları",
+        label: "Log Yönetimi",
         icon: FileText,
       },
     ];

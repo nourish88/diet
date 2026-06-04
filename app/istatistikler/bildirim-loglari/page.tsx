@@ -8,6 +8,8 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { Button } from "@/components/ui/button";
 
+const DEVICE_ACK_TRACKING_STARTED_AT = new Date("2026-06-04T22:00:00.000Z");
+
 interface NotificationLog {
   id: number;
   type: string;
@@ -154,6 +156,18 @@ export default function BildirimLoglariPage() {
                             );
                           }
                           const ageMs = Date.now() - new Date(log.sentAt).getTime();
+                          const isLegacyAckLog = new Date(log.sentAt) < DEVICE_ACK_TRACKING_STARTED_AT;
+                          if (isLegacyAckLog) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200"
+                                title="Bu kayıt cihaz onayı takibi eklenmeden önce oluştu. Sunucu gönderimi başarılıysa, bu alan iletilmedi anlamına gelmez."
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                                Onay ölçülmedi
+                              </span>
+                            );
+                          }
                           if (ageMs < 30_000) {
                             return (
                               <span

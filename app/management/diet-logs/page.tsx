@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
+import { Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { createClient } from "@/lib/supabase-browser";
 import {
   Card,
   CardContent,
@@ -11,53 +12,57 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Download } from "lucide-react";
-import { format } from "date-fns";
-
-interface DietFormLog {
-  id: number;
-  sessionId: string;
-  clientId: number | null;
-  dietId: number | null;
-  action: string;
-  fieldName: string | null;
-  fieldValue: string | null;
-  previousValue: string | null;
-  metadata: any;
-  source: string;
-  createdAt: string;
-  dietitian: {
-    id: number;
-    email: string;
-  };
-}
+import { DietFormLogsTable } from "./_components/DietFormLogsTable";
+import { NotificationLogsTable } from "./_components/NotificationLogsTable";
+import type { DietFormLog, NotificationLog } from "./_components/types";
 
 export default function DietLogsManagementPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [isLoggingEnabled, setIsLoggingEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
   const [logs, setLogs] = useState<DietFormLog[]>([]);
+  const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [isLoadingNotificationLogs, setIsLoadingNotificationLogs] = useState(false);
   const [totalLogs, setTotalLogs] = useState(0);
 
-  // Check authentication and load config
+  const loadLogs = async () => {
+    try {
+      setIsLoadingLogs(true);
+      const data = await apiClient.get<{ logs: DietFormLog[]; total: number }>(
+        "/diet-logs?limit=100"
+      );
+      setLogs(data.logs || []);
+      setTotalLogs(data.total || 0);
+    } catch (error) {
+      console.error("Error loading logs:", error);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const loadNotificationLogs = async () => {
+    try {
+      setIsLoadingNotificationLogs(true);
+      const data = await apiClient.get<{ ok: boolean; logs: NotificationLog[] }>(
+        "/analytics/notification-logs"
+      );
+      setNotificationLogs(data.logs || []);
+    } catch (error) {
+      console.error("Error loading notification logs:", error);
+    } finally {
+      setIsLoadingNotificationLogs(false);
+    }
+  };
+
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -70,12 +75,12 @@ export default function DietLogsManagementPage() {
           return;
         }
 
-        // Load logging status
-        const data = await apiClient.get<{ value: string }>("/system-config/diet_form_logging_enabled");
+        const data = await apiClient.get<{ value: string }>(
+          "/system-config/diet_form_logging_enabled"
+        );
         setIsLoggingEnabled(data.value === "true");
 
-        // Load logs
-        await loadLogs();
+        await Promise.all([loadLogs(), loadNotificationLogs()]);
       } catch (error) {
         console.error("Error loading config:", error);
         toast({
@@ -90,19 +95,6 @@ export default function DietLogsManagementPage() {
 
     loadConfig();
   }, [router, supabase, toast]);
-
-  const loadLogs = async () => {
-    try {
-      setIsLoadingLogs(true);
-      const data = await apiClient.get<{ logs: DietFormLog[]; total: number }>("/diet-logs?limit=100");
-      setLogs(data.logs || []);
-      setTotalLogs(data.total || 0);
-    } catch (error) {
-      console.error("Error loading logs:", error);
-    } finally {
-      setIsLoadingLogs(false);
-    }
-  };
 
   const handleToggleLogging = async () => {
     try {
@@ -134,10 +126,7 @@ export default function DietLogsManagementPage() {
           : "Diyet formu loglama devre dışı bırakıldı",
       });
 
-      // Reload logs if enabled
-      if (newValue) {
-        await loadLogs();
-      }
+      if (newValue) await loadLogs();
     } catch (error) {
       console.error("Error toggling logging:", error);
       toast({
@@ -148,42 +137,6 @@ export default function DietLogsManagementPage() {
     } finally {
       setIsToggling(false);
     }
-  };
-
-  const handleRefreshLogs = async () => {
-    await loadLogs();
-  };
-
-  const getActionBadgeColor = (action: string) => {
-    if (action.includes("saved")) return "bg-green-500";
-    if (action.includes("failed") || action.includes("error"))
-      return "bg-red-500";
-    if (action.includes("opened") || action.includes("selected"))
-      return "bg-blue-500";
-    return "bg-gray-500";
-  };
-
-  const formatAction = (action: string) => {
-    const actionMap: Record<string, string> = {
-      form_opened: "Form Açıldı",
-      client_selected: "Danışan Seçildi",
-      client_changed: "Danışan Değiştirildi",
-      field_changed: "Alan Değiştirildi",
-      ogun_added: "Öğün Eklendi",
-      ogun_removed: "Öğün Silindi",
-      ogun_updated: "Öğün Güncellendi",
-      item_added: "Öğe Eklendi",
-      item_removed: "Öğe Silindi",
-      item_updated: "Öğe Güncellendi",
-      diet_saved: "Diyet Kaydedildi",
-      diet_save_failed: "Diyet Kaydedilemedi",
-      template_loaded: "Şablon Yüklendi",
-      diet_loaded: "Diyet Yüklendi",
-      form_closed: "Form Kapatıldı",
-      pdf_generated: "PDF Oluşturuldu",
-      validation_error: "Doğrulama Hatası",
-    };
-    return actionMap[action] || action;
   };
 
   if (isLoading) {
@@ -197,13 +150,12 @@ export default function DietLogsManagementPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Diyet Formu Loglama Yönetimi</h1>
+        <h1 className="text-3xl font-bold mb-2">Log Yönetimi</h1>
         <p className="text-muted-foreground">
-          Diyet formu aktivitelerini izleyin ve logları görüntüleyin
+          Diyet formu aktivitelerini ve bildirim teslim durumlarını izleyin
         </p>
       </div>
 
-      {/* Configuration Card */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Loglama Ayarları</CardTitle>
@@ -235,108 +187,30 @@ export default function DietLogsManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Logs Card */}
-      {isLoggingEnabled && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Log Kayıtları</CardTitle>
-                <CardDescription>
-                  Toplam {totalLogs} log kaydı (Son 100 kayıt gösteriliyor)
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshLogs}
-                disabled={isLoadingLogs}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 mr-2 ${isLoadingLogs ? "animate-spin" : ""}`}
-                />
-                Yenile
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingLogs ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            ) : logs.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Henüz log kaydı bulunmuyor
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tarih</TableHead>
-                      <TableHead>Oturum</TableHead>
-                      <TableHead>İşlem</TableHead>
-                      <TableHead>Kaynak</TableHead>
-                      <TableHead>Danışan ID</TableHead>
-                      <TableHead>Diyet ID</TableHead>
-                      <TableHead>Alan</TableHead>
-                      <TableHead>Detay</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm">
-                          {format(new Date(log.createdAt), "dd.MM.yyyy HH:mm:ss")}
-                        </TableCell>
-                        <TableCell className="text-xs font-mono">
-                          {log.sessionId.substring(0, 20)}...
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getActionBadgeColor(log.action)}
-                          >
-                            {formatAction(log.action)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              log.source === "server"
-                                ? "bg-purple-100 text-purple-800 border-purple-300"
-                                : "bg-blue-100 text-blue-800 border-blue-300"
-                            }
-                          >
-                            {log.source === "server" ? "Server" : "Client"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{log.clientId || "-"}</TableCell>
-                        <TableCell>{log.dietId || "-"}</TableCell>
-                        <TableCell className="text-sm">
-                          {log.fieldName || "-"}
-                        </TableCell>
-                        <TableCell className="text-xs max-w-md truncate">
-                          {log.fieldValue || log.metadata ? (
-                            <span title={JSON.stringify(log.metadata || {})}>
-                              {log.fieldValue?.substring(0, 50) ||
-                                JSON.stringify(log.metadata || {}).substring(0, 50)}
-                              ...
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Tabs defaultValue="diet-form" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="diet-form">Diyet Formu Logları</TabsTrigger>
+          <TabsTrigger value="notifications">Bildirim Logları</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="diet-form">
+          <DietFormLogsTable
+            isEnabled={isLoggingEnabled}
+            isLoading={isLoadingLogs}
+            logs={logs}
+            total={totalLogs}
+            onRefresh={loadLogs}
+          />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationLogsTable
+            isLoading={isLoadingNotificationLogs}
+            logs={notificationLogs}
+            onRefresh={loadNotificationLogs}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-
