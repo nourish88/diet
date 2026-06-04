@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
@@ -8,6 +9,13 @@ export const dynamic = "force-dynamic";
 const AckBody = z.object({
   logId: z.number().int().positive(),
 });
+
+function isMissingNotificationLogTable(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    (err.code === "P2021" || err.code === "P2022")
+  );
+}
 
 export const OPTIONS = async (request: NextRequest) => {
   const corsResponse = handleCors(request);
@@ -37,7 +45,7 @@ export async function POST(request: NextRequest) {
     return addCorsHeaders(NextResponse.json({ ok: true }));
   } catch (err: any) {
     // P2025 = record not found; treat as no-op so SW retries don't error loudly.
-    if (err?.code === "P2025") {
+    if (err?.code === "P2025" || isMissingNotificationLogTable(err)) {
       return addCorsHeaders(NextResponse.json({ ok: true, skipped: true }));
     }
     return addCorsHeaders(

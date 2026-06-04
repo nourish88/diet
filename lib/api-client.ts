@@ -173,11 +173,11 @@ class ApiClient {
   }
 
   /**
-   * Handle authentication errors (401/403)
-   * This is called automatically on auth errors
+   * Handle expired/missing sessions. 403 is a valid business-level response
+   * for forbidden resources and should not sign a still-authenticated user out.
    */
   private async handleAuthError(response: Response): Promise<void> {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       this.clearSessionCache();
 
       // Redirect to login if in browser
