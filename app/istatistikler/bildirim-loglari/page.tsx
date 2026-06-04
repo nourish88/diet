@@ -103,7 +103,13 @@ export default function BildirimLoglariPage() {
                         {log.ogun ? `${log.ogun.name} (${log.ogun.time})` : '-'}
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">
-                        {log.type === "meal_reminder" ? "Otomatik Öğün" : log.type === "manual_test" ? "Manuel Test" : log.type}
+                        {log.type === "meal_reminder"
+                          ? "30 dk öncesi"
+                          : log.type === "meal_time"
+                          ? "Öğün vakti"
+                          : log.type === "manual_test"
+                          ? "Manuel Test"
+                          : log.type}
                       </td>
                       <td className="px-6 py-4">
                         {log.status === "success" ? (

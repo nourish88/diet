@@ -2,8 +2,8 @@ import prisma from "@/lib/prisma";
 import {
   formatMealNotificationMessage,
   formatShortMealNotificationMessage,
+  getActiveReminderKind,
   MealReminder,
-  shouldSendReminder,
 } from "@/services/MealReminderService";
 import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
 import { route } from "@/lib/api/handler";
@@ -93,7 +93,8 @@ export const GET = route({
 
     for (const ogun of latestDiet.oguns) {
       if (!ogun.time) continue;
-      if (!shouldSendReminder(ogun.time, now)) continue;
+      const kind = getActiveReminderKind(ogun.time, now);
+      if (!kind) continue;
 
       const menuItems = ogun.items.map((item) => ({
         miktar: item.miktar,
@@ -112,6 +113,7 @@ export const GET = route({
         ogunName: ogun.name,
         ogunTime: ogun.time,
         ogunDetail: ogun.detail,
+        kind,
         menuItems,
       };
 
@@ -139,8 +141,13 @@ export const GET = route({
     let failed = 0;
 
     for (const reminderData of pendingReminders) {
-      const title = `${reminderData.ogunName} zamanı yaklaşıyor!`;
-      const notificationTag = `meal-reminder-${reminderData.ogunId}`;
+      const kind = reminderData.reminder.kind;
+      const title =
+        kind === "T-0"
+          ? `${reminderData.ogunName} vakti!`
+          : `${reminderData.ogunName}: 30 dk kaldı`;
+      const logType = kind === "T-0" ? "meal_time" : "meal_reminder";
+      const notificationTag = `${logType}-${reminderData.ogunId}`;
 
       for (const subscription of user.pushSubscriptions) {
         try {
@@ -159,7 +166,7 @@ export const GET = route({
               tag: notificationTag,
               requireInteraction: false,
               data: {
-                type: "meal_reminder",
+                type: logType,
                 dietId: latestDiet.id,
                 ogunId: reminderData.ogunId,
               },

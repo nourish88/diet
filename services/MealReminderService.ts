@@ -22,6 +22,8 @@ function formatPushError(error: any): string {
   return message;
 }
 
+export type MealReminderKind = "T-30" | "T-0";
+
 export interface MealReminder {
   userId: number;
   clientId: number;
@@ -33,6 +35,7 @@ export interface MealReminder {
   ogunName: string;
   ogunTime: string;
   ogunDetail: string | null;
+  kind: MealReminderKind;
   menuItems: Array<{
     miktar: string | null;
     birim: string | null;
@@ -168,67 +171,52 @@ function getTurkeyTime(): { hours: number; minutes: number; totalMinutes: number
 }
 
 /**
- * Check if a meal reminder should be sent
- * Returns true if current time (GMT+3) is within 15 minutes window of (meal time - 30 minutes)
- * 
- * Example:
- * - Meal time: 08:00 (Turkey time)
- * - Reminder time: 07:30 (30 minutes before)
- * - Window: 07:30 - 07:45 (15 minutes)
- * - If current time is 07:35 (Turkey time), return true
+ * Returns the active reminder window for a given meal time, or null when no
+ * window currently applies. Two windows per meal:
+ *   - "T-30": [mealTime − 30, mealTime − 15)  → "öğününüze 30 dk kaldı"
+ *   - "T-0":  [mealTime,       mealTime + 15) → "öğün vakti"
+ * Both windows are 15 dk to match the pg_cron tick cadence (so at most one
+ * cron tick falls inside each window — natural duplicate guard).
+ */
+export function getActiveReminderKind(
+  mealTime: string,
+  currentTime?: Date
+): MealReminderKind | null {
+  const mealMinutes = parseTimeToMinutes(mealTime);
+  if (mealMinutes < 0) return null;
+
+  let turkeyTime: { totalMinutes: number };
+  if (currentTime) {
+    const utcHours = currentTime.getUTCHours();
+    const utcMinutes = currentTime.getUTCMinutes();
+    const turkeyTotalMinutes = utcHours * 60 + utcMinutes + 3 * 60;
+    turkeyTime = { totalMinutes: turkeyTotalMinutes % (24 * 60) };
+  } else {
+    turkeyTime = getTurkeyTime();
+  }
+  const now = turkeyTime.totalMinutes;
+  const DAY = 24 * 60;
+
+  const inWindow = (start: number) => {
+    const s = ((start % DAY) + DAY) % DAY;
+    const e = (s + 15) % DAY;
+    return e > s ? now >= s && now < e : now >= s || now < e;
+  };
+
+  if (inWindow(mealMinutes - 30)) return "T-30";
+  if (inWindow(mealMinutes)) return "T-0";
+  return null;
+}
+
+/**
+ * @deprecated Use getActiveReminderKind. Kept for backwards compatibility with
+ * the client-side check endpoint which still treats reminders as boolean.
  */
 export function shouldSendReminder(
   mealTime: string,
   currentTime?: Date
 ): boolean {
-  const mealMinutes = parseTimeToMinutes(mealTime);
-  if (mealMinutes < 0) {
-    return false;
-  }
-
-  // Get Turkey time (GMT+3)
-  let turkeyTime: { hours: number; minutes: number; totalMinutes: number };
-  if (currentTime) {
-    // If custom time provided, convert it to Turkey time
-    const utcHours = currentTime.getUTCHours();
-    const utcMinutes = currentTime.getUTCMinutes();
-    const turkeyTotalMinutes = utcHours * 60 + utcMinutes + 3 * 60;
-    const turkeyHours = Math.floor(turkeyTotalMinutes / 60) % 24;
-    const turkeyMinutes = turkeyTotalMinutes % 60;
-    turkeyTime = {
-      hours: turkeyHours,
-      minutes: turkeyMinutes,
-      totalMinutes: turkeyTotalMinutes % (24 * 60),
-    };
-  } else {
-    turkeyTime = getTurkeyTime();
-  }
-  
-  // Reminder should be sent 30 minutes before meal time
-  let reminderMinutes = mealMinutes - 30;
-  
-  // Handle day wrap-around (e.g., meal at 00:30, reminder at 23:60 = 00:00 previous day)
-  if (reminderMinutes < 0) {
-    reminderMinutes = reminderMinutes + 24 * 60;
-  }
-
-  const currentTotalMinutes = turkeyTime.totalMinutes;
-
-  // Check if we're in the 15-minute window starting at reminder time
-  const windowStart = reminderMinutes;
-  const windowEnd = reminderMinutes + 15;
-
-  // Handle day wrap-around for window
-  if (windowEnd > 24 * 60) {
-    // Window spans midnight (e.g., 23:45 - 00:00)
-    const windowEndAdjusted = windowEnd - 24 * 60;
-    return (
-      currentTotalMinutes >= windowStart || currentTotalMinutes < windowEndAdjusted
-    );
-  }
-
-  // Normal case: window is within the same day
-  return currentTotalMinutes >= windowStart && currentTotalMinutes < windowEnd;
+  return getActiveReminderKind(mealTime, currentTime) !== null;
 }
 
 /**
@@ -428,8 +416,8 @@ export async function getMealsForReminderWindow(): Promise<MealReminder[]> {
         continue;
       }
 
-      // Check if reminder should be sent (uses Turkey time GMT+3 internally)
-      if (shouldSendReminder(ogun.time)) {
+      const kind = getActiveReminderKind(ogun.time);
+      if (kind) {
         const menuItems = ogun.items.map((item) => ({
           miktar: item.miktar,
           birim: item.birim?.name || null,
@@ -447,6 +435,7 @@ export async function getMealsForReminderWindow(): Promise<MealReminder[]> {
           ogunName: ogun.name,
           ogunTime: ogun.time,
           ogunDetail: ogun.detail,
+          kind,
           menuItems,
         });
       }
@@ -521,8 +510,13 @@ export async function sendMealReminders(): Promise<{
     for (const reminder of userData.reminders) {
       // Use short message for notification body
       const shortMessage = formatShortMealNotificationMessage(reminder);
-      const title = `${reminder.ogunName} zamanı yaklaşıyor!`;
-      const notificationTag = `meal-reminder-${reminder.ogunId}`;
+      const title =
+        reminder.kind === "T-0"
+          ? `${reminder.ogunName} vakti!`
+          : `${reminder.ogunName}: 30 dk kaldı`;
+      const logType =
+        reminder.kind === "T-0" ? "meal_time" : "meal_reminder";
+      const notificationTag = `${logType}-${reminder.ogunId}`;
 
       for (const subscription of userData.pushSubscriptions) {
         const logEntry = await prisma.notificationLog.create({
@@ -530,7 +524,7 @@ export async function sendMealReminders(): Promise<{
             userId,
             clientId: reminder.clientId,
             ogunId: reminder.ogunId,
-            type: "meal_reminder",
+            type: logType,
             title,
             body: shortMessage,
             status: "success",
@@ -552,7 +546,7 @@ export async function sendMealReminders(): Promise<{
               tag: notificationTag,
               requireInteraction: false,
               data: {
-                type: "meal_reminder",
+                type: logType,
                 dietId: reminder.dietId,
                 ogunId: reminder.ogunId,
                 logId: logEntry.id,
@@ -561,7 +555,7 @@ export async function sendMealReminders(): Promise<{
           );
           sent++;
           console.log(
-            `✅ Sent meal reminder to user ${userId} for meal ${reminder.ogunName}`
+            `✅ Sent ${logType} (${reminder.kind}) to user ${userId} for meal ${reminder.ogunName}`
           );
         } catch (error: any) {
           console.error(
@@ -690,6 +684,7 @@ export async function sendMealReminderForOgun(
     ogunName: ogun.name,
     ogunTime: ogun.time,
     ogunDetail: ogun.detail,
+    kind: "T-30",
     menuItems: ogun.items.map((item) => ({
       miktar: item.miktar,
       birim: item.birim?.name ?? null,
