@@ -61,10 +61,18 @@ class ApiClient {
   private async getCachedSession(): Promise<Session | null> {
     const now = Date.now();
 
-    // Return cached session if still valid
+    const cachedSession = this.sessionCache?.session;
+    const cachedTokenExpiresAt = cachedSession?.expires_at
+      ? cachedSession.expires_at * 1000
+      : null;
+    const isCachedTokenFresh =
+      !cachedTokenExpiresAt || cachedTokenExpiresAt > now + 10000;
+
+    // Return cached session if still valid and not close to expiry
     if (
       this.sessionCache &&
-      now - this.sessionCache.timestamp < this.SESSION_CACHE_TTL
+      now - this.sessionCache.timestamp < this.SESSION_CACHE_TTL &&
+      isCachedTokenFresh
     ) {
       const cacheAge = Math.round((now - this.sessionCache.timestamp) / 1000);
       console.log(`[API Client] Session cache HIT (age: ${cacheAge}s)`);
@@ -72,7 +80,11 @@ class ApiClient {
     }
 
     // Fetch new session
-    console.log(`[API Client] Session cache MISS - fetching new session`);
+    console.log(
+      `[API Client] Session cache MISS - fetching new session${
+        this.sessionCache && !isCachedTokenFresh ? " (cached token expiring)" : ""
+      }`
+    );
     const supabase = createClient();
     const {
       data: { session },

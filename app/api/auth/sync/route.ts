@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import {
+  getSupabaseTokenFromRequest,
+  verifySupabaseAccessToken,
+} from "@/lib/api-auth";
 
 function generateReferenceCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -195,35 +199,19 @@ export async function GET(request: NextRequest) {
       const authHeader = request.headers.get("authorization");
       console.log("🔵 [Auth Sync GET] Authorization header:", authHeader ? "present" : "missing");
       
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.substring(7);
+      const token = getSupabaseTokenFromRequest(request);
+      if (token) {
         console.log("🔵 [Auth Sync GET] Token extracted, length:", token.length);
         
         try {
-          // Verify token with Supabase
-          const { createClient } = await import("@supabase/supabase-js");
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-          );
-          
-          console.log("🔵 [Auth Sync GET] Calling supabase.auth.getUser...");
+          console.log("🔵 [Auth Sync GET] Verifying token locally...");
           const startTime = Date.now();
-          const { data: { user }, error } = await supabase.auth.getUser(token);
+          const user = verifySupabaseAccessToken(token);
           const duration = Date.now() - startTime;
-          console.log(`🔵 [Auth Sync GET] supabase.auth.getUser completed in ${duration}ms`);
-          
-          if (error) {
-            console.error("❌ [Auth Sync GET] Supabase auth error:", error.message);
-            const response = NextResponse.json(
-              { error: "Unauthorized", details: error.message },
-              { status: 401 }
-            );
-            return addCorsHeaders(response);
-          }
+          console.log(`🔵 [Auth Sync GET] Local JWT verification completed in ${duration}ms`);
           
           if (!user) {
-            console.error("❌ [Auth Sync GET] No user returned from Supabase");
+            console.error("❌ [Auth Sync GET] No user returned from local JWT verification");
             const response = NextResponse.json(
               { error: "Unauthorized" },
               { status: 401 }
@@ -234,7 +222,7 @@ export async function GET(request: NextRequest) {
           supabaseId = user.id;
           console.log("✅ [Auth Sync GET] Extracted supabaseId from token:", supabaseId);
         } catch (supabaseError: any) {
-          console.error("❌ [Auth Sync GET] Error calling Supabase:", supabaseError);
+          console.error("❌ [Auth Sync GET] Error verifying token:", supabaseError);
           const response = NextResponse.json(
             { error: "Failed to verify token", details: supabaseError.message },
             { status: 500 }

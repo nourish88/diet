@@ -2,32 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
 import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import {
+  getSupabaseTokenFromRequest,
+  verifySupabaseAccessToken,
+} from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 async function getSupabaseIdFromRequest(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
+  const token = getSupabaseTokenFromRequest(request);
 
   if (!token) {
     return null;
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: supabaseAnonKey,
-    },
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const user = await response.json();
+  const user = verifySupabaseAccessToken(token);
   return user?.id || null;
 }
 

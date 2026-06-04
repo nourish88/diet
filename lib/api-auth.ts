@@ -12,6 +12,11 @@ interface SupabaseJwtPayload {
   [key: string]: unknown;
 }
 
+export interface VerifiedSupabaseUser {
+  id: string;
+  email: string;
+}
+
 export interface AuthenticatedUser {
   id: number;
   supabaseId: string;
@@ -24,6 +29,124 @@ export interface AuthResult {
   user: AuthenticatedUser | null;
   apiKey: AuthenticatedApiKey | null;
   authType: "supabase" | "api-key" | null;
+}
+
+export function getSupabaseTokenFromRequest(
+  request: NextRequest,
+  options: { logAuthHeader?: boolean; logToken?: boolean } = {}
+): string | null {
+  const { logAuthHeader = false, logToken = false } = options;
+  const authHeader = request.headers.get("authorization");
+
+  if (logAuthHeader) {
+    console.log(
+      "🔑 Auth header:",
+      authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : "null"
+    );
+  }
+
+  let token = authHeader?.replace("Bearer ", "");
+
+  // If no Authorization header, try to find Supabase auth token from cookies
+  if (!token) {
+    const allCookies = request.cookies.getAll();
+    
+    // Try multiple cookie name patterns that Supabase SSR might use
+    const authCookie = allCookies.find((cookie) => {
+      const name = cookie.name.toLowerCase();
+      return (
+        name.startsWith("sb-") &&
+        (name.endsWith("-auth-token") ||
+         name.includes("auth-token") ||
+         name.includes("access-token"))
+      );
+    });
+
+    if (authCookie?.value) {
+      try {
+        // Try to parse as JSON first (Supabase SSR stores session as JSON)
+        const sessionData = JSON.parse(decodeURIComponent(authCookie.value));
+        token = sessionData.access_token || sessionData.token || sessionData;
+      } catch (parseError) {
+        // If not JSON, check if it's a base64 encoded token
+        const cookieValue = decodeURIComponent(authCookie.value);
+        if (cookieValue.startsWith("base64-")) {
+          try {
+            const decoded = Buffer.from(
+              cookieValue.replace("base64-", ""),
+              "base64"
+            ).toString("utf-8");
+            const parsed = JSON.parse(decoded);
+            token = parsed.access_token || parsed.token || decoded;
+          } catch {
+            // If all else fails, use the value directly
+            token = cookieValue.replace("base64-", "");
+          }
+        } else {
+          // Use the value directly if it's not JSON or base64
+          token = cookieValue;
+        }
+      }
+    }
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  if (logToken) {
+    console.log("✅ Token found:", token.substring(0, 20) + "...");
+  }
+
+  return token;
+}
+
+export function verifySupabaseAccessToken(
+  token: string
+): VerifiedSupabaseUser | null {
+  const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
+
+  if (!supabaseJwtSecret) {
+    console.log(
+      "❌ Supabase token verification failed:",
+      500,
+      "Missing SUPABASE_JWT_SECRET"
+    );
+    return null;
+  }
+
+  let verifiedToken: string | SupabaseJwtPayload;
+  try {
+    verifiedToken = jwt.verify(token, supabaseJwtSecret);
+  } catch (verifyError) {
+    console.log(
+      "❌ Supabase token verification failed:",
+      403,
+      verifyError instanceof Error ? verifyError.message : "Invalid token"
+    );
+    return null;
+  }
+
+  const user =
+    typeof verifiedToken === "string"
+      ? null
+      : {
+          id: verifiedToken.sub,
+          email:
+            typeof verifiedToken.email === "string"
+              ? verifiedToken.email
+              : "",
+        };
+
+  if (!user || !user.id) {
+    console.log("❌ No user in Supabase response");
+    return null;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+  };
 }
 
 export async function authenticateRequest(
@@ -76,99 +199,18 @@ export async function authenticateSupabase(
 ): Promise<AuthenticatedUser | null> {
   try {
     // Get token from Authorization header or cookies
-    const authHeader = request.headers.get("authorization");
-    console.log(
-      "🔑 Auth header:",
-      authHeader ? `Bearer ${authHeader.substring(7, 27)}...` : "null"
-    );
-    let token = authHeader?.replace("Bearer ", "");
-
-    // If no Authorization header, try to find Supabase auth token from cookies
-    if (!token) {
-      const allCookies = request.cookies.getAll();
-      
-      // Try multiple cookie name patterns that Supabase SSR might use
-      const authCookie = allCookies.find((cookie) => {
-        const name = cookie.name.toLowerCase();
-        return (
-          name.startsWith("sb-") &&
-          (name.endsWith("-auth-token") ||
-           name.includes("auth-token") ||
-           name.includes("access-token"))
-        );
-      });
-
-      if (authCookie?.value) {
-        try {
-          // Try to parse as JSON first (Supabase SSR stores session as JSON)
-          const sessionData = JSON.parse(decodeURIComponent(authCookie.value));
-          token = sessionData.access_token || sessionData.token || sessionData;
-        } catch (parseError) {
-          // If not JSON, check if it's a base64 encoded token
-          const cookieValue = decodeURIComponent(authCookie.value);
-          if (cookieValue.startsWith("base64-")) {
-            try {
-              const decoded = Buffer.from(
-                cookieValue.replace("base64-", ""),
-                "base64"
-              ).toString("utf-8");
-              const parsed = JSON.parse(decoded);
-              token = parsed.access_token || parsed.token || decoded;
-            } catch {
-              // If all else fails, use the value directly
-              token = cookieValue.replace("base64-", "");
-            }
-          } else {
-            // Use the value directly if it's not JSON or base64
-            token = cookieValue;
-          }
-        }
-      }
-    }
+    const token = getSupabaseTokenFromRequest(request, {
+      logAuthHeader: true,
+      logToken: true,
+    });
 
     if (!token) {
       console.log("❌ No token found in headers or cookies");
       return null;
     }
 
-    console.log("✅ Token found:", token.substring(0, 20) + "...");
-
-    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
-
-    if (!supabaseJwtSecret) {
-      console.log(
-        "❌ Supabase token verification failed:",
-        500,
-        "Missing SUPABASE_JWT_SECRET"
-      );
-      return null;
-    }
-
-    let verifiedToken: string | SupabaseJwtPayload;
-    try {
-      verifiedToken = jwt.verify(token, supabaseJwtSecret);
-    } catch (verifyError) {
-      console.log(
-        "❌ Supabase token verification failed:",
-        403,
-        verifyError instanceof Error ? verifyError.message : "Invalid token"
-      );
-      return null;
-    }
-
-    const user =
-      typeof verifiedToken === "string"
-        ? null
-        : {
-            id: verifiedToken.sub,
-            email:
-              typeof verifiedToken.email === "string"
-                ? verifiedToken.email
-                : "",
-          };
-
-    if (!user || !user.id) {
-      console.log("❌ No user in Supabase response");
+    const user = verifySupabaseAccessToken(token);
+    if (!user) {
       return null;
     }
 
@@ -398,4 +440,3 @@ export async function requireOwnClientDiet(
     return false;
   }
 }
-

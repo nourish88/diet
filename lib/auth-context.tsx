@@ -251,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         event,
         session?.user?.email || "no user"
       );
+      apiClient.clearSessionCache();
 
       // Mark as handled when event fires (onAuthStateChange fires immediately)
       if (!handledRef.current) {
