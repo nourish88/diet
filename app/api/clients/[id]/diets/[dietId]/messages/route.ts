@@ -377,6 +377,8 @@ export const POST = route<undefined, Params>({
           userId: auth.user!.id,
           dietId,
           ogunId: ogunId || null,
+          isDelivered: true,
+          deliveredAt: new Date(),
         },
         include: {
           user: {

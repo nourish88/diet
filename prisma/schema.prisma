@@ -369,6 +369,10 @@ model DietComment {
   menuItem   MenuItem?   @relation(fields: [menuItemId], references: [id])
   photos     MealPhoto[] // Photos attached to this message/comment
 
+  // Message delivery tracking
+  isDelivered Boolean   @default(false)
+  deliveredAt DateTime?
+
   // Message read tracking
   isRead Boolean   @default(false)
   readAt DateTime?

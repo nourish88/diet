@@ -14,11 +14,14 @@ import {
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
+import { MessageStatusTicks } from "@/components/messages/MessageStatusTicks";
 
 interface Message {
   id: number;
   content: string;
   createdAt: string;
+  isDelivered: boolean;
+  deliveredAt: string | null;
   isRead: boolean;
   readAt: string | null;
   user: {
@@ -197,6 +200,13 @@ export default function ClientMessagesPage() {
               msg.id === updated.id
                 ? {
                     ...msg,
+                    isDelivered:
+                      typeof updated.isDelivered === "boolean"
+                        ? updated.isDelivered
+                        : msg.isDelivered,
+                    deliveredAt: updated.deliveredAt
+                      ? new Date(updated.deliveredAt).toISOString()
+                      : msg.deliveredAt,
                     isRead:
                       typeof updated.isRead === "boolean"
                         ? updated.isRead
@@ -632,13 +642,19 @@ export default function ClientMessagesPage() {
                             </div>
                           )}
 
-                          <p
-                            className={`text-xs mt-2 ${
-                              isMe ? "text-blue-100" : "text-muted-foreground"
+                          <div
+                            className={`flex items-center gap-1 mt-2 text-xs ${
+                              isMe ? "text-blue-100 justify-end" : "text-muted-foreground"
                             }`}
                           >
-                            {formatTime(message.createdAt)}
-                          </p>
+                            <span>{formatTime(message.createdAt)}</span>
+                            {isMe && (
+                              <MessageStatusTicks
+                                isDelivered={message.isDelivered}
+                                isRead={message.isRead}
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
