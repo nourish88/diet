@@ -103,6 +103,19 @@ export default function ClientMessagesPage() {
     null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const autoResizeTextarea = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, 360);
+    el.style.height = `${next}px`;
+  };
+
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [messageText]);
 
   useEffect(() => {
     if (!dietId) return;
@@ -745,11 +758,12 @@ export default function ClientMessagesPage() {
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Mesajınızı yazın..."
                 maxLength={4000}
-                className="flex-1 border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[110px] max-h-[260px]"
+                className="flex-1 border border-border rounded-lg p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y min-h-[120px] max-h-[360px] overflow-y-auto"
                 rows={4}
               />
 

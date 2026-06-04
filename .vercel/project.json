@@ -1,9 +1,0 @@
-{
-  "projectId": "prj_yourProjectIdHere",
-  "orgId": "your-org-id",
-  "settings": {
-    "framework": "nextjs",
-    "devCommand": "npm run dev",
-    "buildCommand": "npm run build"
-  }
-}

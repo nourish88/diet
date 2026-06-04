@@ -67,6 +67,21 @@ export default function ClientMessagesPage() {
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const latestMessageIdRef = useRef<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-grow the textarea up to ~12 lines as the user types or pastes a long
+  // block. Without this the box stayed locked at the rows={} value.
+  const autoResizeTextarea = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, 360);
+    el.style.height = `${next}px`;
+  };
+
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [messageText]);
 
   useEffect(() => {
     if (clientId && dietId) {
@@ -662,13 +677,14 @@ export default function ClientMessagesPage() {
       <div className="bg-card border-t border-border px-6 py-4 shadow-lg">
         <div className="flex gap-3 items-end">
           <Textarea
+            ref={textareaRef}
             placeholder="Mesajınızı yazın..."
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={handleKeyPress}
             rows={4}
             maxLength={4000}
-            className="flex-1 min-h-[110px] max-h-[260px] resize-y"
+            className="flex-1 min-h-[120px] max-h-[360px] resize-y overflow-y-auto leading-relaxed"
           />
           <Button
             onClick={sendMessage}
