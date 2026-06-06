@@ -253,19 +253,22 @@ export default function ClientsPageClient() {
             <table className="w-full">
               <thead className="bg-muted/30 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İsim Soyisim
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Cinsiyet
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Telefon
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Doğum Tarihi
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Kayıt Tarihi
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     İşlemler
                   </th>
                 </tr>
@@ -273,25 +276,35 @@ export default function ClientsPageClient() {
               <tbody className="bg-card divide-y divide-border">
                 {clients.map((client) => (
                   <tr key={client.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-foreground">
                         {client.name} {client.surname}
                       </div>
+                      <div className="md:hidden text-xs text-muted-foreground mt-0.5">
+                        {client.gender === 1 ? "Erkek" : "Kadın"}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.gender === 1 ? "Erkek" : "Kadın"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.phoneNumber}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {client.birthdate
                         ? format(new Date(client.birthdate), "dd MMMM yyyy", {
                             locale: tr,
                           })
                         : "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {client.createdAt
+                        ? format(new Date(client.createdAt), "dd MMM yyyy", {
+                            locale: tr,
+                          })
+                        : "-"}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         <Link
                           href={`/clients/${client.id}`}

@@ -6,6 +6,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { format } from "date-fns";
+import { tr as trLocale } from "date-fns/locale/tr";
+import Link from "next/link";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -125,11 +135,58 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+type DetailType = "diets" | "clients" | "kvkk";
+
+interface DetailItem {
+  id: number;
+  name?: string;
+  clientId?: number | null;
+  clientName?: string;
+  phoneNumber?: string | null;
+  createdAt?: string | Date | null;
+  tarih?: string | Date | null;
+  consentAt?: string | Date | null;
+  version?: string | null;
+}
+
+const DETAIL_META: Record<DetailType, { title: string; description: string; accent: string }> = {
+  diets: {
+    title: "Yazılan Diyetler",
+    description: "Seçili dönemde oluşturulan diyetlerin listesi",
+    accent: "from-indigo-500 to-indigo-600",
+  },
+  clients: {
+    title: "Yeni Danışan Kazanımı",
+    description: "Seçili dönemde sisteme kayıt olan danışanlar",
+    accent: "from-emerald-500 to-emerald-600",
+  },
+  kvkk: {
+    title: "KVKK Onayları",
+    description: "Seçili dönemde KVKK onayı veren danışanlar",
+    accent: "from-blue-500 to-blue-600",
+  },
+};
+
 export default function IstatistiklerPage() {
   const [isGeneratingPresets, setIsGeneratingPresets] = useState(false);
   const [timeRange, setTimeRange] = useState("current_month");
   const [chartView, setChartView] = useState("monthly");
+  const [detailType, setDetailType] = useState<DetailType | null>(null);
   const { toast } = useToast();
+
+  const {
+    data: detailData,
+    isLoading: detailLoading,
+    isError: detailError,
+  } = useQuery<{ type: DetailType; items: DetailItem[] }>({
+    queryKey: ["analytics", "stats-details", detailType, timeRange],
+    queryFn: () =>
+      apiClient.get<{ type: DetailType; items: DetailItem[] }>(
+        `/analytics/stats-details?type=${detailType}&timeRange=${timeRange}`,
+      ),
+    enabled: !!detailType,
+    staleTime: 60 * 1000,
+  });
 
   const {
     data: analyticsData,
@@ -255,7 +312,13 @@ export default function IstatistiklerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group">
+        <Card
+          onClick={() => setDetailType("diets")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setDetailType("diets"); }}
+          className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-500 font-medium">Yazılan Diyet</CardDescription>
@@ -273,7 +336,13 @@ export default function IstatistiklerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group">
+        <Card
+          onClick={() => setDetailType("kvkk")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setDetailType("kvkk"); }}
+          className="border-none shadow-lg bg-card dark:bg-slate-900 relative overflow-hidden group cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-500 font-medium">KVKK Onayları</CardDescription>
@@ -339,13 +408,19 @@ export default function IstatistiklerPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Monthly Diets Chart */}
-            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+            <Card
+              onClick={() => setDetailType("diets")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setDetailType("diets"); }}
+              className="shadow-lg border-slate-200/60 dark:border-slate-800/60 cursor-pointer hover:shadow-xl transition-all"
+            >
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center text-slate-800 dark:text-slate-100">
                   <FileText className="h-5 w-5 mr-2 text-indigo-500" />
                   Yazılan Diyetler
                 </CardTitle>
-                <CardDescription>Performans grafiği</CardDescription>
+                <CardDescription>Listeyi görmek için tıkla</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
@@ -375,13 +450,19 @@ export default function IstatistiklerPage() {
             </Card>
 
             {/* Monthly New Clients Chart */}
-            <Card className="shadow-lg border-slate-200/60 dark:border-slate-800/60">
+            <Card
+              onClick={() => setDetailType("clients")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setDetailType("clients"); }}
+              className="shadow-lg border-slate-200/60 dark:border-slate-800/60 cursor-pointer hover:shadow-xl transition-all"
+            >
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center text-slate-800 dark:text-slate-100">
                   <Users className="h-5 w-5 mr-2 text-emerald-500" />
                   Yeni Danışan Kazanımı
                 </CardTitle>
-                <CardDescription>Danışan kayıtları grafiği</CardDescription>
+                <CardDescription>Listeyi görmek için tıkla</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
@@ -680,6 +761,128 @@ export default function IstatistiklerPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!detailType} onOpenChange={(open) => !open && setDetailType(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
+          {detailType && (
+            <>
+              <div className={`bg-gradient-to-r ${DETAIL_META[detailType].accent} px-6 py-5 text-white rounded-t-lg`}>
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+                    {detailType === "diets" && <FileText className="h-5 w-5" />}
+                    {detailType === "clients" && <Users className="h-5 w-5" />}
+                    {detailType === "kvkk" && <CheckCircle2 className="h-5 w-5" />}
+                    {DETAIL_META[detailType].title}
+                  </DialogTitle>
+                  <DialogDescription className="text-white/85">
+                    {DETAIL_META[detailType].description}
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4">
+                {detailLoading ? (
+                  <div className="flex justify-center items-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+                  </div>
+                ) : detailError ? (
+                  <div className="text-center py-12 text-destructive">
+                    Veriler yüklenirken hata oluştu.
+                  </div>
+                ) : !detailData?.items?.length ? (
+                  <div className="text-center py-16 text-slate-500">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText className="h-8 w-8 text-slate-300" />
+                    </div>
+                    <p className="font-medium">Bu dönemde kayıt bulunmuyor</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500 mb-3">
+                      Toplam <strong className="text-slate-700 dark:text-slate-300">{detailData.items.length}</strong> kayıt
+                    </p>
+                    {detailType === "diets" && detailData.items.map((it, idx) => (
+                      <Link
+                        key={it.id}
+                        href={it.clientId ? `/clients/${it.clientId}` : "#"}
+                        onClick={() => setDetailType(null)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-indigo-50 dark:bg-slate-800/40 dark:hover:bg-indigo-950/30 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-900 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xs font-bold text-slate-400 w-6">{idx + 1}.</span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                              {it.clientName}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {it.tarih
+                                ? `Diyet tarihi: ${format(new Date(it.tarih), "dd MMM yyyy", { locale: trLocale })}`
+                                : "Diyet tarihi belirtilmemiş"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {it.createdAt && format(new Date(it.createdAt), "dd MMM HH:mm", { locale: trLocale })}
+                        </span>
+                      </Link>
+                    ))}
+                    {detailType === "clients" && detailData.items.map((it, idx) => (
+                      <Link
+                        key={it.id}
+                        href={`/clients/${it.id}`}
+                        onClick={() => setDetailType(null)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 dark:bg-slate-800/40 dark:hover:bg-emerald-950/30 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-900 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+                            {it.name?.[0]?.toUpperCase() ?? "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                              {it.name}
+                            </p>
+                            {it.phoneNumber && (
+                              <p className="text-xs text-slate-500 mt-0.5">{it.phoneNumber}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {it.createdAt && format(new Date(it.createdAt), "dd MMM yyyy", { locale: trLocale })}
+                        </span>
+                      </Link>
+                    ))}
+                    {detailType === "kvkk" && detailData.items.map((it, idx) => (
+                      <Link
+                        key={it.id}
+                        href={`/clients/${it.id}`}
+                        onClick={() => setDetailType(null)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 hover:bg-blue-50 dark:bg-slate-800/40 dark:hover:bg-blue-950/30 border border-transparent hover:border-blue-200 dark:hover:border-blue-900 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                              {it.name}
+                            </p>
+                            {it.version && (
+                              <p className="text-xs text-slate-500 mt-0.5">Sürüm: {it.version}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {it.consentAt && format(new Date(it.consentAt), "dd MMM yyyy", { locale: trLocale })}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </div>
