@@ -146,7 +146,7 @@ export default function Home() {
   // Load data when auth is ready and user is dietitian
   useEffect(() => {
     if (!authLoading && user && databaseUser) {
-      if (databaseUser.role === "dietitian") {
+      if (databaseUser.role === "dietitian" || databaseUser.role === "assistant") {
         loadStats();
         loadRecentDiets();
         loadUnreadMessages();

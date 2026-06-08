@@ -66,7 +66,10 @@ export default function LoginPage() {
         if (databaseUser.isApproved) {
           window.location.href = "/client";
         }
-      } else if (databaseUser.role === "dietitian") {
+      } else if (
+        databaseUser.role === "dietitian" ||
+        databaseUser.role === "assistant"
+      ) {
         window.location.href = "/";
       }
     }

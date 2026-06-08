@@ -26,7 +26,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!loading && user && databaseUser) {
-      if (databaseUser.role === "dietitian") {
+      if (databaseUser.role === "dietitian" || databaseUser.role === "assistant") {
         window.location.href = "/";
       } else if (databaseUser.role === "client") {
         window.location.href = "/client";

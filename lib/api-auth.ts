@@ -17,12 +17,25 @@ export interface VerifiedSupabaseUser {
   email: string;
 }
 
+export interface AssistantPermissions {
+  notifications?: {
+    birthdayReminders?: boolean;
+  };
+}
+
 export interface AuthenticatedUser {
   id: number;
   supabaseId: string;
   email: string;
   role: "dietitian" | "client";
   isApproved: boolean;
+  // When the underlying user is an assistant, `id`/`role`/`email` reflect the
+  // parent dietitian (data-scoping). These extras carry the real caller info.
+  isAssistant?: boolean;
+  callerId?: number;
+  callerSupabaseId?: string;
+  callerEmail?: string;
+  assistantPermissions?: AssistantPermissions;
 }
 
 export interface AuthResult {
@@ -237,6 +250,40 @@ export async function authenticateSupabase(
       databaseUser.email,
       databaseUser.role
     );
+
+    // Assistant identity swap: assistants act on behalf of their parent
+    // dietitian. Returning the parent's id/role/email lets every existing
+    // dietitian-scoped query continue to work unchanged. Real caller info is
+    // preserved in callerId/callerEmail/isAssistant for routes that need it
+    // (push subscriptions, audit logs, /me, etc.).
+    if (databaseUser.role === "assistant" && databaseUser.assistantOfId) {
+      const parent = await prisma.user.findUnique({
+        where: { id: databaseUser.assistantOfId },
+      });
+
+      if (!parent || parent.role !== "dietitian" || !parent.isApproved) {
+        console.log(
+          "❌ Assistant parent dietitian missing or unapproved:",
+          databaseUser.id
+        );
+        return null;
+      }
+
+      return {
+        id: parent.id,
+        supabaseId: parent.supabaseId,
+        email: parent.email,
+        role: "dietitian",
+        isApproved: true,
+        isAssistant: true,
+        callerId: databaseUser.id,
+        callerSupabaseId: databaseUser.supabaseId,
+        callerEmail: databaseUser.email,
+        assistantPermissions:
+          (databaseUser.assistantPermissions as AssistantPermissions | null) ??
+          undefined,
+      };
+    }
 
     return {
       id: databaseUser.id,

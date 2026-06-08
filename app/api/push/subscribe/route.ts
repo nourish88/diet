@@ -24,18 +24,21 @@ export const POST = route({
   schema: SubscribeBody,
   scope: "push.subscribe",
   handler: async ({ body, auth }) => {
-    if (body.userId !== auth.user!.id) {
+    // Assistants must own their subscription under their own user id, not the
+    // swapped parent dietitian id. callerId falls back to id for regular users.
+    const realUserId = auth.user!.callerId ?? auth.user!.id;
+    if (body.userId !== realUserId) {
       throw new HttpError("forbidden", "Forbidden");
     }
     const { endpoint, keys } = body.subscription;
     const subscription = await prisma.pushSubscription.upsert({
       where: { endpoint },
-      update: { p256dh: keys.p256dh, auth: keys.auth, userId: body.userId },
+      update: { p256dh: keys.p256dh, auth: keys.auth, userId: realUserId },
       create: {
         endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
-        userId: body.userId,
+        userId: realUserId,
       },
     });
 
@@ -50,8 +53,9 @@ export const DELETE = route({
   schema: UnsubscribeBody,
   scope: "push.unsubscribe",
   handler: async ({ body, auth }) => {
+    const realUserId = auth.user!.callerId ?? auth.user!.id;
     await prisma.pushSubscription.deleteMany({
-      where: { endpoint: body.endpoint, userId: auth.user!.id },
+      where: { endpoint: body.endpoint, userId: realUserId },
     });
     return { success: true };
   },

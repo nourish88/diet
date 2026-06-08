@@ -16,7 +16,7 @@ datasource db {
 }
 
 model Client {
-  id              Int             @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   name            String
   surname         String
   birthdate       DateTime?
@@ -24,14 +24,14 @@ model Client {
   notes           String?
   gender          Int?
   illness         String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   diets           Diet[]
   bannedFoods     BannedFood[]
-  user            User?           @relation(fields: [userId], references: [id])
-  userId          Int?            @unique
+  user            User?            @relation(fields: [userId], references: [id])
+  userId          Int?             @unique
   dietitianId     Int? // NEW: Assign to specific dietitian
-  dietitian       User?           @relation("ClientDietitian", fields: [dietitianId], references: [id])
+  dietitian       User?            @relation("ClientDietitian", fields: [dietitianId], references: [id])
   mealPhotos      MealPhoto[]
   progressEntries ProgressEntry[]
   exerciseLogs    ExerciseLog[]
@@ -42,11 +42,11 @@ model Client {
   tanitaUser     TanitaUser?
 
   // KVKK / portal açık rıza özeti (detay ClientConsentRecord)
-  kvkkPortalConsentAt       DateTime?
-  kvkkPortalConsentVersion  String?
-  consentRecords            ClientConsentRecord[]
-  congratulationLogs        CongratulationLog[]
-  notificationLogs          NotificationLog[]
+  kvkkPortalConsentAt      DateTime?
+  kvkkPortalConsentVersion String?
+  consentRecords           ClientConsentRecord[]
+  congratulationLogs       CongratulationLog[]
+  notificationLogs         NotificationLog[]
 }
 
 model ClientPhoneAuth {
@@ -96,19 +96,19 @@ model Diet {
 }
 
 model Ogun {
-  id         Int           @id @default(autoincrement())
-  name       String
-  time       String
-  detail     String?
-  order      Int           @default(0)
-  dietId     Int
-  diet       Diet          @relation(fields: [dietId], references: [id])
-  items      MenuItem[]
-  comments   DietComment[]
-  mealPhotos MealPhoto[]
+  id               Int               @id @default(autoincrement())
+  name             String
+  time             String
+  detail           String?
+  order            Int               @default(0)
+  dietId           Int
+  diet             Diet              @relation(fields: [dietId], references: [id])
+  items            MenuItem[]
+  comments         DietComment[]
+  mealPhotos       MealPhoto[]
   notificationLogs NotificationLog[]
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model MenuItem {
@@ -287,7 +287,8 @@ model User {
   id         Int      @id @default(autoincrement())
   supabaseId String   @unique
   email      String   @unique
-  role       String // "dietitian" or "client"
+  role       String // "dietitian" | "client" | "assistant"
+  name       String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -298,6 +299,12 @@ model User {
 
   // Push notification token
   pushToken String? // Expo Push Token
+
+  // Assistant relation: assistant users belong to a parent dietitian.
+  assistantOfId        Int?   @map("assistant_of_id")
+  assistantOf          User?  @relation("DietitianAssistants", fields: [assistantOfId], references: [id], onDelete: Cascade)
+  assistants           User[] @relation("DietitianAssistants")
+  assistantPermissions Json?  @map("assistant_permissions")
 
   client                 Client?
   comments               DietComment[]
@@ -329,7 +336,7 @@ model CongratulationLog {
   id                Int       @id @default(autoincrement())
   clientId          Int
   dietitianId       Int
-  date              DateTime  // The birthday date (day, stored as midnight UTC)
+  date              DateTime // The birthday date (day, stored as midnight UTC)
   congratulatedAt   DateTime? // Null = not yet congratulated
   notificationCount Int       @default(0) // How many push notifications sent
   lastNotifiedAt    DateTime? // When the last notification was sent
@@ -343,17 +350,17 @@ model CongratulationLog {
 }
 
 model ClientConsentRecord {
-  id              Int      @id @default(autoincrement())
-  clientId        Int
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  userId          Int
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  consentVersion  String
-  consentType     String
-  acceptedAt      DateTime @default(now())
-  channel         String
-  userAgent       String?
-  ipHash          String?
+  id             Int      @id @default(autoincrement())
+  clientId       Int
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentVersion String
+  consentType    String
+  acceptedAt     DateTime @default(now())
+  channel        String
+  userAgent      String?
+  ipHash         String?
 
   @@index([clientId, acceptedAt])
   @@index([clientId, consentVersion])
@@ -524,7 +531,7 @@ model ProgressEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   // Tanita ilişkisi (opsiyonel - aktarıldıysa)
@@ -628,21 +635,21 @@ model TanitaMeasurement {
 }
 
 model NotificationLog {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   userId       Int
   clientId     Int
   ogunId       Int?
-  type         String   // "meal_reminder", "manual_test" etc.
+  type         String // "meal_reminder", "manual_test" etc.
   title        String?
   body         String?
-  status       String   // "success", "failed"
+  status       String // "success", "failed"
   errorMessage String?
-  sentAt       DateTime @default(now())
+  sentAt       DateTime  @default(now())
   receivedAt   DateTime? // Set when the device's service worker pings back acknowledging delivery
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  ogun         Ogun?    @relation(fields: [ogunId], references: [id], onDelete: SetNull)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  ogun   Ogun?  @relation(fields: [ogunId], references: [id], onDelete: SetNull)
 
   @@index([userId, sentAt])
   @@index([clientId])

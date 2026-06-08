@@ -79,8 +79,11 @@ const Navbar = () => {
       return [];
     }
 
-    // If user is not a dietitian, show limited items
-    if (databaseUser.role !== "dietitian") {
+    // If user is not a dietitian (or assistant of one), show limited items
+    if (
+      databaseUser.role !== "dietitian" &&
+      databaseUser.role !== "assistant"
+    ) {
       return mainItems.filter((item) => ["/", "/diets"].includes(item.href));
     }
 
@@ -89,7 +92,7 @@ const Navbar = () => {
 
   // Management menu items (in dropdown for dietitians)
   const getManagementItems = () => {
-    return [
+    const items = [
       { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
@@ -102,6 +105,13 @@ const Navbar = () => {
         icon: FileText,
       },
     ];
+
+    // Only real dietitians can manage assistants; assistants themselves don't see it.
+    if (databaseUser?.role === "dietitian") {
+      items.push({ href: "/asistanlar", label: "Asistanlarım", icon: Users });
+    }
+
+    return items;
   };
 
   const navItems = getMainNavItems();

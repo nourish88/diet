@@ -233,25 +233,59 @@ export async function getDietitiansWithBirthdayClients(): Promise<
           p256dh: true,
         },
       },
+      assistants: {
+        where: {
+          role: "assistant",
+        },
+        select: {
+          id: true,
+          assistantPermissions: true,
+          pushSubscriptions: {
+            select: {
+              endpoint: true,
+              auth: true,
+              p256dh: true,
+            },
+          },
+        },
+      },
     },
   });
 
   const result: DietitianWithBirthdays[] = [];
 
   for (const dietitian of dietitians) {
-    if (dietitian.pushSubscriptions.length === 0) {
-      console.log(`⚠️ Dietitian userId=${dietitian.id} has no push subscriptions, skipping`);
-      continue;
-    }
-
     const clients = clientsByDietitian.get(dietitian.id) || [];
     if (clients.length === 0) continue;
+
+    // Prefer assistants who opted into birthday notifications and have push
+    // subscriptions registered. Falls back to the dietitian only when no
+    // eligible assistant exists, preserving the prior behavior.
+    const assistantSubs = dietitian.assistants
+      .filter((a) => {
+        const perms = (a.assistantPermissions ?? null) as
+          | { notifications?: { birthdayReminders?: boolean } }
+          | null;
+        return perms?.notifications?.birthdayReminders === true;
+      })
+      .flatMap((a) => a.pushSubscriptions);
+
+    const pushSource = assistantSubs.length > 0
+      ? assistantSubs
+      : dietitian.pushSubscriptions;
+
+    if (pushSource.length === 0) {
+      console.log(
+        `⚠️ Dietitian userId=${dietitian.id} has no push subscriptions (no assistants either), skipping`,
+      );
+      continue;
+    }
 
     result.push({
       dietitianId: dietitian.id,
       userId: dietitian.id,
       clients,
-      pushSubscriptions: dietitian.pushSubscriptions.map((sub) => ({
+      pushSubscriptions: pushSource.map((sub) => ({
         endpoint: sub.endpoint,
         auth: sub.auth,
         p256dh: sub.p256dh,

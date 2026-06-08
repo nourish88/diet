@@ -122,6 +122,19 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
+    // SECURITY: Assistant accounts are only minted by an authenticated dietitian
+    // through /api/assistants — never via direct sync.
+    if (role === "assistant") {
+      const response = NextResponse.json(
+        {
+          error: "Assistant accounts must be created by a dietitian",
+          code: "ASSISTANT_CREATION_FORBIDDEN",
+        },
+        { status: 403 }
+      );
+      return addCorsHeaders(response);
+    }
+
     // Generate reference code for clients
     let referenceCode: string | null = null;
     if (role === "client") {

@@ -24,9 +24,10 @@ interface DatabaseUser {
   id: number;
   supabaseId: string;
   email: string;
-  role: "dietitian" | "client";
+  role: "dietitian" | "client" | "assistant";
   isApproved: boolean;
   approvedAt: Date | null;
+  assistantOfId?: number | null;
 }
 
 interface AuthContextType {
