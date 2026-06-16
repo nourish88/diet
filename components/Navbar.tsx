@@ -19,6 +19,7 @@ import {
   Gift,
   QrCode,
   MessageCircle,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,11 @@ const Navbar = () => {
         href: "/management/diet-logs",
         label: "Log Yönetimi",
         icon: FileText,
+      },
+      {
+        href: "/management/kvkk",
+        label: "KVKK Kayıtları",
+        icon: Shield,
       },
     ];
 

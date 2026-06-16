@@ -30,7 +30,6 @@ import {
   Users,
   FileText,
   CheckCircle2,
-  CalendarDays,
   TrendingDown,
   Activity,
   Clock,
@@ -92,6 +91,8 @@ interface AnalyticsData {
   totalClients: number;
   totalDiets: number;
   periodDiets: number;
+  totalDietClients: number;
+  periodDietClients: number;
   pendingApprovals: number;
   newClientsPeriod: number;
   newClientsPrevPeriod: number;
@@ -290,7 +291,7 @@ export default function IstatistiklerPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-white overflow-hidden relative">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-card/10 rounded-full blur-xl"></div>
           <CardHeader className="pb-2">
@@ -322,8 +323,18 @@ export default function IstatistiklerPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <CardHeader className="pb-2">
             <CardDescription className="text-slate-500 font-medium">Yazılan Diyet</CardDescription>
-            <CardTitle className="text-4xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.periodDiets || 0}
+            <CardTitle className="text-3xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+              {isLoading ? (
+                <Loader2 className="h-8 w-8 animate-spin opacity-50" />
+              ) : (
+                <span>
+                  {analyticsData?.periodDietClients || 0}
+                  <span className="text-lg font-medium text-slate-400"> danışan</span>
+                  <span className="text-slate-300 mx-1">/</span>
+                  {analyticsData?.periodDiets || 0}
+                  <span className="text-lg font-medium text-slate-400"> diyet</span>
+                </span>
+              )}
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
                 <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -331,7 +342,9 @@ export default function IstatistiklerPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              Toplam: <strong className="text-slate-700 dark:text-slate-300">{analyticsData?.totalDiets || 0}</strong> diyet
+              Toplam: <strong className="text-slate-700 dark:text-slate-300">{analyticsData?.totalDietClients || 0}</strong> danışan
+              {" · "}
+              <strong className="text-slate-700 dark:text-slate-300">{analyticsData?.totalDiets || 0}</strong> diyet
             </p>
           </CardContent>
         </Card>
@@ -360,21 +373,6 @@ export default function IstatistiklerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-32 h-32 bg-card/10 rounded-full blur-2xl"></div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-orange-50 font-medium">Bekleyen Onaylar</CardDescription>
-            <CardTitle className="text-4xl font-bold flex items-center justify-between">
-              {isLoading ? <Loader2 className="h-8 w-8 animate-spin opacity-50" /> : analyticsData?.pendingApprovals || 0}
-              <CalendarDays className="h-8 w-8 text-orange-100" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-orange-100 mt-2">
-              Mobil uygulama giriş bekleyenler
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <Tabs defaultValue="overview" className="w-full space-y-8">

@@ -12,7 +12,6 @@ import {
   MessageCircle,
   Clock,
   ChevronRight,
-  TrendingUp,
   FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -234,8 +233,8 @@ export default function Home() {
 
         {/* Stats Grid */}
         {statsLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="bg-card rounded-xl shadow-md p-4 md:p-6 animate-pulse"
@@ -247,7 +246,7 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
             {/* Toplam Danışan */}
             <div className="bg-card rounded-xl shadow-md p-4 md:p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-center mb-3 md:mb-4">
@@ -297,22 +296,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Bekleyen */}
-            <div className="bg-card rounded-xl shadow-md p-4 md:p-6 border-l-4 border-purple-500">
-              <div className="flex items-center justify-center mb-3 md:mb-4">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-50 rounded-full flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-foreground mb-1">
-                  {dashboardStats?.pendingApprovals || 0}
-                </div>
-                <div className="text-xs md:text-sm text-muted-foreground font-medium">
-                  Bekleyen
-                </div>
-              </div>
-            </div>
           </div>
         )}
 

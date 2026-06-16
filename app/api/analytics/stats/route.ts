@@ -55,6 +55,8 @@ export const GET = route({
       newClientsPrevPeriodCount,
       pendingApprovals,
       kvkkConsentsPeriodCount,
+      totalDietClientsRows,
+      periodDietClientsRows,
     ] = await Promise.all([
       prisma.client.count({ where: { dietitianId } }),
       prisma.diet.count({ where: { dietitianId } }),
@@ -83,7 +85,20 @@ export const GET = route({
           kvkkPortalConsentAt: { gte: periodStart, lte: periodEnd },
         },
       }),
+      prisma.diet.findMany({
+        where: { dietitianId },
+        select: { clientId: true },
+        distinct: ["clientId"],
+      }),
+      prisma.diet.findMany({
+        where: { dietitianId, createdAt: { gte: periodStart, lte: periodEnd } },
+        select: { clientId: true },
+        distinct: ["clientId"],
+      }),
     ]);
+
+    const totalDietClients = totalDietClientsRows.length;
+    const periodDietClients = periodDietClientsRows.length;
 
     const topBesins = await prisma.$queryRaw<
       Array<{ id: number; name: string; groupName: string | null; usageCount: bigint }>
@@ -208,6 +223,8 @@ export const GET = route({
       totalDiets,
       thisMonthDiets: periodDietsCount,
       periodDiets: periodDietsCount,
+      totalDietClients,
+      periodDietClients,
       pendingApprovals,
       newClientsThisMonth: newClientsPeriodCount,
       newClientsPeriod: newClientsPeriodCount,
