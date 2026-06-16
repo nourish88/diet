@@ -1,4 +1,4 @@
-const SW_VERSION = "diet-pwa-v5-pushack";
+const SW_VERSION = "diet-pwa-v6-icons";
 const PUSH_CACHE = "diet-pwa-cache-v4";
 const RUNTIME_CACHE = "diet-runtime-v3";
 const BLOB_CACHE = "diet-blob-v1";
@@ -11,6 +11,10 @@ const APP_SHELL = [
   "/login",
   "/manifest.json",
   "/image.png",
+  "/icon-192x192.png",
+  "/icon-512x512.png",
+  "/icon-maskable-512.png",
+  "/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -238,6 +242,7 @@ function isCacheFirstPath(pathname) {
     pathname === "/image.png" ||
     pathname === "/icon-192x192.png" ||
     pathname === "/icon-512x512.png" ||
+    pathname === "/icon-maskable-512.png" ||
     pathname === "/apple-touch-icon.png"
   );
 }

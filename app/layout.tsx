@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/lib/auth-context";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
+import ServiceWorkerProvider from "@/components/providers/ServiceWorkerProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -13,13 +14,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Diyetisyen Ezgi Evgin Aktaş",
   description: "Profesyonel diyet ve beslenme danışmanlığı hizmetleri",
+  manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/image.png", sizes: "512x512", type: "image/png" },
-      { url: "/image.png", sizes: "192x192", type: "image/png" },
-      { url: "/image.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: [{ url: "/image.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -51,6 +53,7 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className={`${inter.className} bg-background text-foreground min-h-screen antialiased`}>
+        <ServiceWorkerProvider />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
