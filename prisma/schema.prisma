@@ -48,6 +48,10 @@ model Client {
   congratulationLogs       CongratulationLog[]
   notificationLogs         NotificationLog[]
 
+  // Aktif Danışanlar Modülü
+  isActive                 Boolean  @default(false)
+  isOnline                 Boolean  @default(false) // false = Yüzyüze, true = Online
+
   // Fatura Modülü
   billingInfo              ClientBillingInfo?
   invoices                 Invoice[]

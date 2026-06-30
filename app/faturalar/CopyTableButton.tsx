@@ -19,7 +19,7 @@ export default function CopyTableButton({ invoices }: { invoices: any[] }) {
       const quantity = inv.quantity;
       const vatRate = `% ${inv.vatRate}`;
       const withVat = inv.amountWithVat.toFixed(2);
-      const withoutVat = inv.amountWithoutVat.toFixed(2);
+      const withoutVat = inv.amountWithoutVat.toFixed(3);
       return [date, clientName, tcNo, city, district, address, taxNo, subject, quantity, vatRate, withVat, withoutVat].join("\t");
     });
     

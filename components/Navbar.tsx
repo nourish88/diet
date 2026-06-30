@@ -20,6 +20,7 @@ import {
   QrCode,
   MessageCircle,
   Shield,
+  UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ const Navbar = () => {
     const mainItems = [
       { href: "/", label: "Ana Sayfa", icon: Home },
       { href: "/clients", label: "Danışanlar", icon: Users },
+      { href: "/aktif-danisanlar", label: "Aktif Danışanlar", icon: UserCheck },
       { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
       { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
     ];

@@ -9,35 +9,44 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
   const invoices = await getInvoices({ clientName: resolvedSearchParams?.clientName });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Faturalar</h1>
-        <div className="flex gap-3">
+    <div className="p-4 md:p-6 w-full min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Faturalar</h1>
+          <p className="text-sm text-gray-500 mt-1">Tüm fatura kayıtlarınızı buradan görüntüleyebilir ve yönetebilirsiniz.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
           <CopyTableButton invoices={invoices} />
-          <Link href="/faturalar/yeni" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center">
+          <Link href="/faturalar/yeni" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-md font-medium transition-all flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
             Yeni Fatura Ekle
           </Link>
         </div>
       </div>
 
-      <form className="mb-6 flex gap-4">
-        <input 
-          type="text" 
-          name="clientName" 
-          placeholder="Danışan Adı Soyadı Ara..." 
-          defaultValue={resolvedSearchParams?.clientName || ""}
-          className="border rounded px-3 py-2 w-full max-w-sm"
-        />
-        <button type="submit" className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Ara</button>
+      <form className="mb-6 flex flex-wrap gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 items-center">
+        <div className="relative flex-1 min-w-[250px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+          <input 
+            type="text" 
+            name="clientName" 
+            placeholder="Danışan Adı veya Soyadı ile arayın..." 
+            defaultValue={resolvedSearchParams?.clientName || ""}
+            className="w-full border-0 bg-gray-50 rounded-xl pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-shadow"
+          />
+        </div>
+        <button type="submit" className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-800 font-medium transition-colors">Ara</button>
         {resolvedSearchParams?.clientName && (
-          <Link href="/faturalar" className="bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200">
-            Temizle
+          <Link href="/faturalar" className="bg-red-50 text-red-600 px-6 py-2.5 rounded-xl hover:bg-red-100 font-medium transition-colors">
+            Filtreyi Temizle
           </Link>
         )}
       </form>
 
-      <div className="bg-white rounded shadow overflow-x-auto">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse whitespace-nowrap text-sm">
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="p-4 font-semibold text-sm text-gray-600">Tarih</th>
@@ -64,19 +73,19 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
               invoices.map(inv => (
                 <tr key={inv.id} className="border-b hover:bg-gray-50">
                   <td className="p-4">{format(inv.date, "dd MMM yyyy", { locale: tr })}</td>
-                  <td className="p-4">{inv.client.name} {inv.client.surname}</td>
-                  <td className="p-4">{inv.client.billingInfo?.tcNo || "-"}</td>
-                  <td className="p-4">{inv.client.billingInfo?.city || "-"}</td>
-                  <td className="p-4">{inv.client.billingInfo?.district || "-"}</td>
-                  <td className="p-4 max-w-xs truncate" title={inv.client.billingInfo?.address || "-"}>{inv.client.billingInfo?.address || "-"}</td>
-                  <td className="p-4">{inv.client.billingInfo?.taxNo || "-"}</td>
-                  <td className="p-4">{inv.subject}</td>
-                  <td className="p-4">{inv.quantity}</td>
-                  <td className="p-4">% {inv.vatRate}</td>
-                  <td className="p-4">{inv.amountWithVat.toFixed(2)} TL</td>
-                  <td className="p-4">{inv.amountWithoutVat.toFixed(2)} TL</td>
+                  <td className="p-4 font-medium text-gray-900">{inv.client.name} {inv.client.surname}</td>
+                  <td className="p-4 text-gray-500">{inv.client.billingInfo?.tcNo || "-"}</td>
+                  <td className="p-4 text-gray-500">{inv.client.billingInfo?.city || "-"}</td>
+                  <td className="p-4 text-gray-500">{inv.client.billingInfo?.district || "-"}</td>
+                  <td className="p-4 max-w-[200px] truncate text-gray-500" title={inv.client.billingInfo?.address || "-"}>{inv.client.billingInfo?.address || "-"}</td>
+                  <td className="p-4 text-gray-500">{inv.client.billingInfo?.taxNo || "-"}</td>
+                  <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold">{inv.subject}</span></td>
+                  <td className="p-4 text-center">{inv.quantity}</td>
+                  <td className="p-4 text-gray-500">% {inv.vatRate}</td>
+                  <td className="p-4 font-bold text-gray-900">{inv.amountWithVat.toFixed(2)} ₺</td>
+                  <td className="p-4 font-semibold text-emerald-600 bg-emerald-50/50 rounded-lg">{inv.amountWithoutVat.toFixed(3)} ₺</td>
                   <td className="p-4">
-                    <Link href={`/faturalar/${inv.id}/edit`} className="text-blue-600 hover:underline">Düzenle</Link>
+                    <Link href={`/faturalar/${inv.id}/edit`} className="text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-3 py-1.5 rounded-lg transition-colors inline-block">Düzenle</Link>
                   </td>
                 </tr>
               ))

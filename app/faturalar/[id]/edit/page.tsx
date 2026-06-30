@@ -28,7 +28,7 @@ export default function FaturaEditPage() {
   const [address, setAddress] = useState("");
   const [taxNo, setTaxNo] = useState("");
 
-  const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(2) : "0.00";
+  const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(3) : "0.000";
 
   useEffect(() => {
     if (id) {

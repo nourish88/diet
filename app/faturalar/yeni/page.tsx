@@ -26,7 +26,7 @@ export default function YeniFaturaPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(2) : "0.00";
+  const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(3) : "0.000";
 
   useEffect(() => {
     getClientsForSelect().then(setClients);
