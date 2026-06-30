@@ -47,6 +47,10 @@ model Client {
   consentRecords           ClientConsentRecord[]
   congratulationLogs       CongratulationLog[]
   notificationLogs         NotificationLog[]
+
+  // Fatura Modülü
+  billingInfo              ClientBillingInfo?
+  invoices                 Invoice[]
 }
 
 model ClientPhoneAuth {
@@ -655,4 +659,38 @@ model NotificationLog {
   @@index([clientId])
   @@index([sentAt])
   @@index([receivedAt])
+}
+
+// Fatura İşlemleri
+model ClientBillingInfo {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      @unique
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  tcNo      String?
+  address   String?
+  city      String?
+  district  String?
+  taxNo     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Invoice {
+  id               Int      @id @default(autoincrement())
+  clientId         Int
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  date             DateTime // Fatura Tarihi
+  subject          String   @default("Diyet") // Konu
+  quantity         Int      @default(1) // Adet
+  vatRate          Int      @default(20) // KDV Oranı (%)
+  amountWithVat    Float    // KDV Dahil Tutar
+  amountWithoutVat Float    // KDV Hariç Tutar
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([clientId, date])
 }

@@ -94,6 +94,7 @@ const Navbar = () => {
   // Management menu items (in dropdown for dietitians)
   const getManagementItems = () => {
     const items = [
+      { href: "/faturalar", label: "Faturalar", icon: FileText },
       { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
