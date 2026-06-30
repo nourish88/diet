@@ -110,10 +110,9 @@ export default function YeniFaturaPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">İl</label>
+              <label className="block text-sm font-medium mb-1">İl (Opsiyonel)</label>
               <input 
                 type="text" 
-                required
                 value={city}
                 onChange={e => setCity(e.target.value)}
                 className="w-full border rounded px-3 py-2" 
@@ -121,10 +120,9 @@ export default function YeniFaturaPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">İlçe</label>
+              <label className="block text-sm font-medium mb-1">İlçe (Opsiyonel)</label>
               <input 
                 type="text" 
-                required
                 value={district}
                 onChange={e => setDistrict(e.target.value)}
                 className="w-full border rounded px-3 py-2" 
@@ -132,9 +130,8 @@ export default function YeniFaturaPage() {
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Açık Adres</label>
+              <label className="block text-sm font-medium mb-1">Açık Adres (Opsiyonel)</label>
               <textarea 
-                required
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 className="w-full border rounded px-3 py-2 h-20" 
