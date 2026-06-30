@@ -92,11 +92,11 @@ export default function YeniFaturaPage() {
               <div className="relative">
                 <input 
                   type="text" 
+                  value={searchTerm}
                   className="w-full border rounded px-3 py-2 bg-white" 
                   placeholder={clientId ? clients.find(c => c.id.toString() === clientId)?.name + " " + clients.find(c => c.id.toString() === clientId)?.surname : "İsim yazarak arayın..."}
                   onChange={(e) => {
-                    const val = e.target.value.toLowerCase();
-                    setSearchTerm(val);
+                    setSearchTerm(e.target.value);
                     setDropdownOpen(true);
                   }}
                   onFocus={() => setDropdownOpen(true)}
@@ -104,11 +104,12 @@ export default function YeniFaturaPage() {
                 />
                 {dropdownOpen && (
                   <ul className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto mt-1">
-                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm)).map(c => (
+                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
                       <li 
                         key={c.id} 
                         className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                        onMouseDown={() => {
+                        onMouseDown={(e) => {
+                          e.preventDefault();
                           handleClientSelect(c.id.toString());
                           setDropdownOpen(false);
                         }}
@@ -116,7 +117,7 @@ export default function YeniFaturaPage() {
                         {c.name} {c.surname}
                       </li>
                     ))}
-                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm)).length === 0 && (
+                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
                       <li className="px-3 py-2 text-gray-500">Sonuç bulunamadı</li>
                     )}
                   </ul>

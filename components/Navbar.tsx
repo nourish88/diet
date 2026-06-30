@@ -72,7 +72,6 @@ const Navbar = () => {
     const mainItems = [
       { href: "/", label: "Ana Sayfa", icon: Home },
       { href: "/clients", label: "Danışanlar", icon: Users },
-      { href: "/aktif-danisanlar", label: "Aktif Danışanlar", icon: UserCheck },
       { href: "/diets", label: "Beslenme Programları", icon: ClipboardList },
       { href: "/istatistikler", label: "İstatistikler", icon: BarChart3 },
     ];
@@ -96,6 +95,7 @@ const Navbar = () => {
   // Management menu items (in dropdown for dietitians)
   const getManagementItems = () => {
     const items = [
+      { href: "/aktif-danisanlar", label: "Aktif Danışanlar", icon: UserCheck },
       { href: "/faturalar", label: "Faturalar", icon: FileText },
       { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
