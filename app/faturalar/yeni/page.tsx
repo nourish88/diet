@@ -22,15 +22,19 @@ export default function YeniFaturaPage() {
   const [address, setAddress] = useState("");
   const [taxNo, setTaxNo] = useState("");
 
+  // Searchable Select State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(2) : "0.00";
 
   useEffect(() => {
     getClientsForSelect().then(setClients);
   }, []);
 
-  const handleClientChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedId = e.target.value;
+  const handleClientSelect = async (selectedId: string) => {
     setClientId(selectedId);
+    setSearchTerm("");
     
     if (selectedId) {
       const billingInfo = await getClientBillingInfo(Number(selectedId));
@@ -83,19 +87,41 @@ export default function YeniFaturaPage() {
         <div className="border-b pb-6">
           <h2 className="text-lg font-semibold mb-4">Danışan Bilgileri</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Danışan Seçin *</label>
-              <select 
-                required
-                value={clientId}
-                onChange={handleClientChange}
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value="">-- Danışan Seçiniz --</option>
-                {clients.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} {c.surname}</option>
-                ))}
-              </select>
+            <div className="relative">
+              <label className="block text-sm font-medium mb-1">Danışan Ara ve Seçin *</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className="w-full border rounded px-3 py-2 bg-white" 
+                  placeholder={clientId ? clients.find(c => c.id.toString() === clientId)?.name + " " + clients.find(c => c.id.toString() === clientId)?.surname : "İsim yazarak arayın..."}
+                  onChange={(e) => {
+                    const val = e.target.value.toLowerCase();
+                    setSearchTerm(val);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                />
+                {dropdownOpen && (
+                  <ul className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto mt-1">
+                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm)).map(c => (
+                      <li 
+                        key={c.id} 
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={() => {
+                          handleClientSelect(c.id.toString());
+                          setDropdownOpen(false);
+                        }}
+                      >
+                        {c.name} {c.surname}
+                      </li>
+                    ))}
+                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm)).length === 0 && (
+                      <li className="px-3 py-2 text-gray-500">Sonuç bulunamadı</li>
+                    )}
+                  </ul>
+                )}
+              </div>
             </div>
             
             <div>

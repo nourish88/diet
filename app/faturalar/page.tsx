@@ -2,6 +2,7 @@ import { getInvoices } from "./actions";
 import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import CopyTableButton from "./CopyTableButton";
 
 export default async function FaturalarPage({ searchParams }: { searchParams: Promise<{ clientName?: string }> }) {
   const resolvedSearchParams = await searchParams;
@@ -11,9 +12,12 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Faturalar</h1>
-        <Link href="/faturalar/yeni" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          Yeni Fatura Ekle
-        </Link>
+        <div className="flex gap-3">
+          <CopyTableButton invoices={invoices} />
+          <Link href="/faturalar/yeni" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center">
+            Yeni Fatura Ekle
+          </Link>
+        </div>
       </div>
 
       <form className="mb-6 flex gap-4">
