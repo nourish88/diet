@@ -15,6 +15,17 @@ type ActiveClient = {
 
 export default function ActiveClientsTable({ initialClients }: { initialClients: ActiveClient[] }) {
   const [clients, setClients] = useState(initialClients);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Gelişmiş Türkçe karakter duyarlı arama fonksiyonu
+  const normalizeForSearch = (text: string) => {
+    if (!text) return "";
+    return text
+      .toLocaleLowerCase('tr-TR')
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]/g, ''); 
+  };
 
   const handleToggle = async (id: number, currentStatus: boolean) => {
     // Optimistic update
@@ -42,18 +53,47 @@ export default function ActiveClientsTable({ initialClients }: { initialClients:
     );
   }
 
+  const filteredClients = clients.filter(client => {
+    if (!searchTerm) return true;
+    const fullName = `${client.name} ${client.surname}`;
+    return fullName.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
+           normalizeForSearch(fullName).includes(normalizeForSearch(searchTerm));
+  });
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-gray-50/50 border-b border-gray-100">
-            <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Danışan Adı Soyadı</th>
-            <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Son Diyet Tarihi</th>
-            <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Durum (Yüzyüze / Online)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {clients.map(client => {
+    <div className="space-y-4">
+      {/* Arama Kutusu */}
+      <div className="relative max-w-md">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+        <input 
+          type="text" 
+          placeholder="İsim veya soyisim ile arayın..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 transition-shadow outline-none"
+        />
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50/50 border-b border-gray-100">
+              <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Danışan Adı Soyadı</th>
+              <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Son Diyet Tarihi</th>
+              <th className="p-5 font-semibold text-sm text-gray-500 tracking-wide uppercase">Durum (Yüzyüze / Online)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filteredClients.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="p-8 text-center text-gray-500">
+                  "{searchTerm}" ile eşleşen danışan bulunamadı.
+                </td>
+              </tr>
+            ) : (
+              filteredClients.map(client => {
             const lastDietDate = client.diets[0]?.createdAt;
             return (
               <tr key={client.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -106,6 +146,7 @@ export default function ActiveClientsTable({ initialClients }: { initialClients:
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
