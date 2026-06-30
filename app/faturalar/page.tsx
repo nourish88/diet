@@ -4,9 +4,13 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import CopyTableButton from "./CopyTableButton";
 
-export default async function FaturalarPage({ searchParams }: { searchParams: Promise<{ clientName?: string }> }) {
+export default async function FaturalarPage({ searchParams }: { searchParams: Promise<{ clientName?: string; startDate?: string; endDate?: string }> }) {
   const resolvedSearchParams = await searchParams;
-  const invoices = await getInvoices({ clientName: resolvedSearchParams?.clientName });
+  const invoices = await getInvoices({ 
+    clientName: resolvedSearchParams?.clientName,
+    startDate: resolvedSearchParams?.startDate,
+    endDate: resolvedSearchParams?.endDate
+  });
 
   return (
     <div className="p-6 md:px-12 md:py-10 w-full xl:max-w-[98%] mx-auto min-h-screen">
@@ -37,10 +41,25 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
             className="w-full border-0 bg-gray-50 rounded-xl pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-shadow"
           />
         </div>
-        <button type="submit" className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-800 font-medium transition-colors">Ara</button>
-        {resolvedSearchParams?.clientName && (
+        <div className="flex items-center gap-2">
+          <input 
+            type="date" 
+            name="startDate" 
+            defaultValue={resolvedSearchParams?.startDate || ""} 
+            className="border-0 bg-gray-50 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-shadow text-sm text-gray-700" 
+          />
+          <span className="text-gray-400 font-medium">-</span>
+          <input 
+            type="date" 
+            name="endDate" 
+            defaultValue={resolvedSearchParams?.endDate || ""} 
+            className="border-0 bg-gray-50 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 transition-shadow text-sm text-gray-700" 
+          />
+        </div>
+        <button type="submit" className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-800 font-medium transition-colors">Filtrele</button>
+        {(resolvedSearchParams?.clientName || resolvedSearchParams?.startDate || resolvedSearchParams?.endDate) && (
           <Link href="/faturalar" className="bg-red-50 text-red-600 px-6 py-2.5 rounded-xl hover:bg-red-100 font-medium transition-colors">
-            Filtreyi Temizle
+            Temizle
           </Link>
         )}
       </form>
@@ -92,6 +111,26 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Özet Alanı (Totals) */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-start border-l-4 border-l-blue-500">
+          <span className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Toplam Fatura Adedi</span>
+          <span className="text-4xl font-black text-gray-900">{invoices.length}</span>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-start border-l-4 border-l-indigo-500">
+          <span className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Toplam KDV Dahil Tutar</span>
+          <span className="text-4xl font-black text-indigo-600">
+            {invoices.reduce((sum, inv) => sum + inv.amountWithVat, 0).toFixed(2)} ₺
+          </span>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-start border-l-4 border-l-emerald-500">
+          <span className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Toplam KDV Hariç Tutar</span>
+          <span className="text-4xl font-black text-emerald-600">
+            {invoices.reduce((sum, inv) => sum + inv.amountWithoutVat, 0).toFixed(3)} ₺
+          </span>
+        </div>
       </div>
     </div>
   );
