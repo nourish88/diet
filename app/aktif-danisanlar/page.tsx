@@ -1,6 +1,8 @@
 import { getActiveClients } from "./actions";
 import ActiveClientsTable from "./ActiveClientsTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function AktifDanisanlarPage() {
   const clients = await getActiveClients();
 
