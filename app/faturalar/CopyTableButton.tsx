@@ -6,14 +6,21 @@ export default function CopyTableButton({ invoices }: { invoices: any[] }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    const header = ["Tarih", "Danışan", "Konu", "KDV Dahil Tutar (TL)", "KDV Hariç Tutar (TL)"].join("\t");
+    const header = ["Tarih", "Danışan", "TC No", "İl", "İlçe", "Açık Adres", "Vergi No", "Konu", "Adet", "KDV Oranı", "KDV Dahil Tutar (TL)", "KDV Hariç Tutar (TL)"].join("\t");
     const rows = invoices.map(inv => {
       const date = new Date(inv.date).toLocaleDateString("tr-TR");
       const clientName = `${inv.client.name} ${inv.client.surname}`;
+      const tcNo = inv.client.billingInfo?.tcNo || "-";
+      const city = inv.client.billingInfo?.city || "-";
+      const district = inv.client.billingInfo?.district || "-";
+      const address = (inv.client.billingInfo?.address || "-").replace(/\n/g, " ");
+      const taxNo = inv.client.billingInfo?.taxNo || "-";
       const subject = inv.subject;
+      const quantity = inv.quantity;
+      const vatRate = `% ${inv.vatRate}`;
       const withVat = inv.amountWithVat.toFixed(2);
       const withoutVat = inv.amountWithoutVat.toFixed(2);
-      return [date, clientName, subject, withVat, withoutVat].join("\t");
+      return [date, clientName, tcNo, city, district, address, taxNo, subject, quantity, vatRate, withVat, withoutVat].join("\t");
     });
     
     const text = [header, ...rows].join("\n");

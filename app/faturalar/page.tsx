@@ -36,13 +36,20 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
         )}
       </form>
 
-      <div className="bg-white rounded shadow overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded shadow overflow-x-auto">
+        <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="p-4 font-semibold text-sm text-gray-600">Tarih</th>
               <th className="p-4 font-semibold text-sm text-gray-600">Danışan</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">TC No</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">İl</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">İlçe</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">Açık Adres</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">Vergi No</th>
               <th className="p-4 font-semibold text-sm text-gray-600">Konu</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">Adet</th>
+              <th className="p-4 font-semibold text-sm text-gray-600">KDV Oranı</th>
               <th className="p-4 font-semibold text-sm text-gray-600">KDV Dahil Tutar</th>
               <th className="p-4 font-semibold text-sm text-gray-600">KDV Hariç Tutar</th>
               <th className="p-4 font-semibold text-sm text-gray-600">İşlemler</th>
@@ -51,14 +58,21 @@ export default async function FaturalarPage({ searchParams }: { searchParams: Pr
           <tbody>
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">Fatura bulunamadı.</td>
+                <td colSpan={13} className="p-4 text-center text-gray-500">Fatura bulunamadı.</td>
               </tr>
             ) : (
               invoices.map(inv => (
                 <tr key={inv.id} className="border-b hover:bg-gray-50">
                   <td className="p-4">{format(inv.date, "dd MMM yyyy", { locale: tr })}</td>
                   <td className="p-4">{inv.client.name} {inv.client.surname}</td>
+                  <td className="p-4">{inv.client.billingInfo?.tcNo || "-"}</td>
+                  <td className="p-4">{inv.client.billingInfo?.city || "-"}</td>
+                  <td className="p-4">{inv.client.billingInfo?.district || "-"}</td>
+                  <td className="p-4 max-w-xs truncate" title={inv.client.billingInfo?.address || "-"}>{inv.client.billingInfo?.address || "-"}</td>
+                  <td className="p-4">{inv.client.billingInfo?.taxNo || "-"}</td>
                   <td className="p-4">{inv.subject}</td>
+                  <td className="p-4">{inv.quantity}</td>
+                  <td className="p-4">% {inv.vatRate}</td>
                   <td className="p-4">{inv.amountWithVat.toFixed(2)} TL</td>
                   <td className="p-4">{inv.amountWithoutVat.toFixed(2)} TL</td>
                   <td className="p-4">

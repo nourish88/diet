@@ -30,7 +30,11 @@ export async function getInvoices(filters?: { startDate?: string; endDate?: stri
   const invoices = await prisma.invoice.findMany({
     where,
     include: {
-      client: true,
+      client: {
+        include: {
+          billingInfo: true,
+        },
+      },
     },
     orderBy: {
       date: "desc",
