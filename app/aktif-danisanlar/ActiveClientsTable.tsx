@@ -143,7 +143,8 @@ export default function ActiveClientsTable({ initialClients }: { initialClients:
                 </td>
               </tr>
             );
-          })}
+          })
+          )}
         </tbody>
       </table>
     </div>
