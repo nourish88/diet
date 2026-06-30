@@ -1,4 +1,4 @@
-import { getInvoices } from "../actions";
+import { getInvoices } from "./actions";
 import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
