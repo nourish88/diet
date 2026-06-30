@@ -26,6 +26,16 @@ export default function YeniFaturaPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // Gelişmiş Türkçe karakter duyarlı arama fonksiyonu
+  const normalizeForSearch = (text: string) => {
+    if (!text) return "";
+    return text
+      .toLocaleLowerCase('tr-TR')
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Diakritik işaretleri temizle
+      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]/g, ''); // Sadece harf ve rakamları bırak (boşlukları bile sil ki "Kaplan Demir" ile "KaplanDemir" aynı eşleşsin)
+  };
+
   const amountWithoutVat = amountWithVat ? (parseFloat(amountWithVat) / 1.20).toFixed(3) : "0.000";
 
   useEffect(() => {
@@ -94,17 +104,22 @@ export default function YeniFaturaPage() {
                   type="text" 
                   value={searchTerm}
                   className="w-full border rounded px-3 py-2 bg-white" 
-                  placeholder={clientId ? clients.find(c => c.id.toString() === clientId)?.name + " " + clients.find(c => c.id.toString() === clientId)?.surname : "İsim yazarak arayın..."}
+                  placeholder={clientId ? clients.find(c => c.id.toString() === clientId)?.name + " " + clients.find(c => c.id.toString() === clientId)?.surname : "İsim veya soyisim arayın..."}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setDropdownOpen(true);
                   }}
                   onFocus={() => setDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                  onBlur={() => setTimeout(() => setDropdownOpen(false), 250)}
                 />
                 {dropdownOpen && (
                   <ul className="absolute z-10 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto mt-1">
-                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
+                    {clients.filter(c => {
+                      const fullName = `${c.name} ${c.surname}`;
+                      // Hem normal string includes hem de normalize edilmiş string includes yapalım
+                      return fullName.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
+                             normalizeForSearch(fullName).includes(normalizeForSearch(searchTerm));
+                    }).map(c => (
                       <li 
                         key={c.id} 
                         className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
@@ -117,7 +132,11 @@ export default function YeniFaturaPage() {
                         {c.name} {c.surname}
                       </li>
                     ))}
-                    {clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    {clients.filter(c => {
+                      const fullName = `${c.name} ${c.surname}`;
+                      return fullName.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR')) || 
+                             normalizeForSearch(fullName).includes(normalizeForSearch(searchTerm));
+                    }).length === 0 && (
                       <li className="px-3 py-2 text-gray-500">Sonuç bulunamadı</li>
                     )}
                   </ul>
