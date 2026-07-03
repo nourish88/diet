@@ -33,7 +33,7 @@ const clientSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Geçerli bir telefon numarası girin (ör. +90…, 05… veya yurtdışı +ülke kodu).",
+          "Geçerli bir telefon numarası girin (ör. 0532..., +90... veya yurtdışı numaraları).",
         path: ["phoneNumber"],
       });
     }

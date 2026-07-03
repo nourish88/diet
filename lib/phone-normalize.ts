@@ -35,7 +35,17 @@ export function normalizeClientPhoneNumber(phoneNumber?: string | null): string 
     return null;
   }
 
-  const parsed = parsePhoneNumberFromString(cleaned, "TR");
+  let parsed = parsePhoneNumberFromString(cleaned, "TR");
+  
+  if (!parsed || !parsed.isValid()) {
+    if (!cleaned.startsWith('+')) {
+      const fallbackParsed = parsePhoneNumberFromString('+' + cleaned);
+      if (fallbackParsed && fallbackParsed.isValid()) {
+        parsed = fallbackParsed;
+      }
+    }
+  }
+
   if (!parsed || !parsed.isValid()) {
     return null;
   }
