@@ -314,8 +314,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             illness: data.illness ?? null,
             bannedFoods: data.bannedFoods || [],
           });
-          const phone = data.phoneNumber ? "+90" + data.phoneNumber : undefined;
-          setClientPhoneNumber(phone);
+          setClientPhoneNumber(data.phoneNumber || undefined);
 
           // Load latest diet for this client
           await loadLatestDiet(data.id);
@@ -370,10 +369,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             bannedFoods: client.bannedFoods || [],
           });
 
-          const phone = client.phoneNumber
-            ? "+90" + client.phoneNumber
-            : undefined;
-          setClientPhoneNumber(phone);
+          setClientPhoneNumber(client.phoneNumber || undefined);
 
           // Update diet with client name
           setDiet((prev) => ({

@@ -1,41 +1,46 @@
+import { normalizeClientPhoneNumber } from "@/lib/phone-normalize";
+
+function cleanPhoneInput(phoneNumber: string): string {
+  return phoneNumber
+    .normalize("NFKC")
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .trim();
+}
+
 export function formatPhoneForWhatsApp(phoneNumber: string): string {
-  // Log original phone number for debugging
-  console.log("📞 Original phone number:", phoneNumber);
+  const cleanedInput = cleanPhoneInput(phoneNumber);
+  let digits = cleanedInput.replace(/\D/g, "");
 
-  // Remove all non-digit characters
-  let cleanPhone = phoneNumber.replace(/\D/g, "");
-
-  console.log("📞 Cleaned phone number:", cleanPhone);
-
-  // Handle Turkish phone numbers
-  // Turkish numbers can come in various formats:
-  // - +90 533 310 49 70 -> 905333104970 (already correct)
-  // - 90 533 310 49 70 -> 905333104970 (already correct)
-  // - 0 533 310 49 70 -> 905333104970 (remove leading 0, add 90)
-  // - 533 310 49 70 -> 905333104970 (add 90 prefix)
-  // - +5... -> corrupted format (missing 9 after +), should be +90...
-
-  // If phone starts with +5 (corrupted +90), it might be missing the 9
-  // Original: +5333104970 -> cleaned: 5333104970 -> should be: 905333104970
-  if (cleanPhone.startsWith("5")) {
-    // Turkish mobile numbers start with 5 (e.g., 533, 534, 535)
-    // Add 90 prefix for Turkish numbers
-    cleanPhone = "90" + cleanPhone;
-    console.log("📞 Added 90 prefix (starts with 5):", cleanPhone);
-  } else if (cleanPhone.startsWith("0")) {
-    // Remove leading 0 and add 90
-    cleanPhone = "90" + cleanPhone.substring(1);
-    console.log("📞 Removed leading 0 and added 90:", cleanPhone);
-  } else if (!cleanPhone.startsWith("90")) {
-    // If doesn't start with 90 and is 10 digits, likely Turkish number missing country code
-    if (cleanPhone.length === 10) {
-      cleanPhone = "90" + cleanPhone;
-      console.log("📞 Added 90 prefix (10 digits):", cleanPhone);
-    }
+  if (!digits) {
+    return "";
   }
 
-  console.log("📞 Final formatted phone:", cleanPhone);
-  return cleanPhone;
+  if (digits.startsWith("0090")) {
+    digits = digits.slice(2);
+  }
+
+  if (/^9005\d{9}$/.test(digits)) {
+    return `90${digits.slice(3)}`;
+  }
+
+  if (/^05\d{9}$/.test(digits)) {
+    return `90${digits.slice(1)}`;
+  }
+
+  if (/^5\d{9}$/.test(digits)) {
+    return `90${digits}`;
+  }
+
+  if (/^90\d{10}$/.test(digits)) {
+    return digits;
+  }
+
+  const normalized = normalizeClientPhoneNumber(cleanedInput);
+  if (normalized) {
+    return normalized.replace(/^\+/, "");
+  }
+
+  return digits;
 }
 
 export function createWhatsAppMessage(

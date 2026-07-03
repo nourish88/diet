@@ -7,6 +7,7 @@ import { useToast } from "./ui/use-toast";
 import TemplateService from "@/services/TemplateService";
 import PresetService from "@/services/PresetService";
 import { apiClient } from "@/lib/api-client";
+import { formatPhoneForWhatsApp } from "@/utils/whatsapp";
 
 // Create a separate component for the PDF button to ensure client-side only rendering
 
@@ -48,13 +49,8 @@ const DietFormActions = ({
   const { toast } = useToast();
 
   // Add validation for phone number
-  const formattedPhoneNumber = phoneNumber?.replace(/\D/g, ""); // Remove non-digits
-
-  // Ensure phone number starts with country code
-  const validPhoneNumber = formattedPhoneNumber?.startsWith("90")
-    ? formattedPhoneNumber
-    : formattedPhoneNumber
-    ? `90${formattedPhoneNumber}`
+  const validPhoneNumber = phoneNumber
+    ? formatPhoneForWhatsApp(phoneNumber)
     : undefined;
 
   // Button text: If in update mode, show "Güncelle", otherwise show "Kaydet"

@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { getWhatsAppURL } from "@/utils/whatsapp";
 
 export interface BirthdayClient {
   id: number;
@@ -101,17 +102,7 @@ export function generateWhatsAppURL(
   phoneNumber: string,
   message: string
 ): string {
-  const cleanedPhone = phoneNumber.replace(/\D/g, "");
-  let formattedPhone = cleanedPhone;
-
-  if (formattedPhone.startsWith("0")) {
-    formattedPhone = "90" + formattedPhone.substring(1);
-  } else if (!formattedPhone.startsWith("90")) {
-    formattedPhone = "90" + formattedPhone;
-  }
-
-  const encodedMessage = encodeURIComponent(message);
-  return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+  return getWhatsAppURL(phoneNumber, message);
 }
 
 /**
