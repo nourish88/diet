@@ -38,11 +38,13 @@ type PDFContentItem = {
 };
 interface DatabasePDFButtonProps extends ButtonProps {
   diet: any;
+  trackEndpoint?: string;
 }
 
 const DatabasePDFButton = ({
   diet,
   className,
+  trackEndpoint,
   ...props
 }: DatabasePDFButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -107,9 +109,10 @@ const DatabasePDFButton = ({
       );
       const fileName = buildDietPdfFileName(pdfData);
       pdfMake.createPdf(docDefinition).download(fileName);
-      if (diet?.id) {
+      const endpoint = trackEndpoint ?? (diet?.id ? `/diets/${diet.id}/track` : null);
+      if (endpoint) {
         apiClient
-          .post(`/diets/${diet.id}/track`, { event: "download" })
+          .post(endpoint, { event: "download" })
           .catch((err) => console.warn("Diet download tracking failed", err));
       }
     } catch (error) {

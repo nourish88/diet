@@ -22,9 +22,10 @@ export default function ConditionalLayout({
   // Don't show navbar on client pages (they have their own minimal layout)
   // IMPORTANT: Only hide for /client/* pages, NOT /clients/* pages
   const isClientPage = pathname?.startsWith("/client") && !pathname?.startsWith("/clients");
+  const isPublicDietPage = pathname?.startsWith("/diyet/");
 
   // Return without navbar for auth and client pages
-  if (isAuthPage || isClientPage) {
+  if (isAuthPage || isClientPage || isPublicDietPage) {
     return <main>{children}</main>;
   }
 

@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Shield,
   UserCheck,
+  BellRing,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ const Navbar = () => {
     const items = [
       { href: "/aktif-danisanlar", label: "Aktif Danışanlar", icon: UserCheck },
       { href: "/faturalar", label: "Faturalar", icon: FileText },
+      { href: "/bildirimler", label: "Bildirimler", icon: BellRing },
       { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
       { href: "/sablonlar", label: "Şablonlar", icon: FileText },
       { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },

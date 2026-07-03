@@ -40,9 +40,13 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
 
 export function createWhatsAppMessage(
   clientName: string,
-  dietDate: string
+  dietDate: string,
+  dietUrl?: string
 ): string {
-  return `Merhaba ${clientName}, ${dietDate} tarihindeki diyetiniz ektedir. Diyetinizle ilgili diyetisyeninizle iletişime geçmekten çekinmeyiniz.`;
+  const linkText = dietUrl
+    ? `\n\nBeslenme programınızı bu linkten görüntüleyip PDF olarak indirebilirsiniz:\n${dietUrl}`
+    : "";
+  return `Merhaba ${clientName}, ${dietDate} tarihindeki beslenme programınız hazır.${linkText}\n\nDiyetinizle ilgili diyetisyeninizle iletişime geçmekten çekinmeyiniz.`;
 }
 
 export function getWhatsAppURL(phoneNumber: string, message: string): string {

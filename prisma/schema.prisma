@@ -49,12 +49,12 @@ model Client {
   notificationLogs         NotificationLog[]
 
   // Aktif Danışanlar Modülü
-  isActive                 Boolean  @default(false)
-  isOnline                 Boolean  @default(false) // false = Yüzyüze, true = Online
+  isActive Boolean @default(false)
+  isOnline Boolean @default(false) // false = Yüzyüze, true = Online
 
   // Fatura Modülü
-  billingInfo              ClientBillingInfo?
-  invoices                 Invoice[]
+  billingInfo ClientBillingInfo?
+  invoices    Invoice[]
 }
 
 model ClientPhoneAuth {
@@ -99,8 +99,9 @@ model Diet {
 
   notifiedAt DateTime?
 
-  viewCount     Int @default(0)
-  downloadCount Int @default(0)
+  viewCount     Int            @default(0)
+  downloadCount Int            @default(0)
+  shareLink     DietShareLink?
 }
 
 model Ogun {
@@ -335,6 +336,7 @@ model User {
   consentRecords        ClientConsentRecord[]
   congratulationLogs    CongratulationLog[]
   notificationLogs      NotificationLog[]
+  createdDietShareLinks DietShareLink[]        @relation("DietShareLinkCreator")
 
   @@index([supabaseId])
   @@index([email])
@@ -526,6 +528,21 @@ model PushSubscription {
   @@index([userId])
 }
 
+model DietShareLink {
+  id             Int       @id @default(autoincrement())
+  token          String    @unique
+  dietId         Int       @unique
+  diet           Diet      @relation(fields: [dietId], references: [id], onDelete: Cascade)
+  createdById    Int
+  createdBy      User      @relation("DietShareLinkCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastAccessedAt DateTime?
+
+  @@index([dietId])
+  @@index([createdById])
+}
+
 // Progress Tracking
 model ProgressEntry {
   id        Int      @id @default(autoincrement())
@@ -667,34 +684,34 @@ model NotificationLog {
 
 // Fatura İşlemleri
 model ClientBillingInfo {
-  id        Int      @id @default(autoincrement())
-  clientId  Int      @unique
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  tcNo      String?
-  address   String?
-  city      String?
-  district  String?
-  taxNo     String?
+  id       Int    @id @default(autoincrement())
+  clientId Int    @unique
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  tcNo     String?
+  address  String?
+  city     String?
+  district String?
+  taxNo    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Invoice {
-  id               Int      @id @default(autoincrement())
-  clientId         Int
-  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id       Int    @id @default(autoincrement())
+  clientId Int
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   date             DateTime // Fatura Tarihi
   subject          String   @default("Diyet") // Konu
   quantity         Int      @default(1) // Adet
   vatRate          Int      @default(20) // KDV Oranı (%)
-  amountWithVat    Float    // KDV Dahil Tutar
-  amountWithoutVat Float    // KDV Hariç Tutar
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  amountWithVat    Float // KDV Dahil Tutar
+  amountWithoutVat Float // KDV Hariç Tutar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([clientId, date])
 }
