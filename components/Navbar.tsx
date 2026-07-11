@@ -8,20 +8,11 @@ import {
   Users,
   ClipboardList,
   Home,
-  Calendar,
-  Settings,
-  FileText,
   BarChart3,
   LogOut,
   User,
   ChevronDown,
-  Cog,
-  Gift,
-  QrCode,
-  MessageCircle,
-  Shield,
-  UserCheck,
-  BellRing,
+  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -33,6 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import GlobalSearch from "@/components/GlobalSearch";
+import { dietitianNavigation } from "@/lib/dietitian-navigation";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -90,45 +83,12 @@ const Navbar = () => {
       return mainItems.filter((item) => ["/", "/diets"].includes(item.href));
     }
 
-    return mainItems;
-  };
-
-  // Management menu items (in dropdown for dietitians)
-  const getManagementItems = () => {
-    const items = [
-      { href: "/aktif-danisanlar", label: "Aktif Danışanlar", icon: UserCheck },
-      { href: "/faturalar", label: "Faturalar", icon: FileText },
-      { href: "/bildirimler", label: "Bildirimler", icon: BellRing },
-      { href: "/sohbetler", label: "Sohbetler", icon: MessageCircle },
-      { href: "/sablonlar", label: "Şablonlar", icon: FileText },
-      { href: "/important-dates", label: "Önemli Tarihler", icon: Calendar },
-      { href: "/birthdays", label: "Doğum Günleri", icon: Gift },
-      { href: "/brosur", label: "Broşür & Yorum Posteri", icon: QrCode },
-      { href: "/tanimlamalar", label: "Tanımlamalar", icon: Settings },
-      {
-        href: "/management/diet-logs",
-        label: "Log Yönetimi",
-        icon: FileText,
-      },
-      {
-        href: "/management/kvkk",
-        label: "KVKK Kayıtları",
-        icon: Shield,
-      },
-    ];
-
-    // Only real dietitians can manage assistants; assistants themselves don't see it.
-    if (databaseUser?.role === "dietitian") {
-      items.push({ href: "/asistanlar", label: "Asistanlarım", icon: Users });
-    }
-
-    return items;
+    return databaseUser.role === "dietitian" ? mainItems.slice(0, 1) : mainItems;
   };
 
   const navItems = getMainNavItems();
-  const managementItems = getManagementItems();
-  const isManagementActive = managementItems.some((item) =>
-    pathname?.startsWith(item.href)
+  const isMenuActive = dietitianNavigation.some((group) =>
+    group.items.some((item) => pathname?.startsWith(item.href)),
   );
 
   // Don't render navigation items while loading
@@ -155,6 +115,7 @@ const Navbar = () => {
           <Logo size="md" />
 
           <div className="flex items-center space-x-2">
+            {databaseUser?.role === "dietitian" && <GlobalSearch />}
             {/* Theme toggle */}
             <ThemeToggle />
 
@@ -226,47 +187,63 @@ const Navbar = () => {
               );
             })}
 
-            {/* Uygulama Yönetimi Dropdown - Only for dietitians */}
+            {/* Grouped application menu - Only for dietitians */}
             {databaseUser?.role === "dietitian" && (
               <li className="relative">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       className={`flex items-center py-2 px-3 rounded-lg transition-colors w-full lg:w-auto ${
-                        isManagementActive
+                        isMenuActive
                           ? "text-brand-foreground bg-brand lg:text-brand lg:bg-transparent"
                           : "text-foreground hover:bg-accent lg:hover:bg-transparent lg:hover:text-brand"
                       }`}
                     >
-                      <Cog className="w-4 h-4 mr-2" />
-                      <span>Uygulama Yönetimi</span>
+                      <LayoutGrid className="w-4 h-4 mr-2" />
+                      <span>Menü</span>
                       <ChevronDown className="w-4 h-4 ml-2 hidden lg:block" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-56 mt-2"
+                    className="mt-2 w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto p-3 lg:w-[720px]"
                   >
-                    {managementItems.map((item) => {
-                      const Icon = item.icon;
-                      const isItemActive = pathname?.startsWith(item.href);
-                      return (
-                        <DropdownMenuItem key={item.href} asChild>
-                          <Link
-                            href={item.href}
-                            className={`flex items-center py-2 px-3 rounded-md transition-colors ${
-                              isItemActive
-                                ? "bg-brand-soft text-brand font-medium"
-                                : "text-foreground"
-                            }`}
-                            onClick={() => closeMenu()}
-                          >
-                            <Icon className="w-4 h-4 mr-3" />
-                            {item.label}
-                          </Link>
-                        </DropdownMenuItem>
-                      );
-                    })}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {dietitianNavigation.map((group) => {
+                        const GroupIcon = group.icon;
+                        return (
+                          <section key={group.label} aria-labelledby={`menu-${group.label}`}>
+                            <div
+                              id={`menu-${group.label}`}
+                              className="flex items-center gap-2 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                              <GroupIcon className="h-4 w-4" />
+                              {group.label}
+                            </div>
+                            {group.items.map((item) => {
+                              const Icon = item.icon;
+                              const isItemActive = pathname?.startsWith(item.href);
+                              return (
+                                <DropdownMenuItem key={item.href} asChild>
+                                  <Link
+                                    href={item.href}
+                                    className={`flex items-center rounded-md px-2 py-2 transition-colors ${
+                                      isItemActive
+                                        ? "bg-brand-soft font-medium text-brand"
+                                        : "text-foreground"
+                                    }`}
+                                    onClick={closeMenu}
+                                  >
+                                    <Icon className="mr-2 h-4 w-4" />
+                                    {item.label}
+                                  </Link>
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </section>
+                        );
+                      })}
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </li>
