@@ -17,7 +17,6 @@ import {
   Shield,
   UserCheck,
   UserCog,
-  UserPlus,
   Users,
   Utensils,
 } from "lucide-react";
@@ -41,7 +40,6 @@ export const dietitianNavigation: NavigationGroup[] = [
     label: "Danışanlar",
     icon: Users,
     items: [
-      { href: "/pending-clients", label: "Adaylar", icon: UserPlus },
       { href: "/clients", label: "Tüm danışanlar", icon: Users },
       { href: "/aktif-danisanlar", label: "Aktif danışanlar", icon: UserCheck },
       {
