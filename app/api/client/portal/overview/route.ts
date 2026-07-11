@@ -14,6 +14,7 @@ export const GET = route({
         name: true,
         surname: true,
         diets: {
+          take: 1,
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
@@ -21,11 +22,21 @@ export const GET = route({
             createdAt: true,
             hedef: true,
             su: true,
+            fizik: true,
             isBirthdayCelebration: true,
             isImportantDateCelebrated: true,
             importantDate: { select: { id: true, name: true, message: true } },
             _count: { select: { oguns: true } },
+            oguns: {
+              orderBy: { order: "asc" },
+              select: { id: true, name: true, time: true },
+            },
           },
+        },
+        progressEntries: {
+          take: 2,
+          orderBy: { date: "desc" },
+          select: { id: true, date: true, weight: true, waist: true, bodyFat: true },
         },
       },
     });
@@ -63,11 +74,17 @@ export const GET = route({
         createdAt: diet.createdAt,
         hedef: diet.hedef,
         su: diet.su,
+        fizik: diet.fizik,
         isBirthdayCelebration: diet.isBirthdayCelebration,
         isImportantDateCelebrated: diet.isImportantDateCelebrated,
         importantDate: diet.importantDate,
         ogunCount: diet._count.oguns,
+        oguns: diet.oguns,
       })),
+      progress: {
+        latest: client.progressEntries[0] ?? null,
+        previous: client.progressEntries[1] ?? null,
+      },
       unreadByDiet,
     };
   },

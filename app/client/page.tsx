@@ -12,14 +12,15 @@ import {
   ExternalLink,
   X,
   Bell,
-  ClipboardCheck,
-  Droplets,
-  Target,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { GOOGLE_REVIEW_URL, DIETITIAN_WEBSITE_URL } from "@/lib/site-urls";
+import TodayActionCenter, {
+  TodayDiet,
+  TodayProgress,
+} from "@/components/client/TodayActionCenter";
 
 interface UnreadData {
   totalUnread: number;
@@ -47,13 +48,9 @@ interface CurrentCheckIn {
 }
 
 interface TodayOverview {
-  diets: Array<{
-    id: number;
-    hedef: string | null;
-    su: string | null;
-    tarih: string | null;
-    createdAt: string;
-  }>;
+  client: { id: number; name: string; surname: string };
+  diets: TodayDiet[];
+  progress: { latest: TodayProgress | null; previous: TodayProgress | null };
 }
 
 const WELCOME_DISMISS_KEY = "client_welcome_dismissed_v1";
@@ -64,8 +61,9 @@ const FIRST_VISIT_KEY = "client_first_visit";
 const REVIEW_SHOW_AFTER_DAYS = 7;
 const REVIEW_RESHOW_AFTER_DAYS = 30;
 
-function shouldShowReviewPrompt(): boolean {
+function shouldShowReviewPrompt(hasPositiveMilestone: boolean): boolean {
   try {
+    if (!hasPositiveMilestone) return false;
     if (localStorage.getItem(REVIEW_DONE_KEY)) return false;
 
     const firstVisit = localStorage.getItem(FIRST_VISIT_KEY);
@@ -113,7 +111,6 @@ export default function ClientDashboard() {
         if (!localStorage.getItem(WELCOME_DISMISS_KEY)) {
           setShowWelcomeTip(true);
         }
-        setShowReviewPrompt(shouldShowReviewPrompt());
       }
     } catch {
       /* ignore */
@@ -212,6 +209,12 @@ export default function ClientDashboard() {
       ]);
       setCurrentCheckIn(checkInData.checkIn);
       setTodayOverview(overviewData);
+      setShowReviewPrompt(
+        shouldShowReviewPrompt(
+          checkInData.checkIn?.status === "submitted" ||
+            Boolean(overviewData.progress.latest),
+        ),
+      );
     } catch (error) {
       console.error("Bugün özeti yüklenemedi:", error);
     }
@@ -293,8 +296,6 @@ export default function ClientDashboard() {
   }
 
   const latestDiet = todayOverview?.diets?.[0] ?? null;
-  const pendingCheckIn = currentCheckIn?.status === "pending";
-
   return (
     <div className="space-y-6">
       {/* Welcome tip */}
@@ -350,79 +351,13 @@ export default function ClientDashboard() {
         </p>
       </div>
 
-      {/* Today-focused action center */}
-      <section className="overflow-hidden rounded-2xl border bg-card shadow-card">
-        <div className="flex items-center justify-between gap-3 border-b px-5 py-4 bg-brand-soft/35">
-          <div>
-            <h2 className="font-bold text-lg">Bugün</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Günlük sürecinizde sıradaki adımlar
-            </p>
-          </div>
-          <div className="h-10 w-10 rounded-xl bg-brand text-white flex items-center justify-center">
-            <Target className="h-5 w-5" />
-          </div>
-        </div>
-        <div className="divide-y">
-          {pendingCheckIn && currentCheckIn ? (
-            <Link
-              href={`/client/check-in/${currentCheckIn.id}`}
-              className="flex items-center gap-3 p-4 sm:px-5 hover:bg-brand-soft/40 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 flex items-center justify-center">
-                <ClipboardCheck className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm">Haftalık kontrolünüz hazır</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Birkaç kısa soruyu yanıtlayarak diyetisyeninizi bilgilendirin.
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-brand shrink-0" />
-            </Link>
-          ) : currentCheckIn?.status === "submitted" ? (
-            <div className="flex items-center gap-3 p-4 sm:px-5">
-              <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-                <ClipboardCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Haftalık kontrol tamamlandı</p>
-                <p className="text-xs text-muted-foreground mt-1">Yanıtlarınız diyetisyeninize iletildi.</p>
-              </div>
-            </div>
-          ) : null}
-
-          {latestDiet && (
-            <Link
-              href={`/client/diets/${latestDiet.id}`}
-              className="flex items-center gap-3 p-4 sm:px-5 hover:bg-muted/40 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
-                <UtensilsCrossed className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm">Güncel beslenme programınız</p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {latestDiet.hedef || "Bugünkü öğün planınızı görüntüleyin."}
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-            </Link>
-          )}
-
-          <div className="flex items-center gap-3 p-4 sm:px-5">
-            <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 flex items-center justify-center">
-              <Droplets className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm">Su hedefinizi hatırlayın</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {latestDiet?.su || "Gün boyunca düzenli aralıklarla su için."}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <TodayActionCenter
+        clientId={todayOverview?.client.id}
+        diet={latestDiet}
+        checkIn={currentCheckIn}
+        unreadMessages={unreadData.totalUnread}
+        progress={todayOverview?.progress ?? { latest: null, previous: null }}
+      />
 
       {/* Only unread announcements are promoted on the dashboard. */}
       {announcements.length > 0 && (
@@ -511,7 +446,7 @@ export default function ClientDashboard() {
         </Link>
       </div>
 
-      {/* Milestone review prompt — shown after 7 days */}
+      {/* Respectful review invitation: only after 7 days and a positive milestone. */}
       {showReviewPrompt && (
         <div className="relative bg-gradient-to-br from-warning/10 to-warning/5 border border-warning/30 rounded-2xl p-5 shadow-card">
           <button
@@ -529,11 +464,11 @@ export default function ClientDashboard() {
             </div>
             <div className="flex-1">
               <p className="font-semibold text-foreground mb-0.5">
-                Deneyiminizi paylaşır mısınız?
+                Sürecinizde güzel bir adım attınız
               </p>
               <p className="text-sm text-muted-foreground mb-4">
-                Doğru diyetisyeni arayan birileri için Google yorumunuz çok
-                değerli olur. 1-2 cümle yeterli!
+                Dilerseniz deneyiminizi Google&apos;da paylaşabilirsiniz. Yorumunuz
+                benzer bir yolculuğa başlayacak kişilere yardımcı olabilir.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button

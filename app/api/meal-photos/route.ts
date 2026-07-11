@@ -28,11 +28,12 @@ async function assertDietAccess(dietId: number, userId: number) {
       id: dietId,
       OR: [{ dietitianId: userId }, { client: { userId } }],
     },
-    select: { id: true },
+    select: { id: true, clientId: true },
   });
   if (!diet) {
     throw new HttpError("not_found", "Diyet bulunamadı veya erişim yetkiniz yok");
   }
+  return diet;
 }
 
 /** POST /api/meal-photos — upload a meal photo (owner client or dietitian). */
@@ -42,7 +43,10 @@ export const POST = route({
   schema: CreateMealPhotoBody,
   scope: "meal-photos.create",
   handler: async ({ body, auth }) => {
-    await assertDietAccess(body.dietId, auth.user!.id);
+    const diet = await assertDietAccess(body.dietId, auth.user!.id);
+    if (diet.clientId !== body.clientId) {
+      throw new HttpError("bad_request", "Danışan ve diyet eşleşmiyor");
+    }
 
     const ogun = await prisma.ogun.findFirst({
       where: { id: body.ogunId, dietId: body.dietId },

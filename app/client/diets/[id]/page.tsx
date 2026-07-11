@@ -14,14 +14,7 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
-  Star,
-  X,
 } from "lucide-react";
-
-import { GOOGLE_REVIEW_URL } from "@/lib/site-urls";
-
-const REVIEW_DONE_KEY = "client_review_done";
-const REVIEW_NUDGE_DISMISSED_KEY = "client_review_nudge_diet_dismissed";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import DatabasePDFButton from "@/components/DatabasePDFButton";
@@ -64,31 +57,6 @@ export default function ClientDietDetailPage() {
   const [expandedOguns, setExpandedOguns] = useState<Record<number, boolean>>({});
   const [highlightedOgunId, setHighlightedOgunId] = useState<number | null>(null);
   const ogunRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const [showReviewNudge, setShowReviewNudge] = useState(false);
-
-  useEffect(() => {
-    try {
-      const done = localStorage.getItem(REVIEW_DONE_KEY);
-      const dismissed = localStorage.getItem(REVIEW_NUDGE_DISMISSED_KEY);
-      if (!done && !dismissed) setShowReviewNudge(true);
-    } catch {}
-  }, []);
-
-  const handleReviewNudgeClick = () => {
-    try { localStorage.setItem(REVIEW_DONE_KEY, "clicked"); } catch {}
-    setShowReviewNudge(false);
-    window.open(GOOGLE_REVIEW_URL, "_blank", "noopener,noreferrer");
-  };
-
-  const handleReviewNudgeDone = () => {
-    try { localStorage.setItem(REVIEW_DONE_KEY, "self_reported"); } catch {}
-    setShowReviewNudge(false);
-  };
-
-  const handleReviewNudgeDismiss = () => {
-    try { localStorage.setItem(REVIEW_NUDGE_DISMISSED_KEY, "1"); } catch {}
-    setShowReviewNudge(false);
-  };
 
   const {
     data,
@@ -377,36 +345,6 @@ export default function ClientDietDetailPage() {
         </div>
       )}
 
-      {/* Review nudge — shown once after viewing a diet */}
-      {showReviewNudge && (
-        <div className="flex items-center gap-3 bg-warning/10 border border-warning/30 rounded-xl px-4 py-3">
-          <Star className="w-5 h-5 text-amber-500 shrink-0" />
-          <p className="text-sm text-foreground flex-1">
-            Programınızdan memnun musunuz?{" "}
-            <button
-              onClick={handleReviewNudgeClick}
-              className="text-amber-600 font-semibold hover:underline"
-            >
-              Google&apos;da değerlendirin
-            </button>{" "}
-            ya da{" "}
-            <button
-              onClick={handleReviewNudgeDone}
-              className="text-muted-foreground hover:underline"
-            >
-              zaten yaptım
-            </button>
-          </p>
-          <button
-            onClick={handleReviewNudgeDismiss}
-            className="p-1 text-muted-foreground/50 hover:text-muted-foreground transition shrink-0"
-            aria-label="Kapat"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Meals */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-xl font-semibold text-foreground mb-4">
@@ -494,4 +432,3 @@ export default function ClientDietDetailPage() {
     </div>
   );
 }
-
