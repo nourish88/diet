@@ -23,6 +23,18 @@ interface UnreadData {
   unreadByDiet: Record<number, number>;
 }
 
+interface ClientAnnouncement {
+  id: number;
+  isRead: boolean;
+  archivedAt: string | null;
+  broadcastMessage: {
+    title: string;
+    message: string;
+    dietitianName: string;
+    createdAt: string;
+  };
+}
+
 const WELCOME_DISMISS_KEY = "client_welcome_dismissed_v1";
 const REVIEW_DONE_KEY = "client_review_done";
 const REVIEW_DISMISSED_KEY = "client_review_dismissed_at";
@@ -69,6 +81,8 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [showWelcomeTip, setShowWelcomeTip] = useState(false);
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [announcements, setAnnouncements] = useState<ClientAnnouncement[]>([]);
+  const [announcementCount, setAnnouncementCount] = useState(0);
 
   useEffect(() => {
     try {
@@ -95,6 +109,7 @@ export default function ClientDashboard() {
 
     const interval = setInterval(() => {
       loadUnreadMessages();
+      loadAnnouncements();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -155,10 +170,28 @@ export default function ClientDashboard() {
       if (client?.id) {
         loadUnreadMessages(client.id as number);
       }
+      await loadAnnouncements();
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAnnouncements = async () => {
+    try {
+      const data = await apiClient.get<{
+        notifications: ClientAnnouncement[];
+        unreadCount: number;
+      }>("/client/portal/notifications");
+      setAnnouncements(
+        data.notifications
+          .filter((item) => !item.isRead && !item.archivedAt)
+          .slice(0, 3),
+      );
+      setAnnouncementCount(data.unreadCount || 0);
+    } catch (error) {
+      console.error("Error loading client notifications:", error);
     }
   };
 
@@ -274,6 +307,39 @@ export default function ClientDashboard() {
           Beslenme programlarınıza göz atın ve diyetisyeninizle iletişime geçin
         </p>
       </div>
+
+      {/* Only unread announcements are promoted on the dashboard. */}
+      {announcements.length > 0 && (
+        <section className="rounded-2xl border border-brand/25 bg-card shadow-card overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b bg-brand-soft/45">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-brand text-white flex items-center justify-center">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm">Diyetisyeninizden yeni bildirimler</h2>
+                <p className="text-xs text-muted-foreground">{announcementCount} okunmamış mesaj</p>
+              </div>
+            </div>
+            <Link href="/client/notifications" className="text-xs sm:text-sm font-medium text-brand hover:underline whitespace-nowrap">Tümünü gör</Link>
+          </div>
+          <div className="divide-y">
+            {announcements.map((item) => (
+              <Link key={item.id} href={`/client/notifications/${item.id}`} className="group flex items-start gap-3 px-5 py-4 hover:bg-muted/40 transition-colors">
+                <span className="mt-2 h-2.5 w-2.5 rounded-full bg-brand shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-sm">{item.broadcastMessage.title}</p>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.broadcastMessage.message}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{item.broadcastMessage.dietitianName}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Main action cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

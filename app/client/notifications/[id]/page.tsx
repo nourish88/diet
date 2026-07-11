@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { ArrowLeft, BellRing, CalendarDays, Loader2, ShieldCheck, UserRound } from "lucide-react";
+import { Archive, ArrowLeft, BellRing, CalendarDays, Loader2, ShieldCheck, UserRound } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { useToast } from "@/components/ui/use-toast";
 
 type NotificationDetail = {
   id: number;
   isRead: boolean;
   readAt: string | null;
+  archivedAt: string | null;
   broadcastMessage: {
     id: number;
     title: string;
@@ -25,7 +27,9 @@ const formatDate = (value: string) =>
 
 export default function ClientNotificationDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["client-notification", params.id],
     queryFn: () => apiClient.get<{ notification: NotificationDetail }>(`/client/portal/notifications/${params.id}`),
@@ -35,6 +39,20 @@ export default function ClientNotificationDetailPage() {
   useEffect(() => {
     if (data) queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
   }, [data, queryClient]);
+
+  const archiveMutation = useMutation({
+    mutationFn: () =>
+      apiClient.patch<{ archived: boolean; archivedAt: string }>(
+        `/client/portal/notifications/${params.id}`,
+        { archived: true },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+      toast({ title: "Bildirim arşivlendi", description: "Mesaj silinmedi; Arşiv sekmesinden her zaman ulaşabilirsiniz." });
+      router.push("/client/notifications");
+    },
+    onError: (error: any) => toast({ title: "Arşivlenemedi", description: error?.message || "Lütfen tekrar deneyin.", variant: "destructive" }),
+  });
 
   if (isLoading) return <div className="min-h-[50vh] flex justify-center items-center"><Loader2 className="h-8 w-8 animate-spin text-brand" /></div>;
   if (isError || !data) return <div className="max-w-xl mx-auto rounded-2xl border bg-card p-8 text-center"><h1 className="font-semibold text-lg">Bildirim bulunamadı</h1><p className="text-sm text-muted-foreground mt-2">Bu bildirim kaldırılmış veya size ait olmayabilir.</p><Link href="/client/notifications" className="inline-flex items-center text-brand font-medium mt-5"><ArrowLeft className="h-4 w-4 mr-2" />Bildirimlere dön</Link></div>;
@@ -51,6 +69,7 @@ export default function ClientNotificationDetailPage() {
         <div className="px-6 py-7 sm:px-10 sm:py-10">
           <div className="flex flex-wrap gap-x-6 gap-y-3 border-b pb-6 text-sm text-muted-foreground"><span className="inline-flex items-center"><UserRound className="h-4 w-4 mr-2 text-brand" />{item.dietitianName}</span><span className="inline-flex items-center"><CalendarDays className="h-4 w-4 mr-2 text-brand" />{formatDate(item.createdAt)}</span></div>
           <div className="py-8 text-base sm:text-lg leading-8 text-foreground whitespace-pre-wrap break-words">{item.message}</div>
+          {!data.notification.archivedAt && <div className="flex justify-end mb-6"><button type="button" onClick={() => archiveMutation.mutate()} disabled={archiveMutation.isPending} className="inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50">{archiveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}Arşive taşı</button></div>}
           <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900 p-4 flex items-start gap-3"><ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" /><p className="text-sm text-emerald-900 dark:text-emerald-200">Bu mesaj kalıcı olarak bildirim geçmişinize kaydedildi. Daha sonra Bildirimler ekranından tekrar ulaşabilirsiniz.</p></div>
         </div>
       </article>

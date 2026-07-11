@@ -89,6 +89,8 @@ export default function NotificationsPage() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatus, setHistoryStatus] = useState<"all" | "read" | "unread" | "failed">("all");
 
   const recipientsQuery = useQuery({
     queryKey: ["notification-recipients"],
@@ -121,6 +123,27 @@ export default function NotificationsPage() {
 
   const toggle = (id: number) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const selectedDevices = recipients.filter((item) => selectedIds.includes(item.clientId)).reduce((sum, item) => sum + item.subscriptionCount, 0);
+  const visibleHistory = useMemo(() => {
+    const term = historySearch.trim().toLocaleLowerCase("tr-TR");
+    return (historyQuery.data?.messages ?? []).filter((item) => {
+      const matchesText =
+        !term ||
+        item.message.toLocaleLowerCase("tr-TR").includes(term) ||
+        item.recipients.some((recipient) =>
+          recipient.clientName.toLocaleLowerCase("tr-TR").includes(term),
+        );
+      const matchesStatus =
+        historyStatus === "all" ||
+        item.recipients.some((recipient) =>
+          historyStatus === "read"
+            ? recipient.isRead
+            : historyStatus === "unread"
+              ? !recipient.isRead
+              : ["failed", "not_subscribed", "push_unavailable"].includes(recipient.deliveryStatus),
+        );
+      return matchesText && matchesStatus;
+    });
+  }, [historyQuery.data?.messages, historySearch, historyStatus]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -169,7 +192,11 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <section className="space-y-4">
-          {historyQuery.isLoading ? <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-brand" /></div> : !historyQuery.data?.messages.length ? <div className="border rounded-xl bg-card py-20 text-center text-muted-foreground"><History className="h-10 w-10 mx-auto mb-3 opacity-40" />Henüz gönderilmiş bildirim yok.</div> : historyQuery.data.messages.map((item) => {
+          <div className="bg-card border rounded-xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-lg"><Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Danışan veya mesaj ara..." className="w-full pl-9 pr-3 py-2.5 text-sm rounded-lg border bg-background" /></div>
+            <div className="flex gap-1.5 overflow-x-auto">{([['all', 'Tümü'], ['read', 'Okuyanlar'], ['unread', 'Okumayanlar'], ['failed', 'Ulaşmayanlar']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setHistoryStatus(value)} className={`rounded-full px-3 py-2 text-xs font-medium whitespace-nowrap ${historyStatus === value ? "bg-brand text-white" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{label}</button>)}</div>
+          </div>
+          {historyQuery.isLoading ? <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-brand" /></div> : !visibleHistory.length ? <div className="border rounded-xl bg-card py-20 text-center text-muted-foreground"><History className="h-10 w-10 mx-auto mb-3 opacity-40" />{historyQuery.data?.messages.length ? "Filtreye uygun gönderim bulunamadı." : "Henüz gönderilmiş bildirim yok."}</div> : visibleHistory.map((item) => {
             const open = expandedId === item.id;
             return <article key={item.id} className="bg-card border rounded-xl shadow-sm overflow-hidden">
               <button className="w-full p-5 text-left" onClick={() => setExpandedId(open ? null : item.id)}>

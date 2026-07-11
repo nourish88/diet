@@ -1,5 +1,8 @@
 import prisma from "@/lib/prisma";
 import { route, HttpError } from "@/lib/api/handler";
+import { z } from "zod";
+
+const ArchiveBody = z.object({ archived: z.literal(true) });
 
 async function ownedRecipient(userId: number, id: number) {
   const client = await prisma.client.findUnique({ where: { userId }, select: { id: true } });
@@ -10,6 +13,7 @@ async function ownedRecipient(userId: number, id: number) {
       id: true,
       isRead: true,
       readAt: true,
+      archivedAt: true,
       createdAt: true,
       broadcastMessage: {
         select: { id: true, title: true, message: true, dietitianName: true, createdAt: true },
@@ -40,5 +44,30 @@ export const GET = route<undefined, { id: string }>({
         readAt: notification.readAt ?? new Date(),
       },
     };
+  },
+});
+
+export const PATCH = route<typeof ArchiveBody, { id: string }>({
+  auth: "client",
+  schema: ArchiveBody,
+  scope: "client.notifications.archive",
+  handler: async ({ auth, params }) => {
+    const id = Number(params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new HttpError("bad_request", "Geçersiz bildirim.");
+    }
+    const notification = await ownedRecipient(auth.user!.id, id);
+    if (!notification) throw new HttpError("not_found", "Bildirim bulunamadı.");
+
+    const archivedAt = notification.archivedAt ?? new Date();
+    await prisma.broadcastRecipient.update({
+      where: { id },
+      data: {
+        archivedAt,
+        isRead: true,
+        readAt: notification.readAt ?? new Date(),
+      },
+    });
+    return { archived: true, archivedAt };
   },
 });

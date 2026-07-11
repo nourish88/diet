@@ -13,22 +13,37 @@ export const GET = route({
     });
     if (!client) throw new HttpError("not_found", "Danışan kaydı bulunamadı.");
 
+    // Read notifications leave the active inbox after 90 days, but are never
+    // deleted. Unread messages stay visible regardless of age.
+    const archiveCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    await prisma.broadcastRecipient.updateMany({
+      where: {
+        clientId: client.id,
+        isRead: true,
+        archivedAt: null,
+        createdAt: { lt: archiveCutoff },
+      },
+      data: { archivedAt: new Date() },
+    });
+
     const [notifications, unreadCount] = await Promise.all([
       prisma.broadcastRecipient.findMany({
         where: { clientId: client.id },
         orderBy: { createdAt: "desc" },
-        take: 100,
         select: {
           id: true,
           isRead: true,
           readAt: true,
+          archivedAt: true,
           createdAt: true,
           broadcastMessage: {
             select: { id: true, title: true, message: true, dietitianName: true, createdAt: true },
           },
         },
       }),
-      prisma.broadcastRecipient.count({ where: { clientId: client.id, isRead: false } }),
+      prisma.broadcastRecipient.count({
+        where: { clientId: client.id, isRead: false, archivedAt: null },
+      }),
     ]);
     return { notifications, unreadCount };
   },

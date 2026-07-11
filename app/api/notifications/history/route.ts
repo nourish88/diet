@@ -10,7 +10,6 @@ export const GET = route({
     const messages = await prisma.broadcastMessage.findMany({
       where: { dietitianId: auth.user!.id },
       orderBy: { createdAt: "desc" },
-      take: 100,
       select: {
         id: true,
         title: true,
@@ -31,6 +30,7 @@ export const GET = route({
             errorMessage: true,
             isRead: true,
             readAt: true,
+            archivedAt: true,
           },
         },
       },

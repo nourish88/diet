@@ -7,11 +7,21 @@ import { useAuth } from "@/lib/auth-context";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 
 export default function ClientTopNav() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { signOut } = useAuth();
   const pathname = usePathname();
+  const { data: notificationData } = useQuery({
+    queryKey: ["client-notifications"],
+    queryFn: () =>
+      apiClient.get<{ notifications: unknown[]; unreadCount: number }>(
+        "/client/portal/notifications",
+      ),
+    refetchInterval: 30_000,
+  });
 
   const handleLogout = async () => {
     try {
@@ -67,7 +77,14 @@ export default function ClientTopNav() {
             )}
             {navLink(
               "/client/notifications",
-              <Bell className="w-4 h-4" />,
+              <span className="relative">
+                <Bell className="w-4 h-4" />
+                {!!notificationData?.unreadCount && (
+                  <span className="absolute -right-2.5 -top-2.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-[10px] leading-4 text-white text-center font-bold">
+                    {notificationData.unreadCount > 9 ? "9+" : notificationData.unreadCount}
+                  </span>
+                )}
+              </span>,
               "Bildirimler"
             )}
             {navLink(
