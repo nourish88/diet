@@ -76,6 +76,7 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
   const checkIns = query.data?.checkIns ?? [];
   const summary = useMemo(() => {
     const production = checkIns.filter((item) => !item.isTest);
+    const testCount = checkIns.length - production.length;
     const satisfactionEntries = production.filter(
       (item): item is CheckIn & { satisfaction: number } =>
         item.satisfaction !== null,
@@ -85,7 +86,8 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
         satisfactionEntries.length
       : null;
     return {
-      total: production.length,
+      total: checkIns.length,
+      testCount,
       average,
       attention: production.filter(
         (item) =>
@@ -113,6 +115,11 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
               <span className="rounded-full border bg-card px-3 py-1.5">
                 {summary.total} form
               </span>
+              {summary.testCount > 0 && (
+                <span className="rounded-full border bg-card px-3 py-1.5 text-violet-700">
+                  {summary.testCount} test
+                </span>
+              )}
               {summary.average !== null && (
                 <span className="rounded-full border bg-card px-3 py-1.5">
                   Ortalama memnuniyet {summary.average.toFixed(1)}/5

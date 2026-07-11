@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import prisma from "@/lib/prisma";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
-import { getWeeklyCheckInWeekStart } from "@/lib/weekly-check-in";
 
 export type TestNotificationType = "water" | "check-in";
 
@@ -18,6 +17,37 @@ const COPY: Record<TestNotificationType, { title: string; message: string }> = {
 
 function formatError(error: unknown) {
   return error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500);
+}
+
+async function getOrCreateTestCheckIn(client: {
+  id: number;
+  dietitianId: number | null;
+}) {
+  const pending = await prisma.weeklyCheckIn.findFirst({
+    where: {
+      clientId: client.id,
+      isTest: true,
+      status: "pending",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (pending) {
+    return prisma.weeklyCheckIn.update({
+      where: { id: pending.id },
+      data: { sentAt: new Date() },
+    });
+  }
+
+  return prisma.weeklyCheckIn.create({
+    data: {
+      clientId: client.id,
+      dietitianId: client.dietitianId!,
+      weekStart: new Date(),
+      isTest: true,
+      sentAt: new Date(),
+    },
+  });
 }
 
 export async function sendTestNotificationToClient(
@@ -49,39 +79,7 @@ export async function sendTestNotificationToClient(
   const copy = COPY[type];
   const testCheckIn =
     type === "check-in"
-      ? await prisma.weeklyCheckIn.upsert({
-          where: {
-            clientId_weekStart_isTest: {
-              clientId: client.id,
-              weekStart: getWeeklyCheckInWeekStart(new Date(), "initial"),
-              isTest: true,
-            },
-          },
-          update: {
-            status: "pending",
-            sentAt: new Date(),
-            reminderSentAt: null,
-            submittedAt: null,
-            contactedAt: null,
-            resolvedAt: null,
-            adherence: null,
-            hunger: null,
-            energy: null,
-            sleep: null,
-            water: null,
-            exercise: null,
-            satisfaction: null,
-            challenge: null,
-            supportRequest: null,
-          },
-          create: {
-            clientId: client.id,
-            dietitianId: client.dietitianId,
-            weekStart: getWeeklyCheckInWeekStart(new Date(), "initial"),
-            isTest: true,
-            sentAt: new Date(),
-          },
-        })
+      ? await getOrCreateTestCheckIn(client)
       : null;
   const actionUrl = testCheckIn ? `/client/check-in/${testCheckIn.id}` : null;
   const broadcast = await prisma.broadcastMessage.create({
