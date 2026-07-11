@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { route, HttpError } from "@/lib/api/handler";
+import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,15 @@ export const GET = route({
         where: { clientId: client.id, isRead: false, archivedAt: null },
       }),
     ]);
-    return { notifications, unreadCount };
+    return {
+      notifications: notifications.map((notification) => ({
+        ...notification,
+        broadcastMessage: {
+          ...notification.broadcastMessage,
+          dietitianName: PUBLIC_DIETITIAN_NAME,
+        },
+      })),
+      unreadCount,
+    };
   },
 });

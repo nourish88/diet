@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { route, HttpError } from "@/lib/api/handler";
 import { z } from "zod";
+import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 
 const ArchiveBody = z.object({ archived: z.literal(true) });
 
@@ -44,6 +45,10 @@ export const GET = route<undefined, { id: string }>({
         ...notification,
         isRead: true,
         readAt: notification.readAt ?? new Date(),
+        broadcastMessage: {
+          ...notification.broadcastMessage,
+          dietitianName: PUBLIC_DIETITIAN_NAME,
+        },
       },
     };
   },

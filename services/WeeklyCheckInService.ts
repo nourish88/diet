@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 import {
   getWeeklyCheckInWeekStart,
   type WeeklyCheckInMode,
@@ -215,13 +216,11 @@ export async function sendWeeklyCheckIns(
       continue;
     }
 
-    const dietitian = eligible[0].client.dietitian;
     const broadcast = await prisma.$transaction(async (tx) => {
       const created = await tx.broadcastMessage.create({
         data: {
           dietitianId,
-          dietitianName:
-            dietitian.name?.trim() || dietitian.email || "Diyetisyeniniz",
+          dietitianName: PUBLIC_DIETITIAN_NAME,
           title,
           message,
           type: "weekly_check_in",

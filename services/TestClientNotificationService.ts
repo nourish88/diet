@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import prisma from "@/lib/prisma";
+import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 
 export type TestNotificationType = "water" | "check-in";
@@ -85,10 +86,7 @@ export async function sendTestNotificationToClient(
   const broadcast = await prisma.broadcastMessage.create({
     data: {
       dietitianId: client.dietitianId,
-      dietitianName:
-        client.dietitian.name?.trim() ||
-        client.dietitian.email ||
-        "Diyetisyeniniz",
+      dietitianName: PUBLIC_DIETITIAN_NAME,
       title: copy.title,
       message: copy.message,
       type: `test_${type.replace("-", "_")}`,

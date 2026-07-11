@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 import { turkeyDateKey } from "@/lib/weekly-check-in";
 
@@ -127,10 +128,7 @@ export async function sendClientNotifications({
   clientIds: number[];
   body: string;
 }): Promise<ClientNotificationResult> {
-  const [dietitian, clients] = await Promise.all([
-    prisma.user.findUnique({ where: { id: dietitianId }, select: { name: true, email: true } }),
-    findClients(dietitianId, clientIds),
-  ]);
+  const clients = await findClients(dietitianId, clientIds);
 
   // Never silently accept IDs that are no longer owned by this dietitian.
   if (clients.length !== new Set(clientIds).size) {
@@ -140,7 +138,7 @@ export async function sendClientNotifications({
   const broadcast = await prisma.broadcastMessage.create({
     data: {
       dietitianId,
-      dietitianName: dietitian?.name?.trim() || dietitian?.email || "Diyetisyeniniz",
+      dietitianName: PUBLIC_DIETITIAN_NAME,
       title: DIETITIAN_MESSAGE_TITLE,
       message: body,
       recipients: {
@@ -252,14 +250,10 @@ async function sendDailyWaterReminder(dietitianId: number) {
   });
   if (existing) return { sent, failed, skipped: clients.length, persisted: 0 };
 
-  const dietitian = await prisma.user.findUnique({
-    where: { id: dietitianId },
-    select: { name: true, email: true },
-  });
   const broadcast = await prisma.broadcastMessage.create({
     data: {
       dietitianId,
-      dietitianName: dietitian?.name?.trim() || dietitian?.email || "Diyetisyeniniz",
+      dietitianName: PUBLIC_DIETITIAN_NAME,
       title: "Su molası 💧",
       message: DAILY_WATER_MESSAGE,
       type: "daily_water",
