@@ -89,6 +89,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NotificationTestPanel } from "@/components/NotificationTestPanel";
+import { ClientCheckInHistory } from "@/components/check-ins/ClientCheckInHistory";
 
 export default function ClientDetailPage() {
   const { toast } = useToast();
@@ -747,6 +748,8 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
+
+      {clientId && <ClientCheckInHistory clientId={clientId} />}
 
       {/* Progress Tracking Section */}
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2 pr-1">
