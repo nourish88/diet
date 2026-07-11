@@ -1,8 +1,10 @@
 # Check-in ve su bildirimi zamanlaması
 
 Bildirim içerikleri, alıcıları ve haftalık check-in yanıtları uygulamanın
-`DATABASE_URL` ile bağlı olduğu Supabase PostgreSQL veritabanında kalıcı olarak
-saklanır. `vercel.json` içinde cron tanımı kullanılmaz.
+`DATABASE_URL` ile bağlı olduğu Neon PostgreSQL veritabanında kalıcı olarak
+saklanır. Supabase bu kurulumda Auth, Vault ve `pg_cron`/`pg_net` zamanlayıcısı
+olarak kullanılır; uygulama tabloları boş Supabase `public` şemasına kopyalanmaz.
+`vercel.json` içinde cron tanımı kullanılmaz.
 
 ## Önerilen saatler (Europe/Istanbul)
 
@@ -75,7 +77,7 @@ select cron.schedule(
 
 Su ve check-in bildirimleri yalnızca `Client.isActive = true`, portal hesabıyla
 eşleşmiş danışanlar için oluşturulur. Push izni olmayan danışanlarda da kalıcı
-bildirim kaydı Supabase'de tutulur.
+bildirim kaydı Neon veritabanında tutulur.
 
 ## Tek danışanla güvenli test
 
@@ -88,7 +90,7 @@ Authorization: Bearer CRON_SECRET
 ```
 
 Bu uç yalnızca verilen aktif ve portal hesabıyla eşleşmiş danışana gönderim
-yapar. Her test Supabase'de `test_water` veya `test_check_in` türüyle kalıcı
+yapar. Her test Neon'da `test_water` veya `test_check_in` türüyle kalıcı
 olarak kaydedilir. `check-in` testi `isTest = true` olan gerçek ve doldurulabilir
 bir form üretir; gerçek Pazar check-in kaydından ayrı tutulur ve üretim
 zamanlamalarının tekilleştirme anahtarlarını etkilemez.
