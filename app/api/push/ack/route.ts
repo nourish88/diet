@@ -6,9 +6,14 @@ import { addCorsHeaders, handleCors } from "@/lib/cors";
 
 export const dynamic = "force-dynamic";
 
-const AckBody = z.object({
-  logId: z.number().int().positive(),
-});
+const AckBody = z
+  .object({
+    logId: z.number().int().positive().optional(),
+    broadcastRecipientId: z.number().int().positive().optional(),
+  })
+  .refine((value) => value.logId || value.broadcastRecipientId, {
+    message: "An acknowledgement id is required",
+  });
 
 function isMissingNotificationLogTable(err: unknown): boolean {
   return (
@@ -38,10 +43,18 @@ export async function POST(request: NextRequest) {
         NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 })
       );
     }
-    await prisma.notificationLog.update({
-      where: { id: parsed.data.logId },
-      data: { receivedAt: new Date() },
-    });
+    if (parsed.data.logId) {
+      await prisma.notificationLog.update({
+        where: { id: parsed.data.logId },
+        data: { receivedAt: new Date() },
+      });
+    }
+    if (parsed.data.broadcastRecipientId) {
+      await prisma.broadcastRecipient.update({
+        where: { id: parsed.data.broadcastRecipientId },
+        data: { deliveredAt: new Date(), deliveryStatus: "delivered" },
+      });
+    }
     return addCorsHeaders(NextResponse.json({ ok: true }));
   } catch (err: any) {
     // P2025 = record not found; treat as no-op so SW retries don't error loudly.

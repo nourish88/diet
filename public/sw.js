@@ -113,12 +113,16 @@ self.addEventListener("push", (event) => {
   // the notification even if the ack fails (and Chrome will punish missing
   // notifications by revoking push permission).
   const ackLogId = payload.data?.logId;
+  const broadcastRecipientId = payload.data?.broadcastRecipientId;
   const ackPromise =
-    typeof ackLogId === "number"
+    typeof ackLogId === "number" || typeof broadcastRecipientId === "number"
       ? fetch("/api/push/ack", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ logId: ackLogId }),
+          body: JSON.stringify({
+            ...(typeof ackLogId === "number" ? { logId: ackLogId } : {}),
+            ...(typeof broadcastRecipientId === "number" ? { broadcastRecipientId } : {}),
+          }),
           keepalive: true,
         }).catch(() => undefined)
       : Promise.resolve();

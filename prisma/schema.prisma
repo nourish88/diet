@@ -55,6 +55,9 @@ model Client {
   // Fatura Modülü
   billingInfo ClientBillingInfo?
   invoices    Invoice[]
+
+  // Broadcast Notifications
+  broadcastRecipients BroadcastRecipient[]
 }
 
 model ClientPhoneAuth {
@@ -337,6 +340,9 @@ model User {
   congratulationLogs    CongratulationLog[]
   notificationLogs      NotificationLog[]
   createdDietShareLinks DietShareLink[]        @relation("DietShareLinkCreator")
+
+  // Broadcast Notifications
+  broadcastMessages BroadcastMessage[] @relation("DietitianBroadcasts")
 
   @@index([supabaseId])
   @@index([email])
@@ -714,4 +720,47 @@ model Invoice {
   updatedAt DateTime @updatedAt
 
   @@index([clientId, date])
+}
+
+// Broadcast Notifications (Dietitian -> Clients)
+model BroadcastMessage {
+  id            Int      @id @default(autoincrement())
+  dietitianId   Int?
+  dietitian     User?    @relation("DietitianBroadcasts", fields: [dietitianId], references: [id], onDelete: SetNull)
+  dietitianName String
+  title         String   @default("Diyetisyeninizden mesaj var")
+  message       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  recipients BroadcastRecipient[]
+
+  @@index([dietitianId])
+}
+
+model BroadcastRecipient {
+  id                 Int              @id @default(autoincrement())
+  broadcastMessageId Int
+  broadcastMessage   BroadcastMessage @relation(fields: [broadcastMessageId], references: [id], onDelete: Cascade)
+  clientId           Int?
+  client             Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientName         String
+
+  // Push is only a delivery channel; this row is the durable inbox record.
+  deliveryStatus    String    @default("pending")
+  subscriptionCount Int       @default(0)
+  sentCount         Int       @default(0)
+  failedCount       Int       @default(0)
+  pushSentAt        DateTime?
+  deliveredAt       DateTime?
+  errorMessage      String?
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([broadcastMessageId])
+  @@index([clientId, isRead])
+  @@index([deliveryStatus])
 }

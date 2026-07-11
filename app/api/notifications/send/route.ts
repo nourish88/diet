@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { route, HttpError } from "@/lib/api/handler";
+import { route } from "@/lib/api/handler";
 import { sendClientNotifications } from "@/services/ClientNotificationService";
 
 const Body = z.object({
@@ -16,18 +16,7 @@ export const POST = route({
       dietitianId: auth.user!.id,
       clientIds: body.clientIds,
       body: body.message,
-      type: "dietitian_message",
-      url: "/client",
-      respectDietUpdatesPreference: false,
     });
-
-    if (!result.ok) {
-      const message =
-        result.reason === "push-not-configured"
-          ? "Sunucuda web push ayarları eksik."
-          : "Seçilen danışanlarda aktif bildirim aboneliği bulunamadı.";
-      throw new HttpError("bad_request", message, result);
-    }
 
     return result;
   },
