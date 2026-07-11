@@ -37,7 +37,6 @@ const scoreLabels: Array<[keyof CheckIn, string]> = [
   ["sleep", "Uyku"],
   ["water", "Su"],
   ["exercise", "Hareket"],
-  ["satisfaction", "Memnuniyet"],
 ];
 
 export function ClientCheckInSummary({ clientId }: { clientId: number }) {
@@ -166,13 +165,7 @@ export function ClientCheckInSummary({ clientId }: { clientId: number }) {
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-5">
           {scoreLabels.map(([key, label]) => (
             <div key={key} className="rounded-xl border bg-card/90 px-2 py-2.5 text-center">
-              <div
-                className={`text-lg font-bold ${
-                  key === "satisfaction" && dissatisfied
-                    ? "text-destructive"
-                    : "text-foreground"
-                }`}
-              >
+              <div className="text-lg font-bold text-foreground">
                 {checkIn[key] as number | null}/5
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>

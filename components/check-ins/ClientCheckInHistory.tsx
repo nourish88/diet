@@ -26,7 +26,7 @@ type CheckIn = {
   sleep: number;
   water: number;
   exercise: number;
-  satisfaction: number;
+  satisfaction: number | null;
   challenge: string | null;
   supportRequest: string | null;
   submittedAt: string;
@@ -40,7 +40,6 @@ const SCORES: Array<[keyof CheckIn, string]> = [
   ["sleep", "Uyku"],
   ["water", "Su"],
   ["exercise", "Hareket"],
-  ["satisfaction", "Memnuniyet"],
 ];
 
 const formatDate = (value: string) =>
@@ -77,15 +76,22 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
   const checkIns = query.data?.checkIns ?? [];
   const summary = useMemo(() => {
     const production = checkIns.filter((item) => !item.isTest);
-    const average = production.length
-      ? production.reduce((sum, item) => sum + item.satisfaction, 0) /
-        production.length
+    const satisfactionEntries = production.filter(
+      (item): item is CheckIn & { satisfaction: number } =>
+        item.satisfaction !== null,
+    );
+    const average = satisfactionEntries.length
+      ? satisfactionEntries.reduce((sum, item) => sum + item.satisfaction, 0) /
+        satisfactionEntries.length
       : null;
     return {
       total: production.length,
       average,
       attention: production.filter(
-        (item) => item.satisfaction <= 2 && !item.contactedAt,
+        (item) =>
+          item.satisfaction !== null &&
+          item.satisfaction <= 2 &&
+          !item.contactedAt,
       ).length,
     };
   }, [checkIns]);
@@ -135,7 +141,8 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
         ) : (
           <div className="divide-y">
             {checkIns.map((checkIn) => {
-              const dissatisfied = checkIn.satisfaction <= 2;
+              const dissatisfied =
+                checkIn.satisfaction !== null && checkIn.satisfaction <= 2;
               const needsAttention = dissatisfied && !checkIn.contactedAt;
               const expanded = expandedId === checkIn.id;
               return (
@@ -173,7 +180,9 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
                             )}
                           </p>
                           <p className={`text-xs mt-1 ${needsAttention ? "font-semibold text-destructive" : "text-muted-foreground"}`}>
-                            Memnuniyet {checkIn.satisfaction}/5
+                            {checkIn.satisfaction !== null
+                              ? `Memnuniyet ${checkIn.satisfaction}/5`
+                              : "Haftalık değerlendirme"}
                             {needsAttention
                               ? " · İletişim bekliyor"
                               : checkIn.contactedAt
@@ -195,7 +204,7 @@ export function ClientCheckInHistory({ clientId }: { clientId: number }) {
                       <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                         {SCORES.map(([key, label]) => (
                           <div key={key} className="rounded-xl border bg-background p-2 text-center">
-                            <p className={`font-bold ${key === "satisfaction" && dissatisfied ? "text-destructive" : ""}`}>
+                            <p className="font-bold">
                               {checkIn[key] as number}/5
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>

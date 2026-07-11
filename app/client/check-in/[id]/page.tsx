@@ -23,7 +23,6 @@ const SCORE_FIELDS = [
   { key: "sleep", label: "Uyku kalitem", low: "Çok kötüydü", high: "Çok iyiydi" },
   { key: "water", label: "Su tüketimim", low: "Yetersizdi", high: "Hedefimdeydi" },
   { key: "exercise", label: "Hareket düzeyim", low: "Çok azdı", high: "Çok iyiydi" },
-  { key: "satisfaction", label: "Süreçten memnuniyetim", low: "Memnun değilim", high: "Çok memnunum" },
 ] as const;
 
 type ScoreKey = (typeof SCORE_FIELDS)[number]["key"];
@@ -46,7 +45,6 @@ const EMPTY_FORM: FormState = {
   sleep: null,
   water: null,
   exercise: null,
-  satisfaction: null,
   challenge: "",
   supportRequest: "",
 };

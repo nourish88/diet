@@ -11,7 +11,7 @@ const SubmitCheckIn = z.object({
   sleep: Score,
   water: Score,
   exercise: Score,
-  satisfaction: Score,
+  satisfaction: Score.optional(),
   challenge: z.string().trim().max(1000).optional().default(""),
   supportRequest: z.string().trim().max(1000).optional().default(""),
 });
