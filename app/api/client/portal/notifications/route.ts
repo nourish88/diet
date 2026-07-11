@@ -36,8 +36,10 @@ export const GET = route({
           readAt: true,
           archivedAt: true,
           createdAt: true,
+          actionUrl: true,
+          weeklyCheckInId: true,
           broadcastMessage: {
-            select: { id: true, title: true, message: true, dietitianName: true, createdAt: true },
+            select: { id: true, title: true, message: true, type: true, dietitianName: true, createdAt: true },
           },
         },
       }),

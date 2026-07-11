@@ -47,6 +47,7 @@ model Client {
   consentRecords           ClientConsentRecord[]
   congratulationLogs       CongratulationLog[]
   notificationLogs         NotificationLog[]
+  weeklyCheckIns           WeeklyCheckIn[]
 
   // Aktif Danışanlar Modülü
   isActive Boolean @default(false)
@@ -342,7 +343,8 @@ model User {
   createdDietShareLinks DietShareLink[]        @relation("DietShareLinkCreator")
 
   // Broadcast Notifications
-  broadcastMessages BroadcastMessage[] @relation("DietitianBroadcasts")
+  broadcastMessages     BroadcastMessage[] @relation("DietitianBroadcasts")
+  managedWeeklyCheckIns WeeklyCheckIn[]    @relation("WeeklyCheckInDietitian")
 
   @@index([supabaseId])
   @@index([email])
@@ -716,7 +718,6 @@ model Invoice {
   amountWithVat    Float // KDV Dahil Tutar
   amountWithoutVat Float // KDV Hariç Tutar
 
-  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientId, date])
@@ -730,6 +731,8 @@ model BroadcastMessage {
   dietitianName String
   title         String   @default("Diyetisyeninizden mesaj var")
   message       String   @db.Text
+  type          String   @default("announcement")
+  dedupeKey     String?  @unique
   createdAt     DateTime @default(now())
 
   recipients BroadcastRecipient[]
@@ -744,6 +747,9 @@ model BroadcastRecipient {
   clientId           Int?
   client             Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientName         String
+  actionUrl          String?
+  weeklyCheckInId    Int?
+  weeklyCheckIn      WeeklyCheckIn?   @relation(fields: [weeklyCheckInId], references: [id], onDelete: SetNull)
 
   // Push is only a delivery channel; this row is the durable inbox record.
   deliveryStatus    String    @default("pending")
@@ -764,5 +770,42 @@ model BroadcastRecipient {
   @@index([broadcastMessageId])
   @@index([clientId, isRead])
   @@index([clientId, archivedAt])
+  @@index([weeklyCheckInId])
   @@index([deliveryStatus])
+}
+
+model WeeklyCheckIn {
+  id          Int      @id @default(autoincrement())
+  clientId    Int
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  dietitianId Int
+  dietitian   User     @relation("WeeklyCheckInDietitian", fields: [dietitianId], references: [id], onDelete: Cascade)
+  weekStart   DateTime
+  status      String   @default("pending")
+  isTest      Boolean  @default(false)
+
+  adherence      Int?
+  hunger         Int?
+  energy         Int?
+  sleep          Int?
+  water          Int?
+  exercise       Int?
+  satisfaction   Int?
+  challenge      String? @db.Text
+  supportRequest String? @db.Text
+
+  sentAt         DateTime?
+  reminderSentAt DateTime?
+  submittedAt    DateTime?
+  contactedAt    DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  notifications BroadcastRecipient[]
+
+  @@unique([clientId, weekStart, isTest])
+  @@index([dietitianId, status])
+  @@index([dietitianId, satisfaction, submittedAt])
+  @@index([clientId, submittedAt])
 }

@@ -20,6 +20,7 @@ type NotificationItem = {
   readAt: string | null;
   archivedAt: string | null;
   createdAt: string;
+  actionUrl: string | null;
   broadcastMessage: {
     id: number;
     title: string;
@@ -92,7 +93,7 @@ export default function ClientNotificationsPage() {
         {isLoading ? <div className="py-20 flex justify-center"><Loader2 className="h-7 w-7 animate-spin text-brand" /></div> : !visible.length ? (
           <div className="rounded-2xl border bg-card py-16 px-6 text-center"><Inbox className="h-12 w-12 mx-auto text-muted-foreground/40" /><h2 className="font-semibold mt-4">{emptyCopy.title}</h2><p className="text-sm text-muted-foreground mt-1">{emptyCopy.body}</p>{filter === "unread" && notifications.some((item) => !item.archivedAt) && <button type="button" onClick={() => setFilter("all")} className="mt-5 text-sm font-medium text-brand hover:underline">Okunan bildirimleri göster</button>}</div>
         ) : visible.map((item) => (
-          <Link key={item.id} href={`/client/notifications/${item.id}`} className={`group block rounded-2xl border p-4 sm:p-5 transition-all hover:-translate-y-0.5 hover:shadow-md ${item.isRead ? "bg-card" : "bg-brand-soft/60 border-brand/30 shadow-sm"}`}>
+          <Link key={item.id} href={item.actionUrl || `/client/notifications/${item.id}`} className={`group block rounded-2xl border p-4 sm:p-5 transition-all hover:-translate-y-0.5 hover:shadow-md ${item.isRead ? "bg-card" : "bg-brand-soft/60 border-brand/30 shadow-sm"}`}>
             <div className="flex items-start gap-4">
               <div className={`mt-0.5 rounded-xl p-2.5 ${item.isRead ? "bg-muted text-muted-foreground" : "bg-brand text-white"}`}>{item.isRead ? <MailOpen className="h-5 w-5" /> : <Mail className="h-5 w-5" />}</div>
               <div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold leading-6">{item.broadcastMessage.title}</h2>{!item.isRead && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-brand shrink-0" />}</div><p className="text-sm text-muted-foreground mt-1.5 line-clamp-2 whitespace-pre-wrap">{item.broadcastMessage.message}</p><div className="flex items-center justify-between gap-3 mt-3"><p className="text-xs text-muted-foreground">{item.broadcastMessage.dietitianName} · {formatDate(item.broadcastMessage.createdAt)}</p><ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" /></div></div>

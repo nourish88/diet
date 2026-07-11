@@ -12,6 +12,9 @@ import {
   ExternalLink,
   X,
   Bell,
+  ClipboardCheck,
+  Droplets,
+  Target,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
@@ -27,12 +30,30 @@ interface ClientAnnouncement {
   id: number;
   isRead: boolean;
   archivedAt: string | null;
+  actionUrl: string | null;
   broadcastMessage: {
     title: string;
     message: string;
     dietitianName: string;
     createdAt: string;
   };
+}
+
+interface CurrentCheckIn {
+  id: number;
+  status: string;
+  weekStart: string;
+  submittedAt: string | null;
+}
+
+interface TodayOverview {
+  diets: Array<{
+    id: number;
+    hedef: string | null;
+    su: string | null;
+    tarih: string | null;
+    createdAt: string;
+  }>;
 }
 
 const WELCOME_DISMISS_KEY = "client_welcome_dismissed_v1";
@@ -83,6 +104,8 @@ export default function ClientDashboard() {
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const [announcements, setAnnouncements] = useState<ClientAnnouncement[]>([]);
   const [announcementCount, setAnnouncementCount] = useState(0);
+  const [currentCheckIn, setCurrentCheckIn] = useState<CurrentCheckIn | null>(null);
+  const [todayOverview, setTodayOverview] = useState<TodayOverview | null>(null);
 
   useEffect(() => {
     try {
@@ -110,6 +133,7 @@ export default function ClientDashboard() {
     const interval = setInterval(() => {
       loadUnreadMessages();
       loadAnnouncements();
+      loadToday();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -170,11 +194,26 @@ export default function ClientDashboard() {
       if (client?.id) {
         loadUnreadMessages(client.id as number);
       }
-      await loadAnnouncements();
+      await Promise.all([loadAnnouncements(), loadToday()]);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadToday = async () => {
+    try {
+      const [checkInData, overviewData] = await Promise.all([
+        apiClient.get<{ checkIn: CurrentCheckIn | null }>(
+          "/client/check-ins/current",
+        ),
+        apiClient.get<TodayOverview>("/client/portal/overview"),
+      ]);
+      setCurrentCheckIn(checkInData.checkIn);
+      setTodayOverview(overviewData);
+    } catch (error) {
+      console.error("Bugün özeti yüklenemedi:", error);
     }
   };
 
@@ -253,6 +292,9 @@ export default function ClientDashboard() {
     );
   }
 
+  const latestDiet = todayOverview?.diets?.[0] ?? null;
+  const pendingCheckIn = currentCheckIn?.status === "pending";
+
   return (
     <div className="space-y-6">
       {/* Welcome tip */}
@@ -308,6 +350,80 @@ export default function ClientDashboard() {
         </p>
       </div>
 
+      {/* Today-focused action center */}
+      <section className="overflow-hidden rounded-2xl border bg-card shadow-card">
+        <div className="flex items-center justify-between gap-3 border-b px-5 py-4 bg-brand-soft/35">
+          <div>
+            <h2 className="font-bold text-lg">Bugün</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Günlük sürecinizde sıradaki adımlar
+            </p>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-brand text-white flex items-center justify-center">
+            <Target className="h-5 w-5" />
+          </div>
+        </div>
+        <div className="divide-y">
+          {pendingCheckIn && currentCheckIn ? (
+            <Link
+              href={`/client/check-in/${currentCheckIn.id}`}
+              className="flex items-center gap-3 p-4 sm:px-5 hover:bg-brand-soft/40 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                <ClipboardCheck className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm">Haftalık kontrolünüz hazır</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Birkaç kısa soruyu yanıtlayarak diyetisyeninizi bilgilendirin.
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-brand shrink-0" />
+            </Link>
+          ) : currentCheckIn?.status === "submitted" ? (
+            <div className="flex items-center gap-3 p-4 sm:px-5">
+              <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+                <ClipboardCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Haftalık kontrol tamamlandı</p>
+                <p className="text-xs text-muted-foreground mt-1">Yanıtlarınız diyetisyeninize iletildi.</p>
+              </div>
+            </div>
+          ) : null}
+
+          {latestDiet && (
+            <Link
+              href={`/client/diets/${latestDiet.id}`}
+              className="flex items-center gap-3 p-4 sm:px-5 hover:bg-muted/40 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+                <UtensilsCrossed className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm">Güncel beslenme programınız</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {latestDiet.hedef || "Bugünkü öğün planınızı görüntüleyin."}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </Link>
+          )}
+
+          <div className="flex items-center gap-3 p-4 sm:px-5">
+            <div className="h-10 w-10 rounded-xl bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 flex items-center justify-center">
+              <Droplets className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Su hedefinizi hatırlayın</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {latestDiet?.su || "Gün boyunca düzenli aralıklarla su için."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Only unread announcements are promoted on the dashboard. */}
       {announcements.length > 0 && (
         <section className="rounded-2xl border border-brand/25 bg-card shadow-card overflow-hidden">
@@ -325,7 +441,7 @@ export default function ClientDashboard() {
           </div>
           <div className="divide-y">
             {announcements.map((item) => (
-              <Link key={item.id} href={`/client/notifications/${item.id}`} className="group flex items-start gap-3 px-5 py-4 hover:bg-muted/40 transition-colors">
+              <Link key={item.id} href={item.actionUrl || `/client/notifications/${item.id}`} className="group flex items-start gap-3 px-5 py-4 hover:bg-muted/40 transition-colors">
                 <span className="mt-2 h-2.5 w-2.5 rounded-full bg-brand shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">

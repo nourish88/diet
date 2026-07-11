@@ -38,6 +38,7 @@ import { useDietFormDraft } from "./diet/hooks/useDietFormDraft";
 import { DietDraftRestorePrompt } from "./diet/DietDraftRestorePrompt";
 import { DietMeasurementFields } from "./diet/DietMeasurementFields";
 import { DietProgressIndicator } from "./diet/DietProgressIndicator";
+import { ClientCheckInSummary } from "./check-ins/ClientCheckInSummary";
 
 interface ClientResp {
   id: number;
@@ -870,6 +871,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                 illness={clientData.illness}
                 bannedFoods={clientData.bannedFoods}
               />
+            )}
+
+            {selectedClientId && (
+              <ClientCheckInSummary clientId={selectedClientId} />
             )}
 
             {/* Show a message when no client is selected */}

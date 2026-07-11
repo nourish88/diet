@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { CheckInAlerts } from "@/components/check-ins/CheckInAlerts";
 
 interface UnreadConversation {
   clientId: number;
@@ -214,6 +215,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-7xl">
+      <CheckInAlerts />
       {/* Mobile Dashboard Features - Üst Bölüm */}
       <div className="mb-16">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">

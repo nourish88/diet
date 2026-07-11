@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
+import { turkeyDateKey } from "@/lib/weekly-check-in";
 
 type PushSub = { id: number; endpoint: string; auth: string; p256dh: string };
 type ClientWithPush = {
@@ -33,7 +34,8 @@ export type ClientNotificationResult = {
 };
 
 export const DIETITIAN_MESSAGE_TITLE = "Diyetisyeninizden mesaj var";
-export const DAILY_WATER_MESSAGE = "Su içmeyi ihmal etmiyoruz değil mi";
+export const DAILY_WATER_MESSAGE =
+  "Küçük bir su molası zamanı 💧 Bugünkü su hedefinize bir adım daha yaklaşın.";
 
 function formatPushError(error: any): string {
   const status = error?.statusCode;
@@ -80,11 +82,16 @@ export async function listNotificationRecipients(
   }));
 }
 
-async function findClients(dietitianId: number, clientIds?: number[]): Promise<ClientWithPush[]> {
+async function findClients(
+  dietitianId: number,
+  clientIds?: number[],
+  options: { activeOnly?: boolean } = {},
+): Promise<ClientWithPush[]> {
   return prisma.client.findMany({
     where: {
       dietitianId,
       userId: { not: null },
+      ...(options.activeOnly ? { isActive: true } : {}),
       ...(clientIds ? { id: { in: clientIds } } : {}),
     },
     orderBy: { id: "asc" },
@@ -233,41 +240,115 @@ export async function sendClientNotifications({
 }
 
 async function sendDailyWaterReminder(dietitianId: number) {
-  const clients = await findClients(dietitianId);
+  const clients = await findClients(dietitianId, undefined, { activeOnly: true });
   let sent = 0;
   let failed = 0;
   let skipped = 0;
-  if (!isWebPushConfigured()) return { sent, failed, skipped: clients.length };
+  const dateKey = turkeyDateKey();
+  const dedupeKey = `daily-water:${dietitianId}:${dateKey}`;
+  const existing = await prisma.broadcastMessage.findUnique({
+    where: { dedupeKey },
+    select: { id: true },
+  });
+  if (existing) return { sent, failed, skipped: clients.length, persisted: 0 };
+
+  const dietitian = await prisma.user.findUnique({
+    where: { id: dietitianId },
+    select: { name: true, email: true },
+  });
+  const broadcast = await prisma.broadcastMessage.create({
+    data: {
+      dietitianId,
+      dietitianName: dietitian?.name?.trim() || dietitian?.email || "Diyetisyeniniz",
+      title: "Su molası 💧",
+      message: DAILY_WATER_MESSAGE,
+      type: "daily_water",
+      dedupeKey,
+      recipients: {
+        create: clients.map((client) => ({
+          clientId: client.id,
+          clientName: fullName(client),
+          subscriptionCount: client.user?.pushSubscriptions.length ?? 0,
+          deliveryStatus: !isWebPushConfigured()
+            ? "push_unavailable"
+            : client.user?.pushSubscriptions.length
+              ? "pending"
+              : "not_subscribed",
+        })),
+      },
+    },
+    include: { recipients: true },
+  });
 
   for (const client of clients) {
+    const recipient = broadcast.recipients.find(
+      (item) => item.clientId === client.id,
+    );
+    if (!recipient) continue;
     const user = client.user;
-    if (!user || !user.pushSubscriptions.length || user.notificationPreference?.dietUpdates === false) {
+    if (
+      !isWebPushConfigured() ||
+      !user ||
+      !user.pushSubscriptions.length ||
+      user.notificationPreference?.dietUpdates === false
+    ) {
       skipped++;
+      if (user?.notificationPreference?.dietUpdates === false) {
+        await prisma.broadcastRecipient.update({
+          where: { id: recipient.id },
+          data: { deliveryStatus: "preference_disabled" },
+        });
+      }
       continue;
     }
+    let clientSent = 0;
+    let clientFailed = 0;
+    let lastError: string | null = null;
     for (const subscription of user.pushSubscriptions) {
       try {
         await sendWebPushNotification(
           { endpoint: subscription.endpoint, keys: { auth: subscription.auth, p256dh: subscription.p256dh } },
           {
-            title: DIETITIAN_MESSAGE_TITLE,
+            title: broadcast.title,
             body: DAILY_WATER_MESSAGE,
             url: "/client",
-            tag: `daily_water_reminder-${dietitianId}-${client.id}-${new Date().toISOString().slice(0, 10)}`,
+            tag: `daily_water_reminder-${dietitianId}-${client.id}-${dateKey}`,
             requireInteraction: false,
-            data: { type: "daily_water_reminder", clientId: client.id, url: "/client" },
+            data: {
+              type: "daily_water_reminder",
+              clientId: client.id,
+              broadcastRecipientId: recipient.id,
+              url: "/client",
+            },
           },
         );
         sent++;
+        clientSent++;
       } catch (error: any) {
         failed++;
+        clientFailed++;
+        lastError = formatPushError(error);
         if (isInvalidSubscription(error)) {
           await prisma.pushSubscription.delete({ where: { id: subscription.id } }).catch(() => undefined);
         }
       }
     }
+    await prisma.broadcastRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        sentCount: clientSent,
+        failedCount: clientFailed,
+        pushSentAt: clientSent ? new Date() : null,
+        deliveryStatus: clientSent
+          ? clientFailed
+            ? "partial"
+            : "sent"
+          : "failed",
+        errorMessage: lastError,
+      },
+    });
   }
-  return { sent, failed, skipped };
+  return { sent, failed, skipped, persisted: broadcast.recipients.length };
 }
 
 export async function sendDailyWaterReminderToAllDietUpdateClients() {
@@ -278,11 +359,13 @@ export async function sendDailyWaterReminderToAllDietUpdateClients() {
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  let persisted = 0;
   for (const dietitian of dietitians) {
     const result = await sendDailyWaterReminder(dietitian.id);
     sent += result.sent;
     failed += result.failed;
     skipped += result.skipped;
+    persisted += result.persisted;
   }
-  return { sent, failed, skipped, dietitians: dietitians.length };
+  return { sent, failed, skipped, persisted, dietitians: dietitians.length };
 }
