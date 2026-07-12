@@ -89,6 +89,15 @@ function shouldShowReviewPrompt(hasPositiveMilestone: boolean): boolean {
   }
 }
 
+function formatClientName(client?: { name?: unknown; surname?: unknown } | null): string {
+  const fullName = [client?.name, client?.surname]
+    .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+    .map((part) => part.trim())
+    .join(" ");
+
+  return fullName || "Danışan";
+}
+
 export default function ClientDashboard() {
   const router = useRouter();
   const { databaseUser, signOut } = useAuth();
@@ -120,7 +129,7 @@ export default function ClientDashboard() {
   useEffect(() => {
     const client = (databaseUser as any)?.client;
     if (client?.name) {
-      setUserName(client.name as string);
+      setUserName(formatClientName(client));
     }
   }, [databaseUser]);
 
@@ -186,7 +195,7 @@ export default function ClientDashboard() {
       }
 
       const client = (databaseUser as any)?.client;
-      setUserName((client?.name as string) || "Danışan");
+      setUserName(formatClientName(client));
 
       if (client?.id) {
         loadUnreadMessages(client.id as number);
