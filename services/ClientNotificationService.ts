@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { PUBLIC_DIETITIAN_NAME } from "@/lib/brand-identity";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 import { turkeyDateKey } from "@/lib/weekly-check-in";
+import type { WaterReminderSlot } from "@/lib/water-reminder";
 
 type PushSub = { id: number; endpoint: string; auth: string; p256dh: string };
 type ClientWithPush = {
@@ -237,13 +238,16 @@ export async function sendClientNotifications({
   };
 }
 
-async function sendDailyWaterReminder(dietitianId: number) {
+async function sendDailyWaterReminder(
+  dietitianId: number,
+  slot: WaterReminderSlot,
+) {
   const clients = await findClients(dietitianId, undefined, { activeOnly: true });
   let sent = 0;
   let failed = 0;
   let skipped = 0;
   const dateKey = turkeyDateKey();
-  const dedupeKey = `daily-water:${dietitianId}:${dateKey}`;
+  const dedupeKey = `daily-water:${dietitianId}:${dateKey}:${slot}`;
   const existing = await prisma.broadcastMessage.findUnique({
     where: { dedupeKey },
     select: { id: true },
@@ -306,7 +310,7 @@ async function sendDailyWaterReminder(dietitianId: number) {
             title: broadcast.title,
             body: DAILY_WATER_MESSAGE,
             url: "/client",
-            tag: `daily_water_reminder-${dietitianId}-${client.id}-${dateKey}`,
+            tag: `daily_water_reminder-${dietitianId}-${client.id}-${dateKey}-${slot}`,
             requireInteraction: false,
             data: {
               type: "daily_water_reminder",
@@ -345,7 +349,9 @@ async function sendDailyWaterReminder(dietitianId: number) {
   return { sent, failed, skipped, persisted: broadcast.recipients.length };
 }
 
-export async function sendDailyWaterReminderToAllDietUpdateClients() {
+export async function sendDailyWaterReminderToAllDietUpdateClients(
+  slot: WaterReminderSlot,
+) {
   const dietitians = await prisma.user.findMany({
     where: { role: "dietitian", isApproved: true, clients: { some: {} } },
     select: { id: true },
@@ -355,7 +361,7 @@ export async function sendDailyWaterReminderToAllDietUpdateClients() {
   let skipped = 0;
   let persisted = 0;
   for (const dietitian of dietitians) {
-    const result = await sendDailyWaterReminder(dietitian.id);
+    const result = await sendDailyWaterReminder(dietitian.id, slot);
     sent += result.sent;
     failed += result.failed;
     skipped += result.skipped;

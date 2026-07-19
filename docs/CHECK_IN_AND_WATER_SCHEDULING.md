@@ -10,7 +10,8 @@ olarak kullanılır; uygulama tabloları boş Supabase `public` şemasına kopya
 
 | İş | Türkiye saati | UTC cron | Endpoint |
 | --- | --- | --- | --- |
-| Su hatırlatması | Her gün 12:00 | `0 9 * * *` | `/api/cron/daily-client-notifications` |
+| Su hatırlatması | Her gün 12:00 | `0 9 * * *` | `/api/cron/daily-client-notifications?slot=12` |
+| Su hatırlatması | Her gün 17:00 | `0 14 * * *` | `/api/cron/daily-client-notifications?slot=17` |
 | Haftalık check-in | Pazar 18:30 | `30 15 * * 0` | `/api/cron/weekly-check-ins?mode=initial` |
 | Doldurmayanlara tek hatırlatma | Pazartesi 10:00 | `0 7 * * 1` | `/api/cron/weekly-check-ins?mode=reminder` |
 
@@ -35,7 +36,22 @@ select cron.schedule(
   $$
   select net.http_get(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_base_url')
-      || '/api/cron/daily-client-notifications',
+      || '/api/cron/daily-client-notifications?slot=12',
+    headers := jsonb_build_object(
+      'Authorization',
+      'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_cron_secret')
+    )
+  );
+  $$
+);
+
+select cron.schedule(
+  'daily-active-client-water-reminder-17-tr',
+  '0 14 * * *',
+  $$
+  select net.http_get(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_base_url')
+      || '/api/cron/daily-client-notifications?slot=17',
     headers := jsonb_build_object(
       'Authorization',
       'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_cron_secret')
