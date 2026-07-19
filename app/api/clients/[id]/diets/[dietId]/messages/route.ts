@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders } from "@/lib/cors";
 import { storeMealPhotoImage } from "@/lib/meal-photo-storage";
+import {
+  isLegacyMessagePhotoDataUrl,
+  isStoredMessagePhotoUrl,
+  MAX_MESSAGE_PHOTOS,
+} from "@/lib/message-photo";
 import { isWebPushConfigured, sendWebPushNotification } from "@/lib/web-push";
 import { route } from "@/lib/api/handler";
 
@@ -174,9 +179,10 @@ export const GET = route<undefined, Params>({
           },
           photos: {
             where: {
-              expiresAt: {
-                gte: new Date(),
-              },
+              OR: [
+                { expiresAt: null },
+                { expiresAt: { gte: new Date() } },
+              ],
             },
             select: {
               id: true,
@@ -241,9 +247,10 @@ export const GET = route<undefined, Params>({
         },
         photos: {
           where: {
-            expiresAt: {
-              gte: new Date(), // Only non-expired photos
-            },
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gte: new Date() } },
+            ],
           },
           select: {
             id: true,
@@ -301,14 +308,25 @@ export const POST = route<undefined, Params>({
     }
 
     const body = await request.json();
-    const { content, ogunId, photos } = body;
+    const content =
+      typeof body?.content === "string" ? body.content.trim() : "";
+    const ogunId = body?.ogunId;
+    const photos = Array.isArray(body?.photos) ? body.photos : [];
 
-    if (!content || content.trim() === "") {
+    if (!content && photos.length === 0) {
       return addCorsHeaders(
         NextResponse.json(
-          { error: "Message content required" },
+          { error: "Mesaj veya görsel gerekli." },
           { status: 400 }
         )
+      );
+    }
+    if (photos.length > MAX_MESSAGE_PHOTOS) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: `En fazla ${MAX_MESSAGE_PHOTOS} görsel gönderebilirsiniz.` },
+          { status: 400 },
+        ),
       );
     }
 
@@ -352,15 +370,34 @@ export const POST = route<undefined, Params>({
       );
     }
 
+    const photoInputs = photos.map((photo: unknown) =>
+      typeof (photo as { imageData?: unknown })?.imageData === "string"
+        ? (photo as { imageData: string }).imageData
+        : "",
+    );
+    const hasInvalidPhoto = photoInputs.some(
+      (imageData) =>
+        !isStoredMessagePhotoUrl(imageData, clientId, dietId) &&
+        !isLegacyMessagePhotoDataUrl(imageData),
+    );
+    if (hasInvalidPhoto) {
+      return addCorsHeaders(
+        NextResponse.json(
+          { error: "Geçersiz veya tamamlanmamış görsel yüklemesi." },
+          { status: 400 },
+        ),
+      );
+    }
+
     console.log(
       `💬 Creating message from ${auth.user!.role} (${auth.user!.email})`
     );
 
     const storedPhotos =
-      photos && photos.length > 0 && auth.user!.role === "client"
+      photoInputs.length > 0 && auth.user!.role === "client"
         ? await Promise.all(
-            photos.map(async (photo: any) => ({
-              imageData: await storeMealPhotoImage(photo.imageData, {
+            photoInputs.map(async (imageData) => ({
+              imageData: await storeMealPhotoImage(imageData, {
                 clientId,
                 dietId,
               }),
@@ -373,7 +410,7 @@ export const POST = route<undefined, Params>({
       // Create the comment/message
       const message = await tx.dietComment.create({
         data: {
-          content: content.trim(),
+          content,
           userId: auth.user!.id,
           dietId,
           ogunId: ogunId || null,
@@ -406,7 +443,7 @@ export const POST = route<undefined, Params>({
           clientId,
           commentId: message.id,
           uploadedAt: new Date(),
-          expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
+          expiresAt: null,
         }));
 
         const createResult = await tx.mealPhoto.createMany({
@@ -484,7 +521,9 @@ export const POST = route<undefined, Params>({
           if (!dietitianActive) {
           await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
             title: `Yeni Mesaj: ${client.name} ${client.surname}`,
-            body: result!.content.substring(0, 120),
+            body: result!.content
+              ? result!.content.substring(0, 120)
+              : "Bir görsel gönderdi.",
             url: webPushUrl,
             data: {
               type: "new_message",
@@ -533,7 +572,9 @@ export const POST = route<undefined, Params>({
           if (!clientActive) {
           await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
             title: "Diyetisyeninizden Yeni Mesaj",
-            body: result!.content.substring(0, 120),
+            body: result!.content
+              ? result!.content.substring(0, 120)
+              : "Bir görsel gönderdi.",
             url: clientWebPushUrl,
             data: {
               type: "new_message",

@@ -42,7 +42,7 @@ interface Message {
     id: number;
     imageData: string;
     uploadedAt: string;
-    expiresAt: string;
+    expiresAt: string | null;
   }>;
 }
 
@@ -710,4 +710,3 @@ export default function ClientMessagesPage() {
     </>
   );
 }
-

@@ -56,7 +56,12 @@ export const GET = route<undefined, Params>({
           user: { select: { id: true, email: true, role: true } },
           ogun: { select: { id: true, name: true } },
           photos: {
-            where: { expiresAt: { gte: new Date() } },
+            where: {
+              OR: [
+                { expiresAt: null },
+                { expiresAt: { gte: new Date() } },
+              ],
+            },
             select: { id: true, imageData: true, uploadedAt: true, expiresAt: true },
           },
         },

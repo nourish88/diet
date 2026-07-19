@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import {
   Send,
   ArrowLeft,
@@ -15,6 +16,12 @@ import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
 import { MessageStatusTicks } from "@/components/messages/MessageStatusTicks";
+import {
+  buildMessagePhotoPath,
+  isSupportedMessagePhoto,
+  MAX_MESSAGE_PHOTO_BYTES,
+  MAX_MESSAGE_PHOTOS,
+} from "@/lib/message-photo";
 
 interface Message {
   id: number;
@@ -37,7 +44,7 @@ interface Message {
     id: number;
     imageData: string;
     uploadedAt: string;
-    expiresAt: string;
+    expiresAt: string | null;
   }>;
 }
 
@@ -56,7 +63,9 @@ type MessagesResponse = {
 
 interface PendingPhoto {
   id: string;
-  dataUrl: string;
+  file: File;
+  previewUrl: string;
+  uploadedUrl?: string;
   name?: string;
 }
 
@@ -64,14 +73,6 @@ const generateId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
-
-const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 
 export default function ClientMessagesPage() {
   const router = useRouter();
@@ -116,6 +117,15 @@ export default function ClientMessagesPage() {
   useEffect(() => {
     autoResizeTextarea();
   }, [messageText]);
+
+  useEffect(
+    () => () => {
+      pendingPhotosRef.current.forEach((photo) =>
+        URL.revokeObjectURL(photo.previewUrl),
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!dietId) return;
@@ -410,21 +420,43 @@ export default function ClientMessagesPage() {
     if (!files || files.length === 0) return;
 
     try {
-      const dataUrls = await Promise.all(
-        Array.from(files).map(async (file) => {
-          const dataUrl = await readFileAsDataUrl(file);
-          return {
-            id: generateId(),
-            dataUrl,
-            name: file.name,
-          };
-        })
-      );
+      const availableSlots =
+        MAX_MESSAGE_PHOTOS - pendingPhotosRef.current.length;
+      if (availableSlots <= 0) {
+        alert(
+          `Bir mesaja en fazla ${MAX_MESSAGE_PHOTOS} görsel ekleyebilirsiniz.`,
+        );
+        return;
+      }
 
-      pendingPhotosRef.current = [...pendingPhotosRef.current, ...dataUrls];
+      const selectedFiles = Array.from(files).slice(0, availableSlots);
+      const unsupported = selectedFiles.find(
+        (file) => !isSupportedMessagePhoto(file),
+      );
+      if (unsupported) {
+        alert(
+          `Görseller JPG, PNG, WebP, GIF veya HEIC olmalı ve dosya başına ${Math.floor(MAX_MESSAGE_PHOTO_BYTES / 1024 / 1024)} MB'ı geçmemeli.`,
+        );
+        return;
+      }
+
+      const photos = selectedFiles.map((file) => ({
+        id: generateId(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        name: file.name,
+      }));
+
+      pendingPhotosRef.current = [...pendingPhotosRef.current, ...photos];
       setPendingPhotos(pendingPhotosRef.current);
+
+      if (files.length > availableSlots) {
+        alert(
+          `Bir mesaja en fazla ${MAX_MESSAGE_PHOTOS} görsel ekleyebilirsiniz.`,
+        );
+      }
     } catch (error) {
-      console.error("Image conversion failed:", error);
+      console.error("Image selection failed:", error);
       alert("Görsel yüklenirken bir sorun oluştu.");
     } finally {
       event.target.value = "";
@@ -432,6 +464,8 @@ export default function ClientMessagesPage() {
   };
 
   const removePendingPhoto = (id: string) => {
+    const removed = pendingPhotosRef.current.find((photo) => photo.id === id);
+    if (removed) URL.revokeObjectURL(removed.previewUrl);
     pendingPhotosRef.current = pendingPhotosRef.current.filter(
       (photo) => photo.id !== id
     );
@@ -448,14 +482,41 @@ export default function ClientMessagesPage() {
       setSending(true);
       if (!clientId) return;
 
+      const uploadedPhotos = await Promise.all(
+        pendingPhotosRef.current.map(async (photo) => {
+          if (photo.uploadedUrl) return photo;
+          const blob = await upload(
+            buildMessagePhotoPath({
+              clientId,
+              dietId: Number(dietId),
+              fileId: photo.id,
+              contentType: photo.file.type,
+            }),
+            photo.file,
+            {
+              access: "public",
+              handleUploadUrl: "/api/client/message-photo-upload",
+              clientPayload: JSON.stringify({
+                clientId,
+                dietId: Number(dietId),
+              }),
+              multipart: photo.file.size > 4 * 1024 * 1024,
+            },
+          );
+          return { ...photo, uploadedUrl: blob.url };
+        }),
+      );
+      pendingPhotosRef.current = uploadedPhotos;
+      setPendingPhotos(uploadedPhotos);
+
       const payload = await apiClient.post<{
         success: boolean;
         message: Message;
       }>(`/clients/${clientId}/diets/${dietId}/messages`, {
         content: trimmed,
         ogunId: selectedOgun?.id || null,
-        photos: pendingPhotosRef.current.map((photo) => ({
-          imageData: photo.dataUrl,
+        photos: uploadedPhotos.map((photo) => ({
+          imageData: photo.uploadedUrl,
         })),
       });
 
@@ -463,6 +524,7 @@ export default function ClientMessagesPage() {
         appendMessages([payload.message]);
         setMessageText("");
         setSelectedOgun(null);
+        uploadedPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
         pendingPhotosRef.current = [];
         setPendingPhotos([]);
       }
@@ -696,7 +758,7 @@ export default function ClientMessagesPage() {
                 {pendingPhotos.map((photo) => (
                   <div key={photo.id} className="relative">
                     <img
-                      src={photo.dataUrl}
+                      src={photo.previewUrl}
                       alt={photo.name || "Seçili görsel"}
                       className="h-20 w-20 object-cover rounded-lg border border-border"
                     />

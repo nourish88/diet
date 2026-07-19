@@ -425,7 +425,8 @@ model MealPhoto {
   commentId  Int? // Optional: Attached to a message/comment
   comment    DietComment? @relation(fields: [commentId], references: [id])
   uploadedAt DateTime     @default(now())
-  expiresAt  DateTime // Auto-delete date (12 hours)
+  // Standalone meal photos expire; message attachments remain available.
+  expiresAt  DateTime?
 
   @@index([dietId, ogunId])
   @@index([expiresAt])
