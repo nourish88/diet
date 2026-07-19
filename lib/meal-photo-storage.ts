@@ -26,12 +26,19 @@ export async function storeMealPhotoImage(
 
   const extension = contentTypeToExtension(parsed.contentType);
   const pathname = `meal-photos/${options.clientId}/${options.dietId}/${randomUUID()}.${extension}`;
-  const blob = await put(pathname, parsed.buffer, {
-    access: "public",
-    contentType: parsed.contentType,
-  });
-
-  return blob.url;
+  try {
+    const blob = await put(pathname, parsed.buffer, {
+      access: "public",
+      contentType: parsed.contentType,
+    });
+    return blob.url;
+  } catch (error) {
+    console.warn(
+      "[MealPhotoStorage] Failed to store blob, falling back to data URL. Error:",
+      error instanceof Error ? error.message : error
+    );
+    return imageData;
+  }
 }
 
 export async function deleteMealPhotoImage(imageData: string | null | undefined) {
@@ -46,7 +53,14 @@ export async function deleteMealPhotoImage(imageData: string | null | undefined)
     return;
   }
 
-  await del(imageData);
+  try {
+    await del(imageData);
+  } catch (error) {
+    console.warn(
+      "[MealPhotoStorage] Failed to delete blob. Error:",
+      error instanceof Error ? error.message : error
+    );
+  }
 }
 
 export function isVercelBlobUrl(value: string): boolean {
