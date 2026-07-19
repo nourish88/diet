@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders } from "@/lib/cors";
 import { storeMealPhotoImage } from "@/lib/meal-photo-storage";
@@ -100,6 +100,87 @@ async function isUserActivelyViewing(userId: number, dietId: number) {
   });
 
   return Boolean(presence);
+}
+
+async function notifyMessageRecipient({
+  senderRole,
+  message,
+  client,
+  clientId,
+  dietId,
+}: {
+  senderRole: "client" | "dietitian";
+  message: { id: number; content: string };
+  client: {
+    name: string;
+    surname: string;
+    userId: number | null;
+    dietitianId: number | null;
+  };
+  clientId: number;
+  dietId: number;
+}) {
+  const notificationBody = message.content
+    ? message.content.substring(0, 120)
+    : "Bir görsel gönderdi.";
+
+  if (senderRole === "client") {
+    if (!client.dietitianId) return;
+
+    const [dietitian, dietitianActive] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: client.dietitianId },
+        select: {
+          pushSubscriptions: {
+            select: { endpoint: true, auth: true, p256dh: true },
+          },
+        },
+      }),
+      isUserActivelyViewing(client.dietitianId, dietId),
+    ]);
+    if (dietitianActive) return;
+
+    await notifyWebSubscribers(dietitian?.pushSubscriptions ?? [], {
+      title: `Yeni Mesaj: ${client.name} ${client.surname}`,
+      body: notificationBody,
+      url: `/clients/${clientId}/messages?dietId=${dietId}`,
+      data: {
+        type: "new_message",
+        messageId: message.id,
+        dietId,
+        clientId,
+        senderRole,
+      },
+    });
+    return;
+  }
+
+  if (!client.userId) return;
+  const [clientUser, clientActive] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: client.userId },
+      select: {
+        pushSubscriptions: {
+          select: { endpoint: true, auth: true, p256dh: true },
+        },
+      },
+    }),
+    isUserActivelyViewing(client.userId, dietId),
+  ]);
+  if (clientActive) return;
+
+  await notifyWebSubscribers(clientUser?.pushSubscriptions ?? [], {
+    title: "Diyetisyeninizden Yeni Mesaj",
+    body: notificationBody,
+    url: `/client/diets/${dietId}/messages`,
+    data: {
+      type: "new_message",
+      messageId: message.id,
+      dietId,
+      clientId,
+      senderRole,
+    },
+  });
 }
 
 /** GET /api/clients/[id]/diets/[dietId]/messages — conversation history (owner client/dietitian). */
@@ -488,115 +569,20 @@ export const POST = route<undefined, Params>({
 
     console.log(`✅ Message created: ${result!.id}`);
 
-    // Send push notification
-    try {
-      if (auth.user!.role === "client") {
-        // Client sent message → notify dietitian
-        console.log(
-          `📤 Client (${client.name} ${client.surname}) sent message, notifying dietitian...`
-        );
-
-        if (client.dietitianId) {
-          const dietitian = await prisma.user.findUnique({
-            where: { id: client.dietitianId },
-            select: {
-              id: true,
-              email: true,
-              pushSubscriptions: {
-                select: {
-                  endpoint: true,
-                  auth: true,
-                  p256dh: true,
-                },
-              },
-            },
-          });
-
-          const dietitianActive = await isUserActivelyViewing(
-            client.dietitianId,
-            dietId
-          );
-
-          const webPushUrl = `/clients/${clientId}/messages?dietId=${dietId}`;
-          if (!dietitianActive) {
-          await notifyWebSubscribers(dietitian?.pushSubscriptions || [], {
-            title: `Yeni Mesaj: ${client.name} ${client.surname}`,
-            body: result!.content
-              ? result!.content.substring(0, 120)
-              : "Bir görsel gönderdi.",
-            url: webPushUrl,
-            data: {
-              type: "new_message",
-              messageId: result!.id,
-              dietId,
-              clientId,
-              senderRole: "client",
-            },
-          });
-          } else {
-            console.log("ℹ️ Dietitian active in conversation, skipping web push.");
-          }
-        } else {
-          console.log(
-            `⚠️ Client has no assigned dietitian; skipping dietitian notifications`
-          );
-        }
-      } else {
-        // Dietitian sent message → notify client
-        console.log(
-          `📤 Dietitian sent message to client (${client.name} ${client.surname}), notifying...`
-        );
-
-        if (client.userId) {
-          const clientUser = await prisma.user.findUnique({
-            where: { id: client.userId },
-            select: {
-              id: true,
-              email: true,
-              pushSubscriptions: {
-                select: {
-                  endpoint: true,
-                  auth: true,
-                  p256dh: true,
-                },
-              },
-            },
-          });
-
-          const clientActive = await isUserActivelyViewing(
-            client.userId,
-            dietId
-          );
-
-          const clientWebPushUrl = `/client/diets/${dietId}/messages`;
-          if (!clientActive) {
-          await notifyWebSubscribers(clientUser?.pushSubscriptions || [], {
-            title: "Diyetisyeninizden Yeni Mesaj",
-            body: result!.content
-              ? result!.content.substring(0, 120)
-              : "Bir görsel gönderdi.",
-            url: clientWebPushUrl,
-            data: {
-              type: "new_message",
-              messageId: result!.id,
-              dietId,
-              clientId,
-              senderRole: "dietitian",
-            },
-          });
-          } else {
-            console.log("ℹ️ Client active in conversation, skipping web push.");
-          }
-        } else {
-          console.log(
-            `⚠️ Client (${client.name} ${client.surname}) has no userId assigned`
-          );
-        }
-      }
-    } catch (pushError) {
-      console.error("❌ Push notification error:", pushError);
-      // Don't fail the request if push notification fails
-    }
+    // Push delivery must never delay the message response. Slow or stale push
+    // subscriptions previously caused the client to time out even though the
+    // message and its photo had already been committed successfully.
+    after(() =>
+      notifyMessageRecipient({
+        senderRole: auth.user!.role,
+        message: result!,
+        client,
+        clientId,
+        dietId,
+      }).catch((pushError) => {
+        console.error("❌ Push notification error:", pushError);
+      }),
+    );
 
     return addCorsHeaders(
       NextResponse.json({
