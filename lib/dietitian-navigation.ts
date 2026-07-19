@@ -4,6 +4,7 @@ import {
   BellRing,
   BookOpen,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   CreditCard,
   FileClock,
@@ -92,6 +93,12 @@ export const dietitianNavigation: NavigationGroup[] = [
     label: "Raporlar",
     icon: BarChart3,
     items: [
+      {
+        href: "/haftalik-kontroller",
+        label: "Haftalık kontroller",
+        icon: ClipboardCheck,
+        keywords: ["anket", "check-in", "form", "yanıt", "cevap"],
+      },
       {
         href: "/istatistikler",
         label: "Kazanım, bağlılık ve sonuçlar",
