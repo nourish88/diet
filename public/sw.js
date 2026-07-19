@@ -1,8 +1,8 @@
-const SW_VERSION = "diet-pwa-v6-icons";
-const PUSH_CACHE = "diet-pwa-cache-v4";
-const RUNTIME_CACHE = "diet-runtime-v3";
-const BLOB_CACHE = "diet-blob-v1";
-const SHELL_CACHE = "diet-shell-v1";
+const SW_VERSION = "diet-pwa-v7-fresh-api";
+const PUSH_CACHE = "diet-pwa-cache-v5";
+const RUNTIME_CACHE = "diet-runtime-v4";
+const BLOB_CACHE = "diet-blob-v2";
+const SHELL_CACHE = "diet-shell-v2";
 const NETWORK_TIMEOUT_MS = 4000;
 
 const APP_SHELL = [
@@ -67,6 +67,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Authenticated API responses contain private and rapidly changing data.
+  // Let the browser fetch them directly so the PWA never serves stale health
+  // or conversation data after a short network timeout.
+  if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(navigationHandler(request));
     return;
@@ -74,11 +81,6 @@ self.addEventListener("fetch", (event) => {
 
   if (isCacheFirstPath(url.pathname)) {
     event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  if (isNetworkFirstPath(url.pathname)) {
-    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -219,17 +221,6 @@ async function navigationHandler(request) {
   return new Response("Offline", { status: 503, statusText: "Offline" });
 }
 
-function isNetworkFirstPath(pathname) {
-  return (
-    pathname === "/api/clients/my-diets" ||
-    pathname === "/api/client/portal/overview" ||
-    pathname === "/api/client/portal/conversations" ||
-    /^\/api\/clients\/\d+\/diets\/\d+\/messages$/.test(pathname) ||
-    /^\/api\/client\/portal\/diets\/\d+$/.test(pathname) ||
-    /^\/api\/client\/portal\/diets\/\d+\/messages$/.test(pathname)
-  );
-}
-
 function isStaleWhileRevalidatePath(pathname) {
   return (
     pathname === "/api/besin-gruplari" ||
@@ -249,24 +240,6 @@ function isCacheFirstPath(pathname) {
     pathname === "/icon-maskable-512.png" ||
     pathname === "/apple-touch-icon.png"
   );
-}
-
-async function networkFirst(request) {
-  const cache = await caches.open(RUNTIME_CACHE);
-
-  try {
-    const response = await fetchWithTimeout(request, NETWORK_TIMEOUT_MS);
-    if (response && response.ok) {
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    const cached = await cache.match(request);
-    if (cached) {
-      return cached;
-    }
-    throw error;
-  }
 }
 
 async function staleWhileRevalidate(request) {

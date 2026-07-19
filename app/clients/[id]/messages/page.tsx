@@ -15,11 +15,9 @@ import {
   ArrowLeft,
   Image as ImageIcon,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
 import { MessageStatusTicks } from "@/components/messages/MessageStatusTicks";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Message {
   id: number;
@@ -61,9 +59,6 @@ export default function ClientMessagesPage() {
   const [messageText, setMessageText] = useState("");
   const [clientName, setClientName] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [realtimeError, setRealtimeError] = useState<string | null>(null);
-  const supabaseClientRef = useRef(createClient());
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const latestMessageIdRef = useRef<number | null>(null);
@@ -95,7 +90,7 @@ export default function ClientMessagesPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (!realtimeError || !clientId || !dietId) {
+    if (!clientId || !dietId) {
       return;
     }
 
@@ -103,10 +98,10 @@ export default function ClientMessagesPage() {
       loadMessages({
         afterId: latestMessageIdRef.current,
       });
-    }, 15000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [realtimeError, clientId, dietId]);
+  }, [clientId, dietId]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -174,7 +169,7 @@ export default function ClientMessagesPage() {
       const shouldShowLoader =
         options.replace || messagesRef.current.length === 0;
       if (shouldShowLoader) {
-      setLoading(true);
+        setLoading(true);
       }
 
       const query = options.afterId ? `?afterId=${options.afterId}` : "";
@@ -182,7 +177,10 @@ export default function ClientMessagesPage() {
         success: boolean;
         messages: Message[];
         error?: string;
-      }>(`/clients/${clientId}/diets/${dietId}/messages${query}`);
+      }>(`/clients/${clientId}/diets/${dietId}/messages${query}`, {
+        cache: "no-store",
+        timeoutMs: 20_000,
+      });
 
       if (!data.success) {
         console.error("Failed to load messages:", data.error);
@@ -230,20 +228,6 @@ export default function ClientMessagesPage() {
     } catch (error) {
       console.error("Error loading client info:", error);
     }
-  };
-
-  const fetchMessageById = async (messageId: number): Promise<Message | null> => {
-    try {
-      const data = await apiClient.get<{ success: boolean; message?: Message }>(
-        `/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`
-      );
-      if (data.success && data.message) {
-        return data.message as Message;
-      }
-    } catch (error) {
-      console.error("Error fetching message by id:", error);
-    }
-    return null;
   };
 
   const updatePresence = async (
@@ -298,110 +282,6 @@ export default function ClientMessagesPage() {
         presenceIntervalRef.current = null;
       }
       updatePresence(false, { keepalive: true });
-    };
-  }, [clientId, dietId]);
-
-  useEffect(() => {
-    if (!clientId || !dietId) return;
-
-    const supabase = supabaseClientRef.current;
-    let isMounted = true;
-
-    const channel = supabase
-      .channel(`diet-comments-${dietId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "DietComment",
-          filter: `dietId=eq.${dietId}`,
-        },
-        async (payload) => {
-          const newMessageId = (payload.new as any)?.id as number | undefined;
-          if (!newMessageId) return;
-          if (messagesRef.current.some((msg) => msg.id === newMessageId)) {
-            return;
-          }
-          const message = await fetchMessageById(newMessageId);
-          if (message) {
-            setMessages((prev) => [...prev, message]);
-            messagesRef.current = [...messagesRef.current, message];
-            updateLatestMessageId([message]);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "DietComment",
-          filter: `dietId=eq.${dietId}`,
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          if (!updated?.id) return;
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === updated.id
-                ? {
-                    ...msg,
-                    isDelivered:
-                      typeof updated.isDelivered === "boolean"
-                        ? updated.isDelivered
-                        : msg.isDelivered,
-                    deliveredAt: updated.deliveredAt
-                      ? new Date(updated.deliveredAt).toISOString()
-                      : msg.deliveredAt,
-                    isRead:
-                      typeof updated.isRead === "boolean"
-                        ? updated.isRead
-                        : msg.isRead,
-                    readAt: updated.readAt
-                      ? new Date(updated.readAt).toISOString()
-                      : msg.readAt,
-                  }
-                : msg
-            )
-          );
-        }
-      );
-
-    const subscribeToChannel = async () => {
-      try {
-        await channel.subscribe();
-        if (isMounted) {
-          setRealtimeError(null);
-        }
-      } catch (err) {
-        console.error("Realtime subscription failed:", err);
-        if (!isMounted) {
-          return;
-        }
-        const message =
-          err instanceof Error && /insecure/i.test(err.message)
-            ? "Tarayıcınız güvenli WebSocket bağlantısını engelledi. Mesajlar otomatik yenilenmeyecek."
-            : "Gerçek zamanlı bağlantı kurulamadı. Mesajlar otomatik yenilenmeyecek.";
-        setRealtimeError(message);
-        // Fallback: zorunlu olarak bir defa daha mesajları çekelim
-        loadMessages({
-          afterId: latestMessageIdRef.current,
-        });
-        // Kanalı temizle
-        supabase.removeChannel(channel);
-      }
-    };
-
-    subscribeToChannel();
-    channelRef.current = channel;
-
-    return () => {
-      isMounted = false;
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
     };
   }, [clientId, dietId]);
 
@@ -546,24 +426,6 @@ export default function ClientMessagesPage() {
           </div>
         </div>
       </div>
-
-      {realtimeError && (
-        <div className="px-6 pt-3">
-          <div className="rounded-md border border-warning/30 bg-warning/10 text-foreground text-sm px-4 py-3">
-            <p>{realtimeError}</p>
-            <button
-              onClick={() =>
-                loadMessages({
-                  afterId: latestMessageIdRef.current,
-                })
-              }
-              className="mt-2 text-amber-900 underline"
-            >
-              Mesaj listesini şimdi yenile
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">

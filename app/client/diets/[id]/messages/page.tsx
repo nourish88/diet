@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
@@ -12,7 +12,6 @@ import {
   ChevronDown,
   Image as ImageIcon,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ImageModal from "@/components/ImageModal";
 import { MessageStatusTicks } from "@/components/messages/MessageStatusTicks";
@@ -79,8 +78,6 @@ export default function ClientMessagesPage() {
   const params = useParams();
   const dietId = (params?.id as string) || "";
 
-  const supabase = useMemo(() => createClient(), []);
-
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const latestMessageIdRef = useRef<number | null>(null);
@@ -95,7 +92,6 @@ export default function ClientMessagesPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const pendingPhotosRef = useRef<PendingPhoto[]>([]);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
 
@@ -183,101 +179,6 @@ export default function ClientMessagesPage() {
   useEffect(() => {
     if (!dietId) return;
 
-    let isMounted = true;
-
-    const channel = supabase
-      .channel(`diet-comments-${dietId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "DietComment",
-          filter: `dietId=eq.${dietId}`,
-        },
-        async (payload) => {
-          const newMessageId = (payload.new as any)?.id as number | undefined;
-          if (!newMessageId) return;
-          if (messagesRef.current.some((msg) => msg.id === newMessageId)) {
-            return;
-          }
-          const message = await fetchMessageById(newMessageId);
-          if (message) {
-            appendMessages([message]);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "DietComment",
-          filter: `dietId=eq.${dietId}`,
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          if (!updated?.id) return;
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === updated.id
-                ? {
-                    ...msg,
-                    isDelivered:
-                      typeof updated.isDelivered === "boolean"
-                        ? updated.isDelivered
-                        : msg.isDelivered,
-                    deliveredAt: updated.deliveredAt
-                      ? new Date(updated.deliveredAt).toISOString()
-                      : msg.deliveredAt,
-                    isRead:
-                      typeof updated.isRead === "boolean"
-                        ? updated.isRead
-                        : msg.isRead,
-                    readAt: updated.readAt
-                      ? new Date(updated.readAt).toISOString()
-                      : msg.readAt,
-                  }
-                : msg
-            )
-          );
-        }
-      );
-
-    const subscribeToChannel = async () => {
-      try {
-        await channel.subscribe();
-        if (isMounted) {
-          setRealtimeError(null);
-        }
-      } catch (err) {
-        console.error("Client realtime subscription failed:", err);
-        if (!isMounted) return;
-        const message =
-          err instanceof Error && /insecure/i.test(err.message)
-            ? "Tarayıcınız gerçek zamanlı bağlantıyı engelledi. Mesajlar periyodik olarak yenilenecek."
-            : "Gerçek zamanlı bağlantı kurulamadı. Mesajlar periyodik olarak yenilenecek.";
-        setRealtimeError(message);
-      }
-    };
-
-    subscribeToChannel();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, [dietId, supabase]);
-
-  useEffect(() => {
-    if (!realtimeError) {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      return;
-    }
-
     const poll = async () => {
       try {
         const payload = await fetchMessages(latestMessageIdRef.current);
@@ -287,8 +188,7 @@ export default function ClientMessagesPage() {
       }
     };
 
-    poll();
-    pollingIntervalRef.current = setInterval(poll, 15000);
+    pollingIntervalRef.current = setInterval(poll, 5000);
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -296,7 +196,7 @@ export default function ClientMessagesPage() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [realtimeError]);
+  }, [dietId]);
 
   const fetchMessages = async (
     afterId?: number | null
@@ -304,7 +204,8 @@ export default function ClientMessagesPage() {
     try {
       const query = afterId ? `?afterId=${afterId}` : "";
       return await apiClient.get<MessagesResponse>(
-        `/client/portal/diets/${dietId}/messages${query}`
+        `/client/portal/diets/${dietId}/messages${query}`,
+        { cache: "no-store", timeoutMs: 20_000 },
       );
     } catch (error: any) {
       if (error?.status === 404) {
@@ -401,15 +302,6 @@ export default function ClientMessagesPage() {
       console.error("Manual refresh failed:", error);
     } finally {
       setIsRefreshing(false);
-    }
-  };
-
-  const refreshIncrementalMessages = async () => {
-    try {
-      const payload = await fetchMessages(latestMessageIdRef.current);
-      handleMessagesResponse(payload);
-    } catch (error) {
-      console.error("Manual incremental refresh failed:", error);
     }
   };
 
@@ -540,29 +432,6 @@ export default function ClientMessagesPage() {
     }
   };
 
-  const fetchMessageById = async (
-    messageId: number
-  ): Promise<Message | null> => {
-    try {
-      if (!clientId) {
-        return null;
-      }
-
-      const data = await apiClient.get<{ success: boolean; message: Message }>(
-        `/clients/${clientId}/diets/${dietId}/messages?messageId=${messageId}`
-      );
-
-      if (data?.success && data.message) {
-        return data.message as Message;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("fetchMessageById failed:", error);
-      return null;
-    }
-  };
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -623,18 +492,6 @@ export default function ClientMessagesPage() {
             {isRefreshing ? "Yenileniyor..." : "Konuşmayı Yenile"}
           </button>
         </div>
-
-        {realtimeError && (
-          <div className="bg-warning/10 border border-warning/30 text-foreground text-sm px-4 py-3 rounded-lg">
-            <p>{realtimeError}</p>
-            <button
-              onClick={refreshIncrementalMessages}
-              className="mt-2 underline text-amber-900"
-            >
-              Mesajları şimdi yenile
-            </button>
-          </div>
-        )}
 
         <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="h-[500px] overflow-y-auto p-6">
