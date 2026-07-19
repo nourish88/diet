@@ -12,6 +12,8 @@ const INITIAL_MESSAGE =
 const REMINDER_TITLE = "Haftalık kontrolünüz sizi bekliyor";
 const REMINDER_MESSAGE =
   "Formu henüz doldurmadıysanız bugün birkaç dakikanızı ayırabilirsiniz.";
+const TRANSACTION_MAX_WAIT_MS = 10_000;
+const TRANSACTION_TIMEOUT_MS = 30_000;
 
 type DeliveryClient = {
   id: number;
@@ -158,38 +160,37 @@ export async function sendWeeklyCheckIns(
   let skipped = 0;
 
   for (const [dietitianId, dietitianClients] of grouped) {
-    const candidates = await Promise.all(
-      dietitianClients.map(async (client) => {
-        const checkIn =
-          mode === "initial"
-            ? await prisma.weeklyCheckIn.upsert({
-                where: {
-                  clientId_weekStart_isTest: {
-                    clientId: client.id,
-                    weekStart,
-                    isTest: false,
-                  },
-                },
-                update: {},
-                create: {
-                  clientId: client.id,
-                  dietitianId,
-                  weekStart,
-                  isTest: false,
-                },
-              })
-            : await prisma.weeklyCheckIn.findUnique({
-                where: {
-                  clientId_weekStart_isTest: {
-                    clientId: client.id,
-                    weekStart,
-                    isTest: false,
-                  },
-                },
-              });
-        return { checkIn, client };
-      }),
+    const clientIds = dietitianClients.map((client) => client.id);
+
+    if (mode === "initial") {
+      // A single bulk insert avoids one database round-trip per client. Existing
+      // rows are intentionally retained so a previously interrupted cron run
+      // can safely resume and finish creating its notification broadcast.
+      await prisma.weeklyCheckIn.createMany({
+        data: dietitianClients.map((client) => ({
+          clientId: client.id,
+          dietitianId,
+          weekStart,
+          isTest: false,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    const checkIns = await prisma.weeklyCheckIn.findMany({
+      where: {
+        clientId: { in: clientIds },
+        weekStart,
+        isTest: false,
+      },
+    });
+    const checkInByClientId = new Map(
+      checkIns.map((checkIn) => [checkIn.clientId, checkIn]),
     );
+    const candidates = dietitianClients.map((client) => ({
+      client,
+      checkIn: checkInByClientId.get(client.id) ?? null,
+    }));
 
     const eligible = candidates.filter(
       (candidate): candidate is typeof candidate & { checkIn: NonNullable<typeof candidate.checkIn> } => {
@@ -216,48 +217,57 @@ export async function sendWeeklyCheckIns(
       continue;
     }
 
-    const broadcast = await prisma.$transaction(async (tx) => {
-      const created = await tx.broadcastMessage.create({
-        data: {
-          dietitianId,
-          dietitianName: PUBLIC_DIETITIAN_NAME,
-          title,
-          message,
-          type: "weekly_check_in",
-          dedupeKey,
-          recipients: {
-            create: eligible.map(({ client, checkIn }) => ({
-              clientId: client.id,
-              clientName: fullName(client),
-              weeklyCheckInId: checkIn.id,
-              actionUrl: `/client/check-in/${checkIn.id}`,
-              subscriptionCount: client.user?.pushSubscriptions.length ?? 0,
-              deliveryStatus: !isWebPushConfigured()
-                ? "push_unavailable"
-                : client.user?.pushSubscriptions.length
-                  ? "pending"
-                  : "not_subscribed",
-            })),
+    const broadcast = await prisma.$transaction(
+      async (tx) => {
+        const created = await tx.broadcastMessage.create({
+          data: {
+            dietitianId,
+            dietitianName: PUBLIC_DIETITIAN_NAME,
+            title,
+            message,
+            type: "weekly_check_in",
+            dedupeKey,
+            recipients: {
+              create: eligible.map(({ client, checkIn }) => ({
+                clientId: client.id,
+                clientName: fullName(client),
+                weeklyCheckInId: checkIn.id,
+                actionUrl: `/client/check-in/${checkIn.id}`,
+                subscriptionCount: client.user?.pushSubscriptions.length ?? 0,
+                deliveryStatus: !isWebPushConfigured()
+                  ? "push_unavailable"
+                  : client.user?.pushSubscriptions.length
+                    ? "pending"
+                    : "not_subscribed",
+              })),
+            },
           },
-        },
-        include: { recipients: true },
-      });
+          include: { recipients: true },
+        });
 
-      await tx.weeklyCheckIn.updateMany({
-        where: { id: { in: eligible.map(({ checkIn }) => checkIn.id) } },
-        data:
-          mode === "initial"
-            ? { sentAt: now }
-            : { reminderSentAt: now },
-      });
-      return created;
-    });
+        await tx.weeklyCheckIn.updateMany({
+          where: { id: { in: eligible.map(({ checkIn }) => checkIn.id) } },
+          data:
+            mode === "initial"
+              ? { sentAt: now }
+              : { reminderSentAt: now },
+        });
+        return created;
+      },
+      {
+        maxWait: TRANSACTION_MAX_WAIT_MS,
+        timeout: TRANSACTION_TIMEOUT_MS,
+      },
+    );
 
     persisted += broadcast.recipients.length;
+    const eligibleClientById = new Map(
+      eligible.map(({ client }) => [client.id, client]),
+    );
     for (const recipient of broadcast.recipients) {
-      const client = eligible.find(
-        ({ client: item }) => item.id === recipient.clientId,
-      )?.client;
+      const client = recipient.clientId
+        ? eligibleClientById.get(recipient.clientId)
+        : undefined;
       if (!client) continue;
       const result = await deliver(recipient, client, title, message);
       sent += result.sent;
