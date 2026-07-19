@@ -2,9 +2,9 @@ const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for pdfmake and some Supabase operations
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://images.unsplash.com https://cdn.jsdelivr.net",
+  "img-src 'self' data: blob: https://*.blob.vercel-storage.com https://images.unsplash.com https://cdn.jsdelivr.net",
   "font-src 'self' https://fonts.gstatic.com data:",
-  "connect-src 'self' https://*.supabase.co https://*.supabase.in https://cdn.jsdelivr.net",
+  "connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.blob.vercel-storage.com https://cdn.jsdelivr.net",
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
