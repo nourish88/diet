@@ -14,7 +14,6 @@ export const GET = route({
         name: true,
         surname: true,
         diets: {
-          take: 1,
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
