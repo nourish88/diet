@@ -137,7 +137,8 @@ export default function ClientDetailPage() {
       }
     },
     enabled: !!clientId,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 60000, // Refetch every 60s (was 30s) to cut DB load
+    staleTime: 30000,
   });
 
   // Fetch progress entries

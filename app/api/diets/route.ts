@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { requireOwnClient } from "@/lib/api-auth";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { invalidate } from "@/lib/cache";
+import { resolveBesinIds, resolveBirimIds } from "@/lib/besin-birim-refs";
 import { route, HttpError } from "@/lib/api/handler";
 
 export const dynamic = "force-dynamic";
@@ -121,30 +122,12 @@ export const POST = route({
           birimNames.add(item.birim ?? "");
         }
       }
-      const [besinRecords, birimRecords] = await Promise.all([
-        Promise.all(
-          Array.from(besinNames).map((name) =>
-            prisma.besin.upsert({
-              where: { name },
-              create: { name },
-              update: {},
-              select: { id: true, name: true },
-            }),
-          ),
-        ),
-        Promise.all(
-          Array.from(birimNames).map((name) =>
-            prisma.birim.upsert({
-              where: { name },
-              create: { name },
-              update: {},
-              select: { id: true, name: true },
-            }),
-          ),
-        ),
+      // Resolve all names in a fixed number of queries (find + createMany +
+      // read-back) instead of one upsert per distinct name.
+      const [besinIdByName, birimIdByName] = await Promise.all([
+        resolveBesinIds(besinNames),
+        resolveBirimIds(birimNames),
       ]);
-      const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
-      const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
 
       invalidate.besinler();
       invalidate.birims();
@@ -209,6 +192,9 @@ export const POST = route({
           });
 
       const wasOverridden = existingDietId !== null;
+
+      // A new/overridden diet changes the cached dashboard counts.
+      invalidate.analyticsStats(auth.user!.id);
 
       after(() => notifyClientOfNewDiet(diet.id));
       after(() =>

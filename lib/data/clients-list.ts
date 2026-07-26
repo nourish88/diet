@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { createClient } from "@/lib/supabase-server";
@@ -18,23 +19,28 @@ export type ClientsListPage = {
   hasMore: boolean;
 };
 
-export async function getServerDietitianId(): Promise<number | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+// Wrapped in React cache() so multiple server components in the same request
+// (e.g. a layout + page) resolve the dietitian with a single auth call + query
+// instead of repeating the user lookup.
+export const getServerDietitianId = cache(
+  async (): Promise<number | null> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const dbUser = await prisma.user.findUnique({
-    where: { supabaseId: user.id },
-    select: { id: true, role: true, isApproved: true },
-  });
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+      select: { id: true, role: true, isApproved: true },
+    });
 
-  if (!dbUser || dbUser.role !== "dietitian" || !dbUser.isApproved) {
-    return null;
-  }
-  return dbUser.id;
-}
+    if (!dbUser || dbUser.role !== "dietitian" || !dbUser.isApproved) {
+      return null;
+    }
+    return dbUser.id;
+  },
+);
 
 export async function fetchClientsListPage(
   dietitianId: number,

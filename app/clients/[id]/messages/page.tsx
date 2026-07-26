@@ -94,13 +94,22 @@ export default function ClientMessagesPage() {
       return;
     }
 
-    const interval = setInterval(() => {
-      loadMessages({
-        afterId: latestMessageIdRef.current,
-      });
-    }, 5000);
+    // Skip polling while the tab is hidden so a backgrounded chat doesn't keep
+    // querying Neon every few seconds; refresh on return to visibility.
+    const poll = () => {
+      if (document.visibilityState !== "visible") return;
+      loadMessages({ afterId: latestMessageIdRef.current });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const interval = setInterval(poll, 12000);
 
-    return () => clearInterval(interval);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(interval);
+    };
   }, [clientId, dietId]);
 
   useEffect(() => {

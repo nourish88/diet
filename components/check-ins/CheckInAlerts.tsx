@@ -23,7 +23,9 @@ export function CheckInAlerts() {
   const query = useQuery({
     queryKey: ["check-in-alerts"],
     queryFn: () => apiClient.get<{ alerts: AlertItem[] }>("/check-ins/alerts"),
-    refetchInterval: 60_000,
+    // Check-in alerts are not time-critical; poll every 2 min instead of 1.
+    refetchInterval: 120_000,
+    staleTime: 60_000,
   });
   const contactedMutation = useMutation({
     mutationFn: (alert: AlertItem) =>

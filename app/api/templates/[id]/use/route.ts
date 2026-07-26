@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import prisma from "@/lib/prisma";
 import { notifyClientOfNewDiet } from "@/services/DietNotificationService";
 import { invalidate } from "@/lib/cache";
+import { resolveBesinIds, resolveBirimIds } from "@/lib/besin-birim-refs";
 
 export async function POST(
   request: NextRequest,
@@ -54,30 +55,12 @@ export async function POST(
         birimNameSet.add(item.birim);
       }
     }
-    const [besinRecords, birimRecords] = await Promise.all([
-      Promise.all(
-        Array.from(besinNameSet).map((name) =>
-          prisma.besin.upsert({
-            where: { name },
-            create: { name },
-            update: {},
-            select: { id: true, name: true },
-          })
-        )
-      ),
-      Promise.all(
-        Array.from(birimNameSet).map((name) =>
-          prisma.birim.upsert({
-            where: { name },
-            create: { name },
-            update: {},
-            select: { id: true, name: true },
-          })
-        )
-      ),
+    // Resolve all names in a fixed number of queries (find + createMany +
+    // read-back) instead of one upsert per distinct name.
+    const [besinIdByName, birimIdByName] = await Promise.all([
+      resolveBesinIds(besinNameSet),
+      resolveBirimIds(birimNameSet),
     ]);
-    const besinIdByName = new Map(besinRecords.map((b) => [b.name, b.id]));
-    const birimIdByName = new Map(birimRecords.map((b) => [b.name, b.id]));
 
     invalidate.besinler();
     invalidate.birims();

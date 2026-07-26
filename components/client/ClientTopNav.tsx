@@ -42,7 +42,10 @@ export default function ClientTopNav() {
       apiClient.get<{ notifications: unknown[]; unreadCount: number }>(
         "/client/portal/notifications",
       ),
-    refetchInterval: 30_000,
+    // Notifications don't need second-level freshness; 60s halves the request
+    // volume from this nav (which is mounted on every client-portal page).
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const isActive = (href: string) =>

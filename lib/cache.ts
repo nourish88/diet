@@ -26,6 +26,8 @@ export const cacheTags = {
   importantDates: (dietitianId: number) => `important-dates:${dietitianId}`,
   importantDatesAll: "important-dates",
   systemConfig: (key: string) => `sys-config:${key}`,
+  analyticsStats: (dietitianId: number) => `analytics-stats:${dietitianId}`,
+  analyticsStatsAll: "analytics-stats",
 } as const;
 
 // ---------------- TTLs (seconds) ----------------
@@ -204,4 +206,8 @@ export const invalidate = {
       expireTagNow(cacheTags.importantDates(dietitianId));
   },
   systemConfig: (key: string) => expireTagNow(cacheTags.systemConfig(key)),
+  analyticsStats: (dietitianId?: number) => {
+    expireTagNow(cacheTags.analyticsStatsAll);
+    if (dietitianId != null) expireTagNow(cacheTags.analyticsStats(dietitianId));
+  },
 };

@@ -1,19 +1,24 @@
+import { unstable_cache } from "next/cache";
 import prisma from "@/lib/prisma";
 import { route } from "@/lib/api/handler";
 import { ok } from "@/lib/api/response";
+import { cacheTags } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
-export const GET = route({
-  cors: true,
-  auth: "dietitian",
-  scope: "analytics.stats",
-  handler: async ({ request, auth }) => {
-    const dietitianId = auth.user!.id;
-    const searchParams = request.nextUrl.searchParams;
-    const timeRange = searchParams.get("timeRange") || "current_month";
-    const chartView = searchParams.get("chartView") || "monthly";
+/**
+ * The dashboard polls this endpoint and it fans out to ~25-30 aggregate queries.
+ * The underlying counts change slowly, so we cache the computed payload per
+ * (dietitian, timeRange, chartView) for a few minutes. Diet mutations call
+ * `invalidate.analyticsStats(dietitianId)` to refresh it immediately when needed.
+ */
+const STATS_TTL_SECONDS = 180;
 
+async function computeStats(
+  dietitianId: number,
+  timeRange: string,
+  chartView: string,
+) {
     const now = new Date();
     let periodStart: Date;
     let periodEnd = now;
@@ -153,7 +158,9 @@ export const GET = route({
       take: 30,
     });
 
-    const chartData: { period: string; diets: number; clients: number }[] = [];
+    // Build the list of chart periods first, then run every count concurrently
+    // (previously each period was awaited in sequence -> 12-16 serial queries).
+    const chartPeriods: { period: string; start: Date; end: Date }[] = [];
 
     if (chartView === "weekly") {
       for (let i = 7; i >= 0; i--) {
@@ -171,21 +178,7 @@ export const GET = route({
         weekEnd.setHours(23, 59, 59, 999);
 
         const weekName = `${weekStart.getDate()} ${weekStart.toLocaleString("tr-TR", { month: "short" })}`;
-        const [dietsCount, clientsCount] = await Promise.all([
-          prisma.diet.count({
-            where: {
-              dietitianId,
-              createdAt: { gte: weekStart, lte: weekEnd },
-            },
-          }),
-          prisma.client.count({
-            where: {
-              dietitianId,
-              createdAt: { gte: weekStart, lte: weekEnd },
-            },
-          }),
-        ]);
-        chartData.push({ period: weekName, diets: dietsCount, clients: clientsCount });
+        chartPeriods.push({ period: weekName, start: weekStart, end: weekEnd });
       }
     } else {
       for (let i = 5; i >= 0; i--) {
@@ -200,23 +193,23 @@ export const GET = route({
           999,
         );
         const monthName = monthStart.toLocaleString("tr-TR", { month: "short" });
-        const [dietsCount, clientsCount] = await Promise.all([
-          prisma.diet.count({
-            where: {
-              dietitianId,
-              createdAt: { gte: monthStart, lte: monthEnd },
-            },
-          }),
-          prisma.client.count({
-            where: {
-              dietitianId,
-              createdAt: { gte: monthStart, lte: monthEnd },
-            },
-          }),
-        ]);
-        chartData.push({ period: monthName, diets: dietsCount, clients: clientsCount });
+        chartPeriods.push({ period: monthName, start: monthStart, end: monthEnd });
       }
     }
+
+    const chartData = await Promise.all(
+      chartPeriods.map(async ({ period, start, end }) => {
+        const [dietsCount, clientsCount] = await Promise.all([
+          prisma.diet.count({
+            where: { dietitianId, createdAt: { gte: start, lte: end } },
+          }),
+          prisma.client.count({
+            where: { dietitianId, createdAt: { gte: start, lte: end } },
+          }),
+        ]);
+        return { period, diets: dietsCount, clients: clientsCount };
+      }),
+    );
 
     const payload = {
       totalClients,
@@ -267,6 +260,37 @@ export const GET = route({
         improvement: 0,
       },
     };
+
+    return payload;
+}
+
+/** Cached per (dietitian, timeRange, chartView); revalidated on diet mutations. */
+function getCachedStats(
+  dietitianId: number,
+  timeRange: string,
+  chartView: string,
+) {
+  return unstable_cache(
+    () => computeStats(dietitianId, timeRange, chartView),
+    ["analytics-stats", String(dietitianId), timeRange, chartView],
+    {
+      revalidate: STATS_TTL_SECONDS,
+      tags: [cacheTags.analyticsStatsAll, cacheTags.analyticsStats(dietitianId)],
+    },
+  )();
+}
+
+export const GET = route({
+  cors: true,
+  auth: "dietitian",
+  scope: "analytics.stats",
+  handler: async ({ request, auth }) => {
+    const dietitianId = auth.user!.id;
+    const searchParams = request.nextUrl.searchParams;
+    const timeRange = searchParams.get("timeRange") || "current_month";
+    const chartView = searchParams.get("chartView") || "monthly";
+
+    const payload = await getCachedStats(dietitianId, timeRange, chartView);
 
     return ok(payload, {
       headers: {

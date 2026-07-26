@@ -180,6 +180,9 @@ export default function ClientMessagesPage() {
     if (!dietId) return;
 
     const poll = async () => {
+      // Don't poll while the tab is hidden — a backgrounded chat tab otherwise
+      // hammers the DB every few seconds and keeps Neon compute from suspending.
+      if (document.visibilityState !== "visible") return;
       try {
         const payload = await fetchMessages(latestMessageIdRef.current);
         handleMessagesResponse(payload);
@@ -188,9 +191,17 @@ export default function ClientMessagesPage() {
       }
     };
 
-    pollingIntervalRef.current = setInterval(poll, 5000);
+    // Refresh immediately when the tab becomes visible again so the user isn't
+    // left staring at a stale chat while the (slower) interval catches up.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    pollingIntervalRef.current = setInterval(poll, 12000);
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;

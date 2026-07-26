@@ -136,11 +136,14 @@ export default function ClientDashboard() {
   useEffect(() => {
     loadData();
 
+    // Skip polling while the tab is hidden so background tabs don't keep
+    // Neon compute awake; announcements/today change slowly, so 60s is plenty.
     const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       loadUnreadMessages();
       loadAnnouncements();
       loadToday();
-    }, 30000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);

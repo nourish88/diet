@@ -31,8 +31,12 @@ export default function ClientUnreadMessagesPage() {
   useEffect(() => {
     loadUnreadMessages();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUnreadMessages, 30000);
+    // Refresh every 60s, but only while the tab is visible so hidden/background
+    // tabs don't keep hitting the DB (and keeping Neon compute awake).
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      loadUnreadMessages();
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 

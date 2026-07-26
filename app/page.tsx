@@ -160,14 +160,17 @@ export default function Home() {
     }
   }, [authLoading, user, databaseUser, router, loadStats, loadRecentDiets, loadUnreadMessages]);
 
-  // Set up polling for dietitian dashboard
+  // Set up polling for dietitian dashboard.
+  // Skip when the tab is hidden so background tabs don't keep Neon compute awake,
+  // and use a longer interval since dashboard stats/diets change slowly.
   useEffect(() => {
     if (userRole === "dietitian") {
       const interval = setInterval(() => {
+        if (document.visibilityState !== "visible") return;
         loadUnreadMessages();
         loadStats();
         loadRecentDiets();
-      }, 30000);
+      }, 120000);
       return () => clearInterval(interval);
     }
   }, [userRole, loadUnreadMessages, loadStats, loadRecentDiets]);
