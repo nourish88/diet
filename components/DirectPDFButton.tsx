@@ -810,14 +810,6 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
         : []),
       // Nutrition Program section
       {
-        image: backgroundDataUrl,
-        width: 300,
-        opacity: 0.1,
-        alignment: "center",
-        margin: [0, 20, 0, -25],
-        absolutePosition: { x: 50, y: 300 }, // Changed x from 150 to 50
-      },
-      {
         table: {
           headerRows: 1,
           widths: ["12%", "8%", "38%", "42%"],

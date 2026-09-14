@@ -614,15 +614,6 @@ const DatabasePDFButton = ({
         style: "titleStyle",
         margin: [0, 0, 0, 10],
       },
-      // Background logo in center
-      {
-        image: backgroundDataUrl,
-        width: 300,
-        opacity: 0.1,
-        alignment: "center",
-        margin: [0, 20, 0, -25],
-        absolutePosition: { x: 50, y: 300 },
-      },
       // Client info - two columns (name left, date right)
       {
         columns: [
