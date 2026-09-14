@@ -84,24 +84,12 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
   ...props
 }, ref) {
   const [isLoading, setIsLoading] = useState(false);
-  const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
   const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
   const [importantDateMessage, setImportantDateMessage] = useState<string>("");
 
   useEffect(() => {
     const loadImages = async () => {
       try {
-        const logoResponse = await fetch("/ezgi_evgin.png");
-        if (!logoResponse.ok)
-          throw new Error(`HTTP error! status: ${logoResponse.status}`);
-        const logoBlob = await logoResponse.blob();
-        const logoReader = new FileReader();
-        logoReader.onloadend = () => {
-          setBackgroundDataUrl(logoReader.result as string);
-          console.log("Logo loaded successfully");
-        };
-        logoReader.readAsDataURL(logoBlob);
-
         // Load nazar boncuğu image
         const nazarResponse = await fetch("/nazar-boncugu.png");
         if (nazarResponse.ok) {
@@ -171,7 +159,6 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
         }
       }
       const pdfMake = await ensurePdfMake();
-      if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
       const pdfDataToUse = prepareDirectPdfData(
         diet,
         pdfData,
@@ -194,7 +181,6 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
 
       const docDefinition = await createDocDefinition(
         pdfDataToUse,
-        backgroundDataUrl,
         nazarBoncuguDataUrl
       );
       const fileName = buildDietPdfFileName(pdfDataToUse);
@@ -703,7 +689,6 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
 
   const createDocDefinition = async (
     pdfData: DietPdfData,
-    backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {
     console.log("Creating doc definition with data:", {
@@ -804,7 +789,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
                 nazarBoncuguDataUrl
               ),
               width: 50,
-              absolutePosition: { x: 520, y: 50 },
+              absolutePosition: { x: 520, y: 12 },
             },
           ]
         : []),
@@ -1070,13 +1055,8 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
         },
       },
       pageSize: "A4",
-      pageMargins: [30, 110, 30, 50], // Increased top margin for header logo
-      header: {
-        image: backgroundDataUrl,
-        width: 180, // Logo büyütüldü
-        alignment: "center",
-        margin: [0, 20, 0, 15], // Increased margins
-      },
+      // Top margin keeps the weekly result badge clear of the content
+      pageMargins: [30, 70, 30, 50],
       footer: function () {
         return {
           columns: [

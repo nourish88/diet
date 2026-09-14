@@ -48,20 +48,11 @@ const DatabasePDFButton = ({
   ...props
 }: DatabasePDFButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [backgroundDataUrl, setBackgroundDataUrl] = useState<string>("");
   const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
 
   useEffect(() => {
-    const loadBackgroundImage = async () => {
+    const loadImages = async () => {
       try {
-        const response = await fetch("/ezgi_evgin.png");
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => setBackgroundDataUrl(reader.result as string);
-        reader.readAsDataURL(blob);
-
         // Load nazar boncuğu image
         const nazarResponse = await fetch("/nazar-boncugu.png");
         if (nazarResponse.ok) {
@@ -74,17 +65,16 @@ const DatabasePDFButton = ({
           nazarReader.readAsDataURL(nazarBlob);
         }
       } catch (error) {
-        console.error("Error loading background image:", error);
+        console.error("Error loading images:", error);
       }
     };
-    loadBackgroundImage();
+    loadImages();
   }, []);
 
   const generatePDF = async () => {
     try {
       setIsLoading(true);
       const pdfMake = await ensurePdfMake();
-      if (!backgroundDataUrl) throw new Error("Logo yüklenemedi");
 
       const pdfData = prepareDatabasePdfData(diet);
       if (!pdfData) throw new Error("Beslenme programı verisi bulunamadı");
@@ -104,7 +94,6 @@ const DatabasePDFButton = ({
 
       const docDefinition = await createDocDefinition(
         pdfData,
-        backgroundDataUrl,
         nazarBoncuguDataUrl
       );
       const fileName = buildDietPdfFileName(pdfData);
@@ -595,7 +584,6 @@ const DatabasePDFButton = ({
 
   const createDocDefinition = async (
     pdfData: DietPdfData,
-    backgroundDataUrl: string,
     nazarBoncuguDataUrl: string
   ) => {
     // Color scheme - Vibrant but light pink for printing
@@ -644,7 +632,7 @@ const DatabasePDFButton = ({
                 nazarBoncuguDataUrl
               ),
               width: 50,
-              absolutePosition: { x: 520, y: 50 },
+              absolutePosition: { x: 520, y: 12 },
             },
           ]
         : []),
@@ -775,13 +763,8 @@ const DatabasePDFButton = ({
     return {
       content,
       pageSize: "A4",
-      pageMargins: [30, 110, 30, 50], // Increased top margin for header logo
-      header: {
-        image: backgroundDataUrl,
-        width: 180, // Logo büyütüldü
-        alignment: "center",
-        margin: [0, 20, 0, 15], // Increased margins
-      },
+      // Top margin keeps the weekly result badge clear of the content
+      pageMargins: [30, 70, 30, 50],
       footer: function () {
         return {
           columns: [
