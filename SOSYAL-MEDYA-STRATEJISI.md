@@ -1,6 +1,6 @@
 # 📱 Sosyal Medya ve Takipçi Kazanma Stratejisi
 
-## 🎯 Hedef: 10.000 Takipçi Kazanmak (6 Ay)
+## 🎯 Hedef: 10.000 Takipçi Kazanmak (6 Ay).  
 
 ---
 
