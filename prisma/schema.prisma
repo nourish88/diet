@@ -45,6 +45,7 @@ model Client {
   kvkkPortalConsentAt      DateTime?
   kvkkPortalConsentVersion String?
   consentRecords           ClientConsentRecord[]
+  privacyRequests          PrivacyRequest[]
   congratulationLogs       CongratulationLog[]
   notificationLogs         NotificationLog[]
   weeklyCheckIns           WeeklyCheckIn[]
@@ -338,6 +339,7 @@ model User {
   progressEntries       ProgressEntry[]
   exerciseLogs          ExerciseLog[]
   consentRecords        ClientConsentRecord[]
+  privacyPolicies       PrivacyPolicy[] @relation("PrivacyPolicyOwner")
   congratulationLogs    CongratulationLog[]
   notificationLogs      NotificationLog[]
   createdDietShareLinks DietShareLink[]        @relation("DietShareLinkCreator")
@@ -379,9 +381,92 @@ model ClientConsentRecord {
   channel        String
   userAgent      String?
   ipHash         String?
+  action         String   @default("legacy_accepted")
+  policyId       String?
+  policy         PrivacyPolicy? @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  documentHash   String?
+  eventSequence  Int?
+  previousHash   String?
+  eventHash      String?
+  requestId      String?
 
   @@index([clientId, acceptedAt])
   @@index([clientId, consentVersion])
+  @@unique([clientId, eventSequence])
+  @@unique([clientId, requestId])
+}
+
+// Published revisions are immutable. Legal/controller facts are supplied by the owner.
+model PrivacyPolicy {
+  id            String @id @default(uuid())
+  revision      Int @unique @default(autoincrement())
+  dietitianId   Int
+  dietitian     User @relation("PrivacyPolicyOwner", fields: [dietitianId], references: [id], onDelete: Restrict)
+  version       String
+  healthLegalBasis String
+  document      Json
+  documentHash  String
+  publishedAt   DateTime @default(now())
+  publishedById Int
+  reviewReference String
+  records       ClientConsentRecord[]
+
+  @@unique([dietitianId, version])
+  @@index([dietitianId, revision])
+}
+
+model PrivacyRequest {
+  id             String @id @default(uuid())
+  clientId       Int
+  client         Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  dietitianId    Int
+  userId         Int
+  requestId      String
+  kind           String
+  fullName       String
+  nationality    String
+  identityCiphertext String
+  contactAddress String
+  email          String
+  detail         String
+  receivedAt     DateTime @default(now())
+  dueAt          DateTime
+  status         String @default("received")
+  verifiedAt     DateTime?
+  respondedAt    DateTime?
+  responseAccessedAt DateTime?
+  events         PrivacyRequestEvent[]
+
+  @@unique([clientId, requestId])
+  @@index([dietitianId, status, dueAt])
+}
+
+model PrivacyRequestEvent {
+  id            String @id @default(uuid())
+  requestId     String
+  request       PrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actorId       Int
+  status        String
+  message       String
+  createdAt     DateTime @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// Includes report payload hashes and the actual caller, without health data or identity numbers.
+model PrivacyAuditLog {
+  id            String @id @default(uuid())
+  dietitianId   Int
+  actorId       Int
+  action        String
+  subjectId     String?
+  format        String?
+  filters       Json?
+  rowCount      Int?
+  payloadHash   String?
+  createdAt     DateTime @default(now())
+
+  @@index([dietitianId, createdAt])
 }
 
 model DietComment {

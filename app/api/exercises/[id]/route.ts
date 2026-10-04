@@ -26,6 +26,7 @@ export const PUT = route<typeof UpdateExerciseLogInput, Params>({
   auth: "client",
   schema: UpdateExerciseLogInput,
   scope: "exercises.update",
+  privacyHealthWrite: true,
   handler: async ({ body, params, auth }) => {
     const logId = parseLogId(params.id);
     await assertOwned(logId, auth.user!.id);

@@ -6,6 +6,7 @@ import {
   MESSAGE_PHOTO_CONTENT_TYPES,
 } from "@/lib/message-photo";
 import prisma from "@/lib/prisma";
+import { assertPortalHealthProcessing } from "@/lib/privacy/service";
 
 type UploadContext = {
   clientId: number;
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
         if (!auth.user || auth.user.role !== "client") {
           throw new Error("Bu işlem için danışan oturumu gerekli.");
         }
+        await assertPortalHealthProcessing(auth.user.id);
 
         const context = parseUploadContext(clientPayload);
         const ownsConversation = await prisma.diet.findFirst({

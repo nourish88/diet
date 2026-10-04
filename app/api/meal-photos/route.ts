@@ -42,6 +42,7 @@ export const POST = route({
   auth: "any",
   schema: CreateMealPhotoBody,
   scope: "meal-photos.create",
+  privacyHealthWrite: true,
   handler: async ({ body, auth }) => {
     const diet = await assertDietAccess(body.dietId, auth.user!.id);
     if (diet.clientId !== body.clientId) {

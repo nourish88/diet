@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Settings,
   Star,
+  Shield,
   TrendingUp,
   UtensilsCrossed,
 } from "lucide-react";
@@ -30,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const moreRoutes = ["/client/exercises", "/client/review", "/client/settings"];
+const moreRoutes = ["/client/exercises", "/client/review", "/client/settings", "/client/kvkk-onay"];
 
 export default function ClientTopNav() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -99,6 +100,7 @@ export default function ClientTopNav() {
         <DropdownMenuItem asChild><Link href="/client/exercises" className="py-2.5"><Activity className="h-4 w-4 mr-2" />Antrenman</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/client/review" className="py-2.5"><Star className="h-4 w-4 mr-2" />Yorum &amp; Paylaş</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/client/settings" className="py-2.5"><Settings className="h-4 w-4 mr-2" />Ayarlar</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/client/kvkk-onay" className="py-2.5"><Shield className="h-4 w-4 mr-2" />KVKK ve haklarım</Link></DropdownMenuItem>
         <div className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm">
           <span>Tema</span><ThemeToggle />
         </div>

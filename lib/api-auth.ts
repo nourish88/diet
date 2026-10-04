@@ -212,10 +212,7 @@ export async function authenticateSupabase(
 ): Promise<AuthenticatedUser | null> {
   try {
     // Get token from Authorization header or cookies
-    const token = getSupabaseTokenFromRequest(request, {
-      logAuthHeader: true,
-      logToken: true,
-    });
+    const token = getSupabaseTokenFromRequest(request);
 
     if (!token) {
       console.log("❌ No token found in headers or cookies");

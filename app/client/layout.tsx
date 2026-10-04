@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import ClientTopNav from "@/components/client/ClientTopNav";
-import { consentRequired } from "@/lib/kvkk-consent-config";
+import type { PrivacyStatus } from "@/lib/kvkk-consent-config";
 
 interface SyncUser {
   role: string;
@@ -25,12 +25,15 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
+  const [healthUnavailable, setHealthUnavailable] = useState(false);
+  const [privacyError, setPrivacyError] = useState(false);
 
   useEffect(() => {
     checkAuth();
   }, [pathname]);
 
   const checkAuth = async () => {
+    setPrivacyError(false);
     try {
       const supabase = createClient();
       const {
@@ -56,19 +59,16 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         return;
       }
 
-      const c = data.user.client;
-      const needsKvkk = consentRequired(
-        c?.kvkkPortalConsentAt ?? null,
-        c?.kvkkPortalConsentVersion ?? null
-      );
-
-      if (needsKvkk && pathname !== KVKK_PATH) {
-        router.replace(KVKK_PATH);
+      let privacy: PrivacyStatus;
+      try {
+        privacy = await apiClient.get<PrivacyStatus>("/client/consent/kvkk");
+      } catch {
+        setPrivacyError(true);
         return;
       }
-
-      if (!needsKvkk && pathname === KVKK_PATH) {
-        router.replace("/client");
+      setHealthUnavailable(!privacy.canProcessHealth);
+      if (!privacy.noticeAcknowledged && pathname !== KVKK_PATH && pathname !== "/client/settings") {
+        router.replace(KVKK_PATH);
         return;
       }
     } catch (error) {
@@ -90,12 +90,15 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     );
   }
 
-  const hideNav = pathname === KVKK_PATH;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-soft/40 via-background to-background dark:from-brand-soft/20">
-      {!hideNav && <ClientTopNav />}
-      <main className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-8">{children}</main>
+      <ClientTopNav />
+      {healthUnavailable && pathname !== KVKK_PATH && (
+        <p className="max-w-5xl mx-auto px-4 pt-4 text-sm text-muted-foreground">
+          Yeni sağlık verisi paylaşımı kapalı. <a className="text-brand underline" href={KVKK_PATH}>KVKK ve haklarım</a> ekranından tercihlerinizi yönetebilirsiniz.
+        </p>
+      )}
+      <main className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-8">{privacyError ? <div role="alert" className="space-y-3"><p>KVKK bilgileri şu anda doğrulanamadı. Lütfen yeniden deneyin.</p><button className="text-brand underline" onClick={checkAuth}>Yeniden dene</button></div> : children}</main>
     </div>
   );
 }
