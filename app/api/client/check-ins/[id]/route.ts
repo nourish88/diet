@@ -66,6 +66,7 @@ export const POST = route<typeof SubmitCheckIn, { id: string }>({
   auth: "client",
   schema: SubmitCheckIn,
   scope: "client.check-ins.submit",
+  privacyHealthWrite: true,
   handler: async ({ auth, params, body }) => {
     const id = Number(params.id);
     if (!Number.isInteger(id) || id <= 0) {

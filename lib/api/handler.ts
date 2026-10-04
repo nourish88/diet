@@ -35,6 +35,8 @@ export interface RouteOptions<TSchema extends ZodTypeAny | undefined, TParams> {
   cors?: boolean;
   schema?: TSchema;
   scope?: string;
+  /** Require a current lawful basis before creating/updating portal health data. */
+  privacyHealthWrite?: boolean;
   handler: (
     ctx: RouteContext<
       TSchema extends ZodTypeAny ? z.infer<TSchema> : undefined,
@@ -94,6 +96,11 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
 
       const params = (ctx?.params ? await ctx.params : ({} as TParams)) as TParams;
 
+      if (opts.privacyHealthWrite && auth.user?.role === "client") {
+        const { assertPortalHealthProcessing } = await import("../privacy/service");
+        await assertPortalHealthProcessing(auth.user.id);
+      }
+
       const result = await opts.handler({
         request,
         body: body as never,
@@ -118,6 +125,8 @@ async function normalizeHandlerResult(result: Response | unknown): Promise<Respo
   if (!(result instanceof Response)) {
     return ok(result);
   }
+  // File bytes and their integrity headers must not be rewritten into an envelope.
+  if (result.headers.get("content-disposition")?.startsWith("attachment;")) return result;
 
   const contentType = result.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {

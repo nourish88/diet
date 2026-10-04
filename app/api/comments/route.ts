@@ -36,6 +36,7 @@ export const POST = route({
   auth: "any",
   schema: CreateCommentBody,
   scope: "comments.create",
+  privacyHealthWrite: true,
   handler: async ({ body, auth }) => {
     const diet = await assertDietAccess(body.dietId, auth.user!.id);
     if (!diet) {

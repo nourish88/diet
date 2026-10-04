@@ -385,6 +385,29 @@ class ApiClient {
   delete<T = unknown>(endpoint: string, options?: ApiRequestInit): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
+
+  /** Downloads keep the same authentication/interceptors as normal API calls. */
+  async download(endpoint: string, filename: string): Promise<void> {
+    const session = await this.getCachedSession();
+    const headers = new Headers();
+    if (session?.access_token) headers.set("Authorization", `Bearer ${session.access_token}`);
+    const config = await this.applyRequestInterceptors({ method: "GET", headers, cache: "no-store" });
+    const response = await this.applyResponseInterceptors(await fetch(`${this.baseURL}${endpoint}`, { ...config, signal: AbortSignal.timeout(60000) }));
+    await this.handleAuthError(response);
+    if (!response.ok) {
+      const body = await this.readJsonBody(response);
+      this.throwApiError(response, endpoint, isApiEnvelope(body) && body.error ? body.error.message : legacyErrorMessage(body, "Rapor indirilemedi."));
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 export const apiClient = new ApiClient();

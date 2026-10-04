@@ -81,6 +81,7 @@ export const POST = route({
   auth: "client",
   schema: CreateExerciseLogInput,
   scope: "exercises.create",
+  privacyHealthWrite: true,
   handler: async ({ body, auth }) => {
     const client = await prisma.client.findUnique({
       where: { userId: auth.user!.id },

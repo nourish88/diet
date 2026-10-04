@@ -416,8 +416,8 @@ export default function ClientDetailPage() {
             KVKK / portal açık rıza
           </CardTitle>
           <CardDescription>
-            Danışanın uygulama girişinde verdiği son onay özeti (yasal kayıt
-            için geçmiş listesi aşağıdaki bağlantıda).
+            Son açık rıza özeti. Güncel metin, aydınlatma ve geri çekme kayıtları
+            için geçmiş listesi ve raporları inceleyin.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -439,8 +439,8 @@ export default function ClientDetailPage() {
               </>
             ) : (
               <p className="text-foreground">
-                Henüz portal üzerinden onay kaydı yok (danışan giriş yaptığında
-                istenecek).
+                Aktif açık rıza özeti bulunmuyor. Sağlık hizmeti hukuki dayanağı,
+                rıza vermeme veya geri çekme durumunu geçmiş kayıtlarından inceleyin.
               </p>
             )}
           </div>
@@ -449,13 +449,7 @@ export default function ClientDetailPage() {
               <Link href={`/clients/${client.id}/kvkk`}>Geçmiş kayıtlar</Link>
             </Button>
             <Button variant="secondary" size="sm" asChild>
-              <a
-                href={`/api/clients/${client.id}/consents?format=csv`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                CSV indir
-              </a>
+              <Link href={`/clients/${client.id}/kvkk`}>CSV / JSON raporu</Link>
             </Button>
           </div>
         </CardContent>

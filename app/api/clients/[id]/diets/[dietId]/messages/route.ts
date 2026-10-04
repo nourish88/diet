@@ -377,6 +377,7 @@ export const GET = route<undefined, Params>({
 export const POST = route<undefined, Params>({
   auth: "any",
   scope: "clients.diet.messages.create",
+  privacyHealthWrite: true,
   handler: async ({ request, params, auth, log }) => {
   try {
     const clientId = parseInt(params.id, 10);

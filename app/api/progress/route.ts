@@ -91,6 +91,7 @@ export const POST = route({
   auth: "client",
   schema: CreateProgressBody,
   scope: "progress.create",
+  privacyHealthWrite: true,
   handler: async ({ body, auth }) => {
     const client = await prisma.client.findUnique({
       where: { userId: auth.user!.id },

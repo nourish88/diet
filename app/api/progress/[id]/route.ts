@@ -47,6 +47,7 @@ export const PUT = route<typeof UpdateProgressBody, Params>({
   auth: "client",
   schema: UpdateProgressBody,
   scope: "progress.update",
+  privacyHealthWrite: true,
   handler: async ({ body, params, auth }) => {
     const entryId = parseEntryId(params.id);
     await assertOwned(entryId, auth.user!.id);

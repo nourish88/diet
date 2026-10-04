@@ -1,90 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
 import prisma from "@/lib/prisma";
-import { addCorsHeaders, handleCors } from "@/lib/cors";
-import {
-  KVKK_PORTAL_CONSENT_TYPE,
-  KVKK_PORTAL_CONSENT_VERSION,
-} from "@/lib/kvkk-consent-config";
-import { route, HttpError } from "@/lib/api/handler";
+import { handleCors, addCorsHeaders } from "@/lib/cors";
+import { route, ok, HttpError } from "@/lib/api/handler";
+import { ConsentDecisionSchema } from "@/lib/privacy/schemas";
+import { currentPolicy, getPortalClient, privacyState, recordPrivacyDecision } from "@/lib/privacy/service";
+import { privacyV2Enabled } from "@/lib/privacy/rollout";
+import { legacyPrivacyStatus, recordLegacyConsent } from "@/lib/privacy/legacy";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
-
-function hashIp(ip: string | null): string | null {
-  if (!ip || ip.length === 0) return null;
-  const first = ip.split(",")[0]?.trim() ?? ip.trim();
-  return createHash("sha256").update(first).digest("hex");
-}
-
-function truncateUa(ua: string | null | undefined): string | null {
-  if (!ua) return null;
-  return ua.length > 256 ? ua.slice(0, 256) : ua;
-}
-
 export async function OPTIONS(request: NextRequest) {
-  const corsResponse = handleCors(request);
-  return corsResponse ?? addCorsHeaders(new NextResponse(null, { status: 204 }));
+  return handleCors(request) ?? addCorsHeaders(new NextResponse(null, { status: 204 }));
 }
-
-export const POST = route({
-  cors: true,
-  auth: "client",
-  scope: "consent.kvkk",
-  handler: async ({ request, auth }) => {
-    if (!auth.user!.isApproved) {
-      throw new HttpError("forbidden", "Not approved");
-    }
-
-    const client = await prisma.client.findFirst({
-      where: { userId: auth.user!.id },
-      select: { id: true },
+export const GET = route({
+  cors: true, auth: "client", scope: "privacy.status",
+  handler: async ({ auth }) => {
+    if (!privacyV2Enabled()) return legacyPrivacyStatus(auth.user!.id);
+    const client = await getPortalClient(auth.user!.id);
+    const policy = await currentPolicy(client.dietitianId);
+    const state = await privacyState(client.id, policy);
+    const records = await prisma.clientConsentRecord.findMany({
+      where: { clientId: client.id }, orderBy: { id: "desc" }, take: 100,
+      select: { id: true, action: true, consentVersion: true, acceptedAt: true, policyId: true, documentHash: true, eventHash: true,
+        policy: { select: { id: true, version: true, documentHash: true, document: true, healthLegalBasis: true } } },
     });
-    if (!client) {
-      throw new HttpError("not_found", "Client profile not found");
+    return ok({ mode: "managed", policy, ...state, records }, { headers: { "Cache-Control": "private, no-store" } });
+  },
+});
+export const POST = route({
+  cors: true, auth: "client", scope: "privacy.decision",
+  handler: async ({ auth, request }) => {
+    if (!auth.user!.isApproved) throw new HttpError("forbidden", "Not approved");
+    let body: unknown;
+    try { body = await request.json(); } catch { throw new HttpError("bad_request", "Invalid consent request"); }
+    if (!privacyV2Enabled()) {
+      const parsed = z.object({ consentVersion: z.string(), channel: z.string().optional() }).safeParse(body);
+      if (!parsed.success) throw new HttpError("bad_request", "Invalid consent request");
+      return ok(await recordLegacyConsent(auth.user!.id, parsed.data, request.headers));
     }
-
-    let body: { consentVersion?: string; channel?: string } = {};
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
-    }
-
-    const channel =
-      body.channel === "mobile" || body.channel === "web" ? body.channel : "web";
-
-    if (body.consentVersion !== KVKK_PORTAL_CONSENT_VERSION) {
-      throw new HttpError("bad_request", "Invalid consent version", {
-        requiredVersion: KVKK_PORTAL_CONSENT_VERSION,
-      });
-    }
-
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const ipHash = hashIp(forwarded || realIp);
-    const userAgent = truncateUa(request.headers.get("user-agent"));
-
-    await prisma.$transaction([
-      prisma.clientConsentRecord.create({
-        data: {
-          clientId: client.id,
-          userId: auth.user!.id,
-          consentVersion: KVKK_PORTAL_CONSENT_VERSION,
-          consentType: KVKK_PORTAL_CONSENT_TYPE,
-          channel,
-          userAgent,
-          ipHash,
-        },
-      }),
-      prisma.client.update({
-        where: { id: client.id },
-        data: {
-          kvkkPortalConsentAt: new Date(),
-          kvkkPortalConsentVersion: KVKK_PORTAL_CONSENT_VERSION,
-        },
-      }),
-    ]);
-
-    return { success: true, version: KVKK_PORTAL_CONSENT_VERSION };
+    const parsed = ConsentDecisionSchema.safeParse(body);
+    if (!parsed.success) throw new HttpError("validation_failed", "Güncel aydınlatma ve açık rıza tercihi gereklidir.", parsed.error.flatten());
+    return ok(await recordPrivacyDecision(auth.user!.id, parsed.data, request.headers), { headers: { "Cache-Control": "private, no-store" } });
   },
 });

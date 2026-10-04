@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireOwnClient } from "@/lib/api-auth";
 import { normalizeClientPhoneNumber } from "@/lib/client-phone-auth";
 import { route, HttpError } from "@/lib/api/handler";
+import { privacyV2Enabled } from "@/lib/privacy/rollout";
 
 type Params = { id: string };
 
@@ -36,6 +37,12 @@ async function ensureOwnership(clientId: number, auth: Parameters<typeof require
   if (!(await requireOwnClient(clientId, auth))) {
     throw new HttpError("forbidden", "Access denied");
   }
+}
+
+// Consent evidence and ownership cannot be changed through general profile updates.
+function profileUpdate(data: Record<string, unknown>): Prisma.ClientUpdateInput {
+  const keys = ["name", "surname", "phoneNumber", "notes", "gender", "illness", "birthdate", "isActive", "isOnline"];
+  return Object.fromEntries(keys.filter(key => Object.prototype.hasOwnProperty.call(data, key)).map(key => [key, data[key]])) as Prisma.ClientUpdateInput;
 }
 
 /** GET /api/clients/[id] — client detail (dietitian, owner). */
@@ -82,7 +89,7 @@ export const PUT = route<undefined, Params>({
       await tx.client.update({
         where: { id: clientId },
         data: {
-          ...(clientData as Prisma.ClientUpdateInput),
+          ...profileUpdate(clientData),
           gender,
           birthdate: data.birthdate ? new Date(data.birthdate) : null,
           bannedFoods: { deleteMany: {} },
@@ -144,7 +151,7 @@ export const PATCH = route<undefined, Params>({
     return prisma.$transaction(async (tx) => {
       const updated = await tx.client.update({
         where: { id: clientId },
-        data: data as Prisma.ClientUpdateInput,
+        data: profileUpdate(data),
         include: CLIENT_INCLUDE,
       });
 
@@ -180,6 +187,11 @@ export const DELETE = route<undefined, Params>({
   handler: async ({ params, auth }) => {
     const clientId = parseClientId(params.id);
     await ensureOwnership(clientId, auth);
+    if (privacyV2Enabled()) {
+      const evidenceCount = await prisma.clientConsentRecord.count({ where: { clientId } });
+      const requestCount = await prisma.privacyRequest.count({ where: { clientId } });
+      if (evidenceCount || requestCount) throw new HttpError("conflict", "KVKK kayıtları bulunan danışan doğrudan silinemez. Saklama ve imha değerlendirmesi için KVKK yönetimindeki başvuru sürecini kullanın.");
+    }
     await prisma.client.delete({ where: { id: clientId } });
     return { message: "Client deleted successfully" };
   },
