@@ -85,6 +85,21 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // - Update mode: User clicked "Güncelle" button -> Should UPDATE existing diet
   // - New diet mode: User clicked "Yeni Program Ekle" -> Should CREATE new diet even if loadLatestDiet loaded an existing diet
   const [isUpdateMode, setIsUpdateMode] = useState(false);
+
+  const handleSelectClient = (clientId: number | null) => {
+    if (clientId === selectedClientId) return;
+    // Selecting another client starts a new program. Ownership corrections for
+    // saved programs are handled explicitly on the program detail page.
+    setIsUpdateMode(false);
+    setSelectedClientId(clientId);
+    if (dietLogging.isReady && clientId) {
+      if (selectedClientId) {
+        dietLogging.logClientChanged(selectedClientId, clientId);
+      } else {
+        dietLogging.logClientSelected(clientId);
+      }
+    }
+  };
   // Initialize diet logging - use refs to track changes
   const [currentDietId, setCurrentDietId] = useState<number | undefined>(
     diet.id
@@ -804,10 +819,15 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             {/* Client selector with improved styling */}
             <div className="mb-4">
               <ClientSelector
-                onSelectClient={(clientId) => setSelectedClientId(clientId)}
+                onSelectClient={handleSelectClient}
                 selectedClientId={selectedClientId}
                 selectedClientName={selectedClientName}
               />
+              <p className="mt-2 text-sm text-muted-foreground">
+                {isUpdateMode
+                  ? `Program #${diet.id} güncelleniyor.`
+                  : "Yeni program her kayıtta ayrı saklanır; aynı tarihli mevcut programların üzerine yazılmaz."}
+              </p>
             </div>
 
             {/* Template selector button */}
@@ -964,18 +984,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
                     });
                   }}
                   selectedClientId={selectedClientId}
-                  onSelectClient={(clientId) => {
-                    const oldClientId = selectedClientId;
-                    setSelectedClientId(clientId);
-                    // Log client change
-                    if (dietLogging.isReady && oldClientId !== clientId) {
-                      if (oldClientId) {
-                        dietLogging.logClientChanged(oldClientId, clientId);
-                      } else {
-                        dietLogging.logClientSelected(clientId);
-                      }
-                    }
-                  }}
+                  onSelectClient={handleSelectClient}
                   disabled={isFormDisabled}
                 />
               </div>

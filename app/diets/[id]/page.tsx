@@ -10,6 +10,7 @@ import DirectPDFButton from "@/components/DirectPDFButton";
 import { useDiet, useDeleteDiet } from "@/hooks/useApi";
 import { apiClient } from "@/lib/api-client";
 import { useEffect } from "react";
+import { ReassignDietDialog } from "@/components/diet/ReassignDietDialog";
 
 // Helper function to format dates in Turkish format (like "24 Mart 2025")
 const formatDateTR = (dateString: string | null | undefined | Date) => {
@@ -288,6 +289,9 @@ export default function DietDetailPage() {
                 <p className="text-sm text-muted-foreground">
                   Diyet Tarihi: {formatDate(diet.tarih)}
                 </p>
+                <div className="mt-3">
+                  <ReassignDietDialog dietId={diet.id} client={diet.client} />
+                </div>
               </div>
             </div>
           )}

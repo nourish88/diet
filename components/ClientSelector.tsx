@@ -25,7 +25,7 @@ interface Client {
 }
 
 interface ClientSelectorProps {
-  onSelectClient: (clientId: number | null) => void;
+  onSelectClient: (clientId: number | null, client?: Client) => void;
   selectedClientId: number | null;
   selectedClientName?: string; // To show selected client name without fetching
 }
@@ -120,9 +120,9 @@ const ClientSelector = ({
                   {clients.map((client) => (
                     <CommandItem
                       key={client.id}
-                      value={`${client.name} ${client.surname}`}
+                      value={String(client.id)}
                       onSelect={() => {
-                        onSelectClient(client.id);
+                        onSelectClient(client.id, client);
                         setOpen(false);
                         setSearchValue("");
                       }}

@@ -78,8 +78,7 @@ const DietFormActions = ({
   };
 
   /**
-   * Atomic flow on a single click: persist the diet (with the server-side
-   * "same client + same day = override" guard), produce the PDF the
+   * Atomic flow on a single click: persist the selected program, produce the PDF the
    * dietitian will hand the client, and finally hop into WhatsApp with a
    * pre-filled greeting so they can attach the PDF and send.
    *

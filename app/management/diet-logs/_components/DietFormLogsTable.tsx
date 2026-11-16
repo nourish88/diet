@@ -39,6 +39,7 @@ const ACTION_LABELS: Record<string, string> = {
   item_removed: "Öğe Silindi",
   item_updated: "Öğe Güncellendi",
   diet_saved: "Diyet Kaydedildi",
+  diet_reassigned: "Diyet Başka Danışana Taşındı",
   diet_save_failed: "Diyet Kaydedilemedi",
   template_loaded: "Şablon Yüklendi",
   diet_loaded: "Diyet Yüklendi",

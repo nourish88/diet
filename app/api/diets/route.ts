@@ -10,7 +10,7 @@ import { route, HttpError } from "@/lib/api/handler";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-type DietLogAction = "diet_overridden" | "diet_saved" | "diet_save_failed";
+type DietLogAction = "diet_saved" | "diet_save_failed";
 
 async function logDietAction({
   action,
@@ -91,26 +91,6 @@ export const POST = route({
     }
 
     try {
-      // Duplicate guard: same client + dietitian on the same calendar day → override.
-      let existingDietId: number | null = null;
-      if (data.tarih) {
-        const target = new Date(data.tarih);
-        const startOfDay = new Date(target);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(target);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const existing = await prisma.diet.findFirst({
-          where: {
-            clientId: data.clientId,
-            dietitianId: auth.user!.id,
-            tarih: { gte: startOfDay, lte: endOfDay },
-          },
-          select: { id: true },
-        });
-        existingDietId = existing?.id ?? null;
-      }
-
       // Pre-resolve besin/birim ids outside the transaction so the interactive
       // transaction stays short (Neon serverless P2028 budget).
       const ogunsInput = Array.isArray(data.oguns) ? data.oguns : [];
@@ -165,35 +145,19 @@ export const POST = route({
         client: true,
       } as const;
 
-      const diet = existingDietId
-        ? await prisma.$transaction(
-            async (tx) => {
-              await tx.ogun.deleteMany({ where: { dietId: existingDietId } });
-              return tx.diet.update({
-                where: { id: existingDietId },
-                data: {
-                  ...dietFields,
-                  oguns: { create: ogunsCreate },
-                  notifiedAt: null,
-                },
-                include,
-              });
-            },
-            { timeout: 15_000, maxWait: 5_000 },
-          )
-        : await prisma.diet.create({
-            data: {
-              clientId: data.clientId,
-              dietitianId: auth.user!.id,
-              ...dietFields,
-              oguns: { create: ogunsCreate },
-            },
-            include,
-          });
+      // Creation always preserves existing programs, including on the same day.
+      // Replacing a program is an explicit PUT /diets/[id] operation.
+      const diet = await prisma.diet.create({
+        data: {
+          clientId: data.clientId,
+          dietitianId: auth.user!.id,
+          ...dietFields,
+          oguns: { create: ogunsCreate },
+        },
+        include,
+      });
 
-      const wasOverridden = existingDietId !== null;
-
-      // A new/overridden diet changes the cached dashboard counts.
+      // A new diet changes the cached dashboard counts.
       invalidate.analyticsStats(auth.user!.id);
 
       after(() => notifyClientOfNewDiet(diet.id));
@@ -202,19 +166,18 @@ export const POST = route({
           dietitianId: auth.user!.id,
           clientId: data.clientId,
           dietId: diet.id,
-          action: wasOverridden ? "diet_overridden" : "diet_saved",
+          action: "diet_saved",
           metadata: {
             ogunCount: diet.oguns.length,
             totalItems: diet.oguns.reduce(
               (sum, ogun) => sum + (ogun.items?.length ?? 0),
               0,
             ),
-            overridden: wasOverridden,
           },
         }),
       );
 
-      return { ...diet, _overridden: wasOverridden };
+      return diet;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const type = error instanceof Error ? error.constructor.name : typeof error;
