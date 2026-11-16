@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const messages: Record<NonNullable<PushSetupResult["reason"]>, string> = {
   "install-required": "iPhone/iPad’de önce uygulamayı ana ekrana ekleyin ve simgesinden açın. Ardından bildirimleri açabilirsiniz.",
-  unsupported: "Bu tarayıcıda bildirimler desteklenmiyor. Güncel bir tarayıcı kullanın; iPhone/iPad için 16.4 veya üzeri gerekir.",
+  unsupported: "Bu tarayıcıda bildirimler desteklenmiyor. Diyetinize ve danışan işlemlerinize bildirimleri açmadan devam edebilirsiniz. iPhone/iPad bildirimleri için 16.4 veya üzeri gerekir.",
   denied: "Bildirim izni kapalı. Cihaz veya tarayıcı ayarlarında Diyetisyen Ezgi için bildirimlere izin verip buradan yeniden deneyin.",
   dismissed: "Öğün ve mesaj bildirimlerini almak için bu cihazda bildirimleri açın.",
   "missing-configuration": "Bildirim hizmeti şu anda hazır değil. Lütfen diyetisyeninize haber verin.",

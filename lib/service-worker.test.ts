@@ -3,6 +3,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("service worker readiness", () => {
+  it("rejects asynchronously when service workers are unavailable", async () => {
+    vi.resetModules();
+    vi.stubGlobal("navigator", {});
+    const { registerAppServiceWorker } = await import("./service-worker");
+    await expect(registerAppServiceWorker()).rejects.toThrow("not supported");
+  });
+
+  it("keeps synchronous browser registration errors catchable", async () => {
+    vi.resetModules();
+    const register = vi.fn().mockImplementationOnce(() => { throw new Error("blocked"); }).mockResolvedValueOnce({ active: true });
+    vi.stubGlobal("navigator", { serviceWorker: { register } });
+    const { registerAppServiceWorker } = await import("./service-worker");
+    await expect(registerAppServiceWorker()).rejects.toThrow("blocked");
+    await expect(registerAppServiceWorker()).resolves.toEqual({ active: true });
+  });
+
   it("waits for activation after registration", async () => {
     vi.resetModules();
     let activate: (worker: unknown) => void = () => {};

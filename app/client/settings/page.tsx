@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Bell, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PushNotificationCard from "@/components/client/PushNotificationCard";
+import { InstallAppHelpButton } from "@/components/client/InstallAppCard";
 import { getActiveServiceWorker } from "@/lib/service-worker";
 
 interface NotificationPreference {
@@ -165,7 +166,8 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Ayarlar</h1>
-        <p className="text-muted-foreground">Bildirim tercihlerinizi yönetin</p>
+        <p className="text-muted-foreground">Kurulum yardımına ulaşın ve bildirim tercihlerinizi yönetin</p>
+        <div className="mt-3"><InstallAppHelpButton /></div>
       </div>
 
       {/* Notification Preferences Card */}
