@@ -20,51 +20,43 @@ Bu sistem, PWA kullanıcılarına öğün saatlerinden 30 dakika önce otomatik 
 2. Database -> Extensions sekmesine gidin
 3. `pg_cron` extension'ını bulun ve etkinleştirin
 
-### 2. Cron Job Oluştur
+### 2. Vault ve CRON_SECRET ayarla
 
-Supabase SQL Editor'de aşağıdaki SQL'i çalıştırın:
+Yayın ortamında `CRON_SECRET` tanımlayın. Supabase Vault'a iki secret ekleyin:
+
+- `diet_app_base_url`: uygulamanın HTTPS kök adresi (sonunda `/` olmadan)
+- `diet_app_cron_secret`: yayın ortamındaki `CRON_SECRET` ile aynı değer
+
+Vault uzantısını Supabase Dashboard üzerinden etkinleştirin. Bu ayarlar birbirinin alternatifi değildir; zamanlayıcının gönderdiği sır ile uygulamanın beklediği sır eşleşmelidir. Uygulama tablolarını Supabase'e taşımayın.
+
+### 3. Cron Job Oluştur
+
+Supabase SQL Editor'de aşağıdaki SQL'i çalıştırın. Aynı görev adıyla yeniden çalıştırmak görevin zamanlamasını/komutunu günceller.
 
 ```sql
--- pg_cron extension'ını etkinleştir (eğer yoksa)
 CREATE EXTENSION IF NOT EXISTS pg_cron;
-
--- HTTP request için pg_net extension'ını etkinleştir (eğer yoksa)
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Cron job oluştur (her 15 dakikada bir)
 SELECT cron.schedule(
-  'meal-reminders-every-15-min',           -- Job adı
-  '*/15 * * * *',                          -- Her 15 dakikada bir (cron schedule)
-  $$                                       -- Çalıştırılacak SQL
+  'meal-reminders-every-15-min',
+  '*/15 * * * *',
+  $$
   SELECT net.http_post(
-    url := 'https://your-domain.vercel.app/api/cron/meal-reminders',
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_base_url')
+      || '/api/cron/meal-reminders',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.cron_secret', true)
+      'Authorization', 'Bearer ' ||
+        (select decrypted_secret from vault.decrypted_secrets where name = 'diet_app_cron_secret')
     ),
-    body := '{}'::jsonb
-  )::text;
+    body := '{}'::jsonb,
+    timeout_milliseconds := 60000
+  );
   $$
 );
 ```
 
-**Not**: `your-domain.vercel.app` yerine gerçek domain'inizi yazın.
-
-### 3. CRON_SECRET Ayarla
-
-Supabase'de `app.cron_secret` setting'ini ayarlayın veya environment variable olarak Vercel'de ayarlayın:
-
-**Vercel Environment Variable:**
-
-```
-CRON_SECRET=your-secret-key-here
-```
-
-**Supabase Setting (alternatif):**
-
-```sql
-ALTER DATABASE postgres SET app.cron_secret = 'your-secret-key-here';
-```
+Uygulama kapalıyken bildirimler bu sunucu görevi sayesinde gönderilir. Sayfa açılışındaki kontrol görevin yerini tutmaz. Bu projede `vercel.json` cron tanımlamaz.
 
 ### 4. Web Push VAPID Keys Ayarla
 
@@ -75,6 +67,8 @@ WEB_PUSH_PUBLIC_KEY=your-public-key
 WEB_PUSH_PRIVATE_KEY=your-private-key
 WEB_PUSH_CONTACT_EMAIL=mailto:your-email@example.com
 ```
+
+Tarayıcı açık anahtarı `/api/push/config` üzerinden sunucudan alır; yeni akış için ayrıca `NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY` gerekmez. Mevcut VAPID anahtar çiftini koruyun. Ayrıntılı yayın/cihaz kontrolü: [PWA-KURULUM-VE-BILDIRIM-KONTROLU.md](PWA-KURULUM-VE-BILDIRIM-KONTROLU.md).
 
 ## API Endpoints
 
@@ -130,7 +124,10 @@ Sayın Ahmet Yılmaz, 15 Ocak 2024 tarihinde yazılan diyetinize ilişkin Kahval
 2. CRON_SECRET'ın doğru ayarlandığından emin olun
 3. Supabase cron job'ının çalıştığını kontrol edin:
    ```sql
-   SELECT * FROM cron.job_run_details WHERE jobname = 'meal-reminders-every-15-min' ORDER BY start_time DESC LIMIT 10;
+   SELECT run.* FROM cron.job_run_details AS run
+   JOIN cron.job AS job ON job.jobid = run.jobid
+   WHERE job.jobname = 'meal-reminders-every-15-min'
+   ORDER BY run.start_time DESC LIMIT 10;
    ```
 4. Kullanıcının bildirim tercihlerinin açık olduğunu kontrol edin
 5. Kullanıcının push subscription'ının olduğunu kontrol edin
@@ -144,7 +141,13 @@ Sayın Ahmet Yılmaz, 15 Ocak 2024 tarihinde yazılan diyetinize ilişkin Kahval
    ```sql
    SELECT * FROM cron.job WHERE jobname = 'meal-reminders-every-15-min';
    ```
-4. Supabase loglarını kontrol edin
+4. HTTP sonucunu da kontrol edin; başarılı cron SQL çalışması HTTP tesliminin başarılı olduğunu kanıtlamaz:
+   ```sql
+   SELECT id, status_code, timed_out, error_msg, created
+   FROM net._http_response
+   ORDER BY created DESC LIMIT 10;
+   ```
+   401 için `CRON_SECRET` eşleşmesini, zaman aşımı için yayın ortamı süresini ve alan adını kontrol edin.
 
 ## Test
 
@@ -153,7 +156,7 @@ Sayın Ahmet Yılmaz, 15 Ocak 2024 tarihinde yazılan diyetinize ilişkin Kahval
 1. Cron job endpoint'ini manuel olarak test edin:
 
    ```bash
-   curl -X GET "https://your-domain.vercel.app/api/cron/meal-reminders?secret=your-secret" \
+   curl -X GET "https://your-domain.vercel.app/api/cron/meal-reminders" \
      -H "Authorization: Bearer your-secret"
    ```
 

@@ -181,7 +181,6 @@ export function OfficeSocialMediaPlanner() {
     try {
       const result = await setupPushNotificationsForUser(databaseUser.id, {
         requestPermissionIfDefault: true,
-        respectPromptMemory: false,
       });
       setPermission(getNotificationPermission());
       await loadReminderStatus();
@@ -661,6 +660,10 @@ function getNotificationPermission(): NotificationPermission | "unsupported" {
 
 function notificationReasonToMessage(reason?: string) {
   switch (reason) {
+    case "install-required":
+      return "iPhone/iPad’de uygulamayı ana ekrana ekleyip simgesinden açın.";
+    case "missing-configuration":
+      return "Bildirim hizmetinin sunucu ayarları eksik.";
     case "unsupported":
       return "Bu tarayıcı PWA push bildirimlerini desteklemiyor.";
     case "denied":

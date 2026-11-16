@@ -1,182 +1,106 @@
 "use client";
 
 import { createClient } from "@/lib/supabase-browser";
+import { isIOSDevice, isPushSupported, isStandalonePWA } from "@/lib/pwa";
+import { getActiveServiceWorker } from "@/lib/service-worker";
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY;
-const PROMPT_KEY = "diet-push-permission-requested";
-
-const isSupported = () => {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    typeof Notification !== "undefined"
-  );
+export type PushSetupResult = {
+  ok: boolean;
+  reason?: "unsupported" | "install-required" | "denied" | "dismissed" |
+    "missing-configuration" | "missing-registration" | "missing-subscription";
 };
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+const pendingSetups = new Map<number, Promise<PushSetupResult>>();
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - value.length % 4) % 4);
+  return Uint8Array.from(atob((value + padding).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
 }
 
-async function registerServiceWorker() {
-  try {
-    return await navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-      updateViaCache: "none",
-    });
-  } catch (error) {
-    console.error("❌ Service worker registration failed:", error);
-    return null;
-  }
-}
-
-async function subscribeToPush(registration: ServiceWorkerRegistration) {
-  if (!VAPID_PUBLIC_KEY) {
-    console.warn("⚠️ NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY is not defined");
-    return null;
-  }
-
-  try {
-    const existing = await registration.pushManager.getSubscription();
-    if (existing) return existing;
-
-    return await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  } catch (error) {
-    console.error("❌ Failed to subscribe to push notifications:", error);
-    return null;
-  }
-}
-
-async function sendSubscriptionToServer(
-  subscription: PushSubscription,
-  userId: number,
-  accessToken?: string
-) {
+async function subscriptionRequest(method: "POST" | "DELETE", body: unknown) {
+  const { data: { session } } = await createClient().auth.getSession();
+  if (!session) throw new Error("Bildirimler için tekrar giriş yapın.");
   const response = await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify({
-      subscription,
-      userId,
-    }),
+    method,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
   });
+  if (!response.ok) throw new Error("Cihaz bildirim kaydı kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.");
+}
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text);
+async function syncSubscription(userId: number): Promise<PushSetupResult> {
+  // Use the sender's runtime key: build-time NEXT_PUBLIC values may be stale
+  // or missing after deployments, causing subscriptions the server cannot use.
+  const response = await fetch("/api/push/config", { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error("Bildirim ayarları alınamadı. Tekrar deneyin.");
+  const config: { publicKey?: string; configured: boolean } = await response.json();
+  if (!config.configured || !config.publicKey) return { ok: false, reason: "missing-configuration" };
+  const applicationServerKey = urlBase64ToUint8Array(config.publicKey);
+
+  let registration: ServiceWorkerRegistration;
+  try {
+    registration = await getActiveServiceWorker();
+  } catch {
+    return { ok: false, reason: "missing-registration" };
   }
+
+  let subscription = await registration.pushManager.getSubscription();
+  const previousKey = subscription?.options.applicationServerKey;
+  if (subscription && previousKey) {
+    const bytes = new Uint8Array(previousKey);
+    if (bytes.length !== applicationServerKey.length || bytes.some((value, i) => value !== applicationServerKey[i])) {
+      // Retire the old endpoint before creating one for the rotated VAPID key.
+      await subscriptionRequest("DELETE", { endpoint: subscription.endpoint });
+      if (!await subscription.unsubscribe()) return { ok: false, reason: "missing-subscription" };
+      subscription = null;
+    }
+  }
+  if (!subscription) {
+    try {
+      subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    } catch {
+      return { ok: false, reason: "missing-subscription" };
+    }
+  }
+  // Granted permission alone is not success: the server must know this device.
+  await subscriptionRequest("POST", { subscription, userId });
+  return { ok: true };
 }
 
 export async function setupPushNotificationsForUser(
   userId: number,
-  options: {
-    requestPermissionIfDefault?: boolean;
-    respectPromptMemory?: boolean;
-  } = {}
-): Promise<{
-  ok: boolean;
-  reason?:
-    | "unsupported"
-    | "denied"
-    | "dismissed"
-    | "missing-registration"
-    | "missing-subscription";
-}> {
-  if (!isSupported()) {
-    return { ok: false, reason: "unsupported" };
-  }
-
-  const { requestPermissionIfDefault = true, respectPromptMemory = true } =
-    options;
-
-  if (Notification.permission === "denied") {
-    return { ok: false, reason: "denied" };
-  }
-
+  options: { requestPermissionIfDefault?: boolean } = {},
+): Promise<PushSetupResult> {
+  if (isIOSDevice() && !isStandalonePWA()) return { ok: false, reason: "install-required" };
+  if (!isPushSupported()) return { ok: false, reason: "unsupported" };
+  if (Notification.permission === "denied") return { ok: false, reason: "denied" };
   if (Notification.permission === "default") {
-    if (!requestPermissionIfDefault) {
-      return { ok: false, reason: "dismissed" };
-    }
-
-    const alreadyPrompted =
-      respectPromptMemory && window.localStorage.getItem(PROMPT_KEY);
-    if (alreadyPrompted) {
-      return { ok: false, reason: "dismissed" };
-    }
-
+    if (!options.requestPermissionIfDefault) return { ok: false, reason: "dismissed" };
+    // Keep this before any async work: Safari requires a direct user gesture.
     const permission = await Notification.requestPermission();
-    window.localStorage.setItem(PROMPT_KEY, "true");
-    if (permission !== "granted") {
-      return { ok: false, reason: "dismissed" };
-    }
+    if (permission !== "granted") return { ok: false, reason: permission === "denied" ? "denied" : "dismissed" };
   }
-
-  const registration = await registerServiceWorker();
-  if (!registration) {
-    return { ok: false, reason: "missing-registration" };
-  }
-
-  const subscription = await subscribeToPush(registration);
-  if (!subscription) {
-    return { ok: false, reason: "missing-subscription" };
-  }
-
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  await sendSubscriptionToServer(subscription, userId, session?.access_token);
-
-  return { ok: true };
+  const existing = pendingSetups.get(userId);
+  if (existing) return existing;
+  const setup = syncSubscription(userId).finally(() => pendingSetups.delete(userId));
+  pendingSetups.set(userId, setup);
+  return setup;
 }
 
 export async function removePushNotificationsForCurrentBrowser(): Promise<void> {
-  if (!isSupported()) {
-    return;
-  }
-
+  if (!isPushSupported()) return;
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      return;
+    // ready never settles if registration failed; logout must still complete.
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription) return;
+    try {
+      await subscriptionRequest("DELETE", { endpoint: subscription.endpoint });
+    } finally {
+      await subscription.unsubscribe();
     }
-
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    await fetch("/api/push/subscribe", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {}),
-      },
-      body: JSON.stringify({ endpoint: subscription.endpoint }),
-    }).catch((error) => {
-      console.error("❌ Failed to delete push subscription:", error);
-    });
-
-    await subscription.unsubscribe();
   } catch (error) {
-    console.error("❌ Push notification cleanup error:", error);
+    console.error("Push notification cleanup failed:", error);
   }
 }

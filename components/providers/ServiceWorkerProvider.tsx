@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { registerAppServiceWorker } from "@/lib/service-worker";
+import { observeInstallPrompt } from "@/lib/pwa-install";
 
 /**
  * Registers the service worker on first load for every visitor, independent of
@@ -12,15 +14,16 @@ import { useEffect } from "react";
  */
 export default function ServiceWorkerProvider() {
   useEffect(() => {
+    const stopObserving = observeInstallPrompt();
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
-      return;
+      return stopObserving;
     }
 
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+    registerAppServiceWorker()
       .catch((error) => {
         console.error("❌ Service worker registration failed:", error);
       });
+    return stopObserving;
   }, []);
 
   return null;

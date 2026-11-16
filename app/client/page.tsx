@@ -17,6 +17,8 @@ import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { GOOGLE_REVIEW_URL, DIETITIAN_WEBSITE_URL } from "@/lib/site-urls";
+import PushNotificationCard from "@/components/client/PushNotificationCard";
+import { getActiveServiceWorker } from "@/lib/service-worker";
 import TodayActionCenter, {
   TodayDiet,
   TodayProgress,
@@ -161,8 +163,7 @@ export default function ClientDashboard() {
         if (typeof window !== "undefined" && "Notification" in window) {
           if (Notification.permission === "granted") {
             try {
-              const reg = await (navigator.serviceWorker?.ready ??
-                Promise.resolve(undefined));
+              const reg = await getActiveServiceWorker();
               const sub = await reg?.pushManager.getSubscription();
               if (sub) {
                 await apiClient
@@ -310,6 +311,7 @@ export default function ClientDashboard() {
   const latestDiet = todayOverview?.diets?.[0] ?? null;
   return (
     <div className="space-y-6">
+      <PushNotificationCard />
       {/* Welcome tip */}
       {showWelcomeTip && (
         <div className="relative rounded-2xl border border-brand/20 bg-card/90 backdrop-blur p-4 shadow-card text-left">

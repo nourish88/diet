@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { apiClient } from "@/lib/api-client";
+import InstallAppCard from "@/components/client/InstallAppCard";
 import ClientTopNav from "@/components/client/ClientTopNav";
 import type { PrivacyStatus } from "@/lib/kvkk-consent-config";
 
@@ -98,7 +99,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
           Yeni sağlık verisi paylaşımı kapalı. <a className="text-brand underline" href={KVKK_PATH}>KVKK ve haklarım</a> ekranından tercihlerinizi yönetebilirsiniz.
         </p>
       )}
-      <main className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-8">{privacyError ? <div role="alert" className="space-y-3"><p>KVKK bilgileri şu anda doğrulanamadı. Lütfen yeniden deneyin.</p><button className="text-brand underline" onClick={checkAuth}>Yeniden dene</button></div> : children}</main>
+      <main className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:py-8">{privacyError ? <div role="alert" className="space-y-3"><p>KVKK bilgileri şu anda doğrulanamadı. Lütfen yeniden deneyin.</p><button className="text-brand underline" onClick={checkAuth}>Yeniden dene</button></div> : <><InstallAppCard />{children}</>}</main>
     </div>
   );
 }

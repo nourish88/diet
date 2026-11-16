@@ -166,7 +166,8 @@ export async function sendNewDietNotifications(): Promise<void> {
 
     for (const diet of eligibleDiets) {
       try {
-        await sendNewDietNotification(diet as any);
+        const result = await sendNewDietNotification(diet as any);
+        if (result.sent === 0) continue;
         await prisma.diet.update({
           where: { id: diet.dietId },
           data: { notifiedAt: new Date() },
@@ -258,7 +259,7 @@ export async function notifyClientOfNewDiet(
       user,
     } as any);
 
-    if (!force) {
+    if (!force && result.sent > 0) {
       await prisma.diet.update({
         where: { id: diet.id },
         data: { notifiedAt: new Date() },
@@ -269,7 +270,7 @@ export async function notifyClientOfNewDiet(
       `Sent ${force ? "manual" : "immediate"} new diet notification for diet ${diet.id}`
     );
 
-    return { ok: true, sent: result.sent, failed: result.failed };
+    return { ok: result.sent > 0, sent: result.sent, failed: result.failed };
   } catch (error) {
     console.error(
       `Failed to send new diet notification for diet ${dietId}:`,

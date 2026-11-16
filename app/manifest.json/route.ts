@@ -6,6 +6,8 @@ export async function GET() {
     short_name: "Diyetisyen Ezgi",
     description: "Profesyonel diyet ve beslenme danışmanlığı hizmetleri",
     start_url: "/",
+    id: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#4f46e5",
@@ -38,6 +40,7 @@ export async function GET() {
   return NextResponse.json(manifest, {
     headers: {
       "Content-Type": "application/manifest+json",
+      "Cache-Control": "no-cache",
     },
   });
 }

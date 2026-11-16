@@ -6,7 +6,7 @@ import {
   MealReminder,
 } from "@/services/MealReminderService";
 import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
-import { route } from "@/lib/api/handler";
+import { route, HttpError } from "@/lib/api/handler";
 
 /**
  * GET /api/notifications/check-meal-reminders
@@ -128,13 +128,7 @@ export const GET = route({
     }
 
     if (!isWebPushConfigured()) {
-      return {
-        success: true,
-        reminders: pendingReminders,
-        sent: 0,
-        failed: 0,
-        message: "Web push is not configured",
-      };
+      throw new HttpError("internal", "Bildirim hizmetinin sunucu ayarları eksik.");
     }
 
     let sent = 0;

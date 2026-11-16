@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import InstallAppCard from "@/components/client/InstallAppCard";
 
 interface PhoneLookupClient {
   id: number;
@@ -316,6 +317,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <InstallAppCard />
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="client-phone">Telefon Numarası</Label>
