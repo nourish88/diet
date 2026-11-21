@@ -5,6 +5,8 @@ import {
   getSupabaseTokenFromRequest,
   verifySupabaseAccessToken,
 } from "@/lib/api-auth";
+import { classifyError } from "@/lib/application-errors";
+import { scheduleApplicationError } from "@/lib/application-error-server";
 
 function generateReferenceCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -181,12 +183,15 @@ export async function POST(request: NextRequest) {
     return addCorsHeaders(response);
   } catch (error: any) {
     console.error("Error syncing user:", error);
+    const code = classifyError(error);
+    const status = code === "database_connection" ? 503 : 500;
+    scheduleApplicationError(prisma, { code, path: "/api/auth/sync", status });
     const response = NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to sync user",
+        error: "Hesap bilgileri şu anda kaydedilemedi. Lütfen yeniden deneyin.",
       },
-      { status: 500 }
+      { status }
     );
     return addCorsHeaders(response);
   }
@@ -203,64 +208,22 @@ export async function GET(request: NextRequest) {
   if (corsResponse) return corsResponse;
 
   try {
-    // Get supabaseId from query params OR from Authorization header
-    let supabaseId = request.nextUrl.searchParams.get("supabaseId");
-    console.log("🔵 [Auth Sync GET] Query param supabaseId:", supabaseId ? "present" : "missing");
-
-    // If supabaseId not in query params, try to get it from Authorization header
-    if (!supabaseId) {
-      const authHeader = request.headers.get("authorization");
-      console.log("🔵 [Auth Sync GET] Authorization header:", authHeader ? "present" : "missing");
-      
-      const token = getSupabaseTokenFromRequest(request);
-      if (token) {
-        console.log("🔵 [Auth Sync GET] Token extracted, length:", token.length);
-        
-        try {
-          console.log("🔵 [Auth Sync GET] Verifying token locally...");
-          const startTime = Date.now();
-          const user = verifySupabaseAccessToken(token);
-          const duration = Date.now() - startTime;
-          console.log(`🔵 [Auth Sync GET] Local JWT verification completed in ${duration}ms`);
-          
-          if (!user) {
-            console.error("❌ [Auth Sync GET] No user returned from local JWT verification");
-            const response = NextResponse.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-            return addCorsHeaders(response);
-          }
-          
-          supabaseId = user.id;
-          console.log("✅ [Auth Sync GET] Extracted supabaseId from token:", supabaseId);
-        } catch (supabaseError: any) {
-          console.error("❌ [Auth Sync GET] Error verifying token:", supabaseError);
-          const response = NextResponse.json(
-            { error: "Failed to verify token", details: supabaseError.message },
-            { status: 500 }
-          );
-          return addCorsHeaders(response);
-        }
-      }
+    const token = getSupabaseTokenFromRequest(request);
+    const verifiedUser = token ? verifySupabaseAccessToken(token) : null;
+    if (!verifiedUser) {
+      return addCorsHeaders(NextResponse.json({ error: "Oturum doğrulanamadı." }, { status: 401 }));
     }
-
-    if (!supabaseId) {
-      console.error("❌ [Auth Sync GET] No supabaseId found");
-      const response = NextResponse.json(
-        { error: "supabaseId is required (via query param or Authorization header)" },
-        { status: 400 }
-      );
-      return addCorsHeaders(response);
+    const supabaseId = verifiedUser.id;
+    const requestedId = request.nextUrl.searchParams.get("supabaseId");
+    if (requestedId && requestedId !== supabaseId) {
+      return addCorsHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
     }
-
-    console.log("🔵 [Auth Sync GET] Querying database for user:", supabaseId);
     const dbStartTime = Date.now();
     const user = await prisma.user.findUnique({
       where: { supabaseId },
-      include: {
-        client: true,
-        notificationPreference: true,
+      select: {
+        id: true, supabaseId: true, email: true, role: true,
+        isApproved: true, approvedAt: true, assistantOfId: true,
       },
     });
     const dbDuration = Date.now() - dbStartTime;
@@ -284,12 +247,15 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("❌ [Auth Sync GET] Error fetching user:", error);
     console.error("❌ [Auth Sync GET] Error stack:", error.stack);
+    const code = classifyError(error);
+    const status = code === "database_connection" ? 503 : 500;
+    scheduleApplicationError(prisma, { code, path: "/api/auth/sync", status });
     const response = NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to fetch user",
+        error: "Hesap bilgilerine şu anda erişilemiyor. Lütfen yeniden deneyin.",
       },
-      { status: 500 }
+      { status }
     );
     return addCorsHeaders(response);
   }

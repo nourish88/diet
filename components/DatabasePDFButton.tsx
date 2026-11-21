@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, ButtonProps } from "./ui/button";
 import { FileText, Loader2 } from "lucide-react";
 import twemoji from "twemoji";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import { requireClientName } from "@/lib/client-name";
+import { reportClientError } from "@/lib/application-error-client";
+import { loadDietPdfAssets, dietPdfBackground } from "@/components/diet/pdf/pdfAssets";
 import { apiClient } from "@/lib/api-client";
 import { sanitizeMealNote } from "@/lib/diet-utils";
 import {
@@ -48,28 +51,8 @@ const DatabasePDFButton = ({
   ...props
 }: DatabasePDFButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
 
-  useEffect(() => {
-    const loadImages = async () => {
-      try {
-        // Load nazar boncuğu image
-        const nazarResponse = await fetch("/nazar-boncugu.png");
-        if (nazarResponse.ok) {
-          const nazarBlob = await nazarResponse.blob();
-          const nazarReader = new FileReader();
-          nazarReader.onloadend = () => {
-            setNazarBoncuguDataUrl(nazarReader.result as string);
-            console.log("Nazar boncuğu loaded successfully");
-          };
-          nazarReader.readAsDataURL(nazarBlob);
-        }
-      } catch (error) {
-        console.error("Error loading images:", error);
-      }
-    };
-    loadImages();
-  }, []);
+
 
   const generatePDF = async () => {
     try {
@@ -81,20 +64,13 @@ const DatabasePDFButton = ({
 
       console.log("PDF data prepared:", pdfData);
 
-      // Wait for nazar boncuğu image to load if weekly result exists
-      if (
-        pdfData.weeklyResult &&
-        pdfData.weeklyResult.trim() &&
-        pdfData.weeklyResult !== "Sonuç belirtilmemiş" &&
-        !nazarBoncuguDataUrl
-      ) {
-        // Wait a bit for image to load
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
+      requireClientName(pdfData.fullName);
+      const assets = await loadDietPdfAssets();
 
       const docDefinition = await createDocDefinition(
         pdfData,
-        nazarBoncuguDataUrl
+        assets.nazar,
+        assets.logo
       );
       const fileName = buildDietPdfFileName(pdfData);
       pdfMake.createPdf(docDefinition).download(fileName);
@@ -105,6 +81,7 @@ const DatabasePDFButton = ({
           .catch((err) => console.warn("Diet download tracking failed", err));
       }
     } catch (error) {
+      reportClientError(error, { code: "pdf_failed" });
       console.error("PDF oluşturma hatası:", error);
       alert(`PDF oluşturulamadı: ${(error as Error).message}`);
     } finally {
@@ -584,7 +561,8 @@ const DatabasePDFButton = ({
 
   const createDocDefinition = async (
     pdfData: DietPdfData,
-    nazarBoncuguDataUrl: string
+    nazarBoncuguDataUrl: string,
+    backgroundDataUrl: string
   ) => {
     // Color scheme - Vibrant but light pink for printing
     const primaryColor = "#e06fa3"; // Vibrant light pink
@@ -761,6 +739,7 @@ const DatabasePDFButton = ({
     });
 
     return {
+      background: dietPdfBackground(backgroundDataUrl),
       content,
       pageSize: "A4",
       // Top margin keeps the weekly result badge clear of the content

@@ -16,21 +16,4 @@ export interface DietFormLog {
   };
 }
 
-export interface NotificationLog {
-  id: number;
-  type: string;
-  title: string | null;
-  body: string | null;
-  status: string;
-  errorMessage: string | null;
-  sentAt: string;
-  receivedAt: string | null;
-  client: {
-    name: string;
-    surname: string;
-  };
-  ogun: {
-    name: string;
-    time: string;
-  } | null;
-}
+export type { NotificationLog } from "@/lib/notification-log";

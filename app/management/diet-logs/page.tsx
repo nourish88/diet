@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { DietFormLogsTable } from "./_components/DietFormLogsTable";
 import { NotificationLogsTable } from "./_components/NotificationLogsTable";
+import { ApplicationErrorsTable } from "./_components/ApplicationErrorsTable";
 import type { DietFormLog, NotificationLog } from "./_components/types";
 
 export default function DietLogsManagementPage() {
@@ -187,11 +188,14 @@ export default function DietLogsManagementPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="diet-form" className="space-y-4">
+      <Tabs defaultValue="errors" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="errors">Uygulama Hataları</TabsTrigger>
           <TabsTrigger value="diet-form">Diyet Formu Logları</TabsTrigger>
           <TabsTrigger value="notifications">Bildirim Logları</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="errors"><ApplicationErrorsTable /></TabsContent>
 
         <TabsContent value="diet-form">
           <DietFormLogsTable

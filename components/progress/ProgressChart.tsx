@@ -9,7 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { ChartDataPoint } from "@/services/ProgressService";
+import { ChartDataPoint } from "@/lib/progress";
 
 interface ProgressChartProps {
   data: ChartDataPoint[];

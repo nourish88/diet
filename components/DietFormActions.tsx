@@ -56,6 +56,7 @@ const DietFormActions = ({
   // Button text: If in update mode, show "Güncelle", otherwise show "Kaydet"
 
   const handleSaveToDatabase = async () => {
+    if (disabled) return;
     if (!clientId) {
       toast({
         title: "Uyarı",
@@ -89,6 +90,7 @@ const DietFormActions = ({
    * phone number to message.
    */
   const handleSaveAndDownloadPdf = async () => {
+    if (disabled) return;
     if (!clientId) {
       toast({
         title: "Uyarı",
@@ -125,7 +127,10 @@ const DietFormActions = ({
         whatsappWindow?.close();
         return;
       }
-      await handle.generate();
+      if (!await handle.generate()) {
+        whatsappWindow?.close();
+        return;
+      }
 
       // WhatsApp step is best-effort: never let it bury the fact that the
       // save and PDF already succeeded.
@@ -314,7 +319,7 @@ const DietFormActions = ({
         type="button"
         variant="default"
         onClick={handleSaveAndDownloadPdf}
-        disabled={isSavingAndExporting || isSaving || !clientId}
+        disabled={disabled || isSavingAndExporting || isSaving || !clientId}
         className="bg-brand-gradient hover:opacity-90 text-white border-none"
         title={
           validPhoneNumber
@@ -378,7 +383,7 @@ const DietFormActions = ({
         type="button"
         variant="outline"
         onClick={handleSaveToDatabase}
-        disabled={isSaving || isSavingAndExporting || !clientId}
+        disabled={disabled || isSaving || isSavingAndExporting || !clientId}
         className="border-green-600 text-success hover:bg-success/10"
         title="Diyeti kaydeder ancak PDF üretmez (taslak/güncelleme için)"
       >

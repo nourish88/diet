@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import prisma from "./prisma";
 import { authenticateApiKey, AuthenticatedApiKey } from "./api-key-auth";
+import { classifyError } from "./application-errors";
+
+function rethrowDatabaseFailure(error: unknown) {
+  const code = classifyError(error);
+  if (code === "database_connection" || code === "database_query") throw error;
+}
 
 const jwt = require("jsonwebtoken") as {
   verify: (token: string, secret: string) => string | SupabaseJwtPayload;
@@ -199,6 +205,7 @@ export async function authenticateRequest(
     };
   } catch (error) {
     console.error("Authentication error:", error);
+    rethrowDatabaseFailure(error);
     return {
       user: null,
       apiKey: null,
@@ -291,6 +298,8 @@ export async function authenticateSupabase(
     };
   } catch (error) {
     console.error("Supabase authentication error:", error);
+    // A failed database lookup is not an invalid login. Let the API return 5xx.
+    rethrowDatabaseFailure(error);
     return null;
   }
 }

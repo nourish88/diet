@@ -1,7 +1,11 @@
 import prisma from "@/lib/prisma";
+import type { PushSubscription } from "@prisma/client";
+import { notificationDeviceSnapshot, pushErrorStatusCode } from "@/lib/notification-log-snapshot";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 import { sendWebPushNotification, isWebPushConfigured } from "@/lib/web-push";
+
+type ReminderSubscription = Pick<PushSubscription, "id" | "endpoint" | "auth" | "p256dh" | "deviceInfo">;
 
 /**
  * web-push throws errors whose `.message` is often the unhelpful
@@ -233,11 +237,7 @@ export async function getClientsEligibleForReminders(): Promise<
     clientSurname: string;
     dietId: number;
     dietDate: Date;
-    pushSubscriptions: Array<{
-      endpoint: string;
-      auth: string;
-      p256dh: string;
-    }>;
+    pushSubscriptions: ReminderSubscription[];
     oguns: Array<{
       id: number;
       name: string;
@@ -327,11 +327,7 @@ export async function getClientsEligibleForReminders(): Promise<
     clientSurname: string;
     dietId: number;
     dietDate: Date;
-    pushSubscriptions: Array<{
-      endpoint: string;
-      auth: string;
-      p256dh: string;
-    }>;
+    pushSubscriptions: ReminderSubscription[];
     oguns: Array<{
       id: number;
       name: string;
@@ -375,6 +371,8 @@ export async function getClientsEligibleForReminders(): Promise<
       dietId: latestDiet.id,
       dietDate: latestDiet.tarih,
       pushSubscriptions: client.user.pushSubscriptions.map((sub) => ({
+        id: sub.id,
+        deviceInfo: sub.deviceInfo,
         endpoint: sub.endpoint,
         auth: sub.auth,
         p256dh: sub.p256dh,
@@ -475,7 +473,7 @@ export async function sendMealReminders(): Promise<{
     number,
     {
       userId: number;
-      pushSubscriptions: Array<{ endpoint: string; auth: string; p256dh: string }>;
+      pushSubscriptions: ReminderSubscription[];
       reminders: MealReminder[];
     }
   >();
@@ -527,7 +525,8 @@ export async function sendMealReminders(): Promise<{
             type: logType,
             title,
             body: shortMessage,
-            status: "success",
+            status: "pending",
+            ...notificationDeviceSnapshot(subscription),
           },
         });
         try {
@@ -567,6 +566,7 @@ export async function sendMealReminders(): Promise<{
             data: {
               status: "failed",
               errorMessage: formatPushError(error),
+              pushStatusCode: pushErrorStatusCode(error),
             },
           });
           failed++;
@@ -584,7 +584,10 @@ export async function sendMealReminders(): Promise<{
               console.error("Failed to delete invalid subscription:", deleteError);
             }
           }
+          continue;
         }
+        // A log persistence failure is not a push-provider rejection.
+        await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
       }
     }
   }
@@ -711,7 +714,8 @@ export async function sendMealReminderForOgun(
         type: "manual_test",
         title,
         body,
-        status: "success",
+        status: "pending",
+        ...notificationDeviceSnapshot(subscription),
       },
     });
     try {
@@ -748,7 +752,8 @@ export async function sendMealReminderForOgun(
         where: { id: logEntry.id },
         data: {
           status: "failed",
-          errorMessage: error?.message || String(error),
+          errorMessage: formatPushError(error),
+          pushStatusCode: pushErrorStatusCode(error),
         },
       });
       failed++;
@@ -762,7 +767,9 @@ export async function sendMealReminderForOgun(
           console.error("Failed to delete invalid subscription:", deleteError);
         }
       }
+      continue;
     }
+    await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
   }
 
   return { ok: sent > 0 || failed === 0, sent, failed };

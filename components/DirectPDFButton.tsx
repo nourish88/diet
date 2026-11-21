@@ -12,6 +12,9 @@ import {
 import twemoji from "twemoji";
 import { toast } from "@/components/ui/use-toast";
 import { ensurePdfMake } from "@/lib/pdfmake";
+import { requireClientName } from "@/lib/client-name";
+import { reportClientError } from "@/lib/application-error-client";
+import { loadDietPdfAssets, dietPdfBackground } from "@/components/diet/pdf/pdfAssets";
 import {
   sanitizeMealNote,
 } from "@/lib/diet-utils";
@@ -29,7 +32,7 @@ export interface DirectPDFButtonHandle {
    * (e.g. "Kaydet ve PDF İndir") needs to invoke the same pdfmake pipeline
    * without rendering a duplicate trigger button.
    */
-  generate: () => Promise<void>;
+  generate: () => Promise<boolean>;
   /** Whether a generation is currently in flight. */
   isGenerating: () => boolean;
 }
@@ -84,29 +87,9 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
   ...props
 }, ref) {
   const [isLoading, setIsLoading] = useState(false);
-  const [nazarBoncuguDataUrl, setNazarBoncuguDataUrl] = useState<string>("");
   const [importantDateMessage, setImportantDateMessage] = useState<string>("");
 
-  useEffect(() => {
-    const loadImages = async () => {
-      try {
-        // Load nazar boncuğu image
-        const nazarResponse = await fetch("/nazar-boncugu.png");
-        if (nazarResponse.ok) {
-          const nazarBlob = await nazarResponse.blob();
-          const nazarReader = new FileReader();
-          nazarReader.onloadend = () => {
-            setNazarBoncuguDataUrl(nazarReader.result as string);
-            console.log("Nazar boncuğu loaded successfully");
-          };
-          nazarReader.readAsDataURL(nazarBlob);
-        }
-      } catch (error) {
-        console.error("Error loading images:", error);
-      }
-    };
-    loadImages();
-  }, []);
+
 
   useEffect(() => {
     const fetchImportantDate = async () => {
@@ -149,13 +132,13 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
   };
 
   const generatePDF = async () => {
-    if (isLoading) return;
+    if (isLoading) return false;
     setIsLoading(true);
     try {
       if (beforeGenerate) {
         const shouldContinue = await beforeGenerate();
         if (shouldContinue === false) {
-          return;
+          return false;
         }
       }
       const pdfMake = await ensurePdfMake();
@@ -166,22 +149,13 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
       );
       if (!pdfDataToUse) throw new Error("Beslenme programı verisi bulunamadı");
 
-      // Wait for nazar boncuğu image to load if weekly result exists
-      if (
-        pdfDataToUse.weeklyResult &&
-        pdfDataToUse.weeklyResult.trim() &&
-        !nazarBoncuguDataUrl
-      ) {
-        // Wait a bit for image to load
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-
-      // Note: Emojis will be converted to VFS during createDocDefinition
-      // VFS is initialized above, and convertEmojisToImages will add emojis to VFS
+      requireClientName(pdfDataToUse.fullName);
+      const assets = await loadDietPdfAssets();
 
       const docDefinition = await createDocDefinition(
         pdfDataToUse,
-        nazarBoncuguDataUrl
+        assets.nazar,
+        assets.logo
       );
       const fileName = buildDietPdfFileName(pdfDataToUse);
       pdfMake.createPdf(docDefinition).download(fileName);
@@ -192,7 +166,9 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
           .catch((err) => console.warn("Diet download tracking failed", err));
       }
       handleSuccess();
+      return true;
     } catch (error) {
+      reportClientError(error, { code: "pdf_failed" });
       console.error("PDF oluşturma hatası:", error);
       toast({
         title: "Hata",
@@ -205,6 +181,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
           </div>
         ),
       });
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -689,7 +666,8 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
 
   const createDocDefinition = async (
     pdfData: DietPdfData,
-    nazarBoncuguDataUrl: string
+    nazarBoncuguDataUrl: string,
+    backgroundDataUrl: string
   ) => {
     console.log("Creating doc definition with data:", {
       isBirthdayCelebration: pdfData.isBirthdayCelebration,
@@ -952,6 +930,7 @@ const DirectPDFButton = forwardRef<DirectPDFButtonHandle, DirectPDFButtonProps>(
     });
 
     return {
+      background: dietPdfBackground(backgroundDataUrl),
       content,
       styles: {
         sectionHeader: {

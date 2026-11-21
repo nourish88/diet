@@ -19,6 +19,11 @@ export async function ensurePdfMake() {
     pdfMake.vfs = pdfFonts.pdfMake.vfs;
   } else if (pdfFonts?.vfs) {
     pdfMake.vfs = pdfFonts.vfs;
+  } else if (pdfFonts?.["Roboto-Regular.ttf"]) {
+    // Current pdfmake 0.2 builds export the file dictionary directly.
+    pdfMake.vfs = pdfFonts;
+  } else {
+    throw new Error("PDF yazı tipleri yüklenemedi. Lütfen yeniden deneyin.");
   }
 
   pdfMake.fonts = {

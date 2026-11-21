@@ -23,6 +23,7 @@ export const GET = route<undefined, Params>({
         where: { clientId },
         orderBy: { createdAt: "desc" },
         include: {
+          client: { select: { id: true, name: true, surname: true } },
           oguns: {
             include: {
               items: { include: { birim: true, besin: true } },

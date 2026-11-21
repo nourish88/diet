@@ -1,4 +1,6 @@
 import { createClient } from "./supabase-browser";
+import { requestJson } from "./http-request";
+import { reportClientError } from "./application-error-client";
 import type { Session } from "@supabase/supabase-js";
 import type { ApiEnvelope } from "./api/response";
 import { isApiEnvelope, legacyErrorMessage } from "./api/response";
@@ -70,7 +72,7 @@ class ApiClient {
 
     // Return cached session if still valid and not close to expiry
     if (
-      this.sessionCache &&
+      this.sessionCache?.session &&
       now - this.sessionCache.timestamp < this.SESSION_CACHE_TTL &&
       isCachedTokenFresh
     ) {
@@ -87,8 +89,12 @@ class ApiClient {
     );
     const supabase = createClient();
     const {
-      data: { session },
+      data: { session }, error,
     } = await supabase.auth.getSession();
+    if (error) {
+      reportClientError(error, { code: "auth_failed" });
+      throw error;
+    }
 
     // Update cache
     this.sessionCache = { session, timestamp: now };
@@ -224,49 +230,14 @@ class ApiClient {
     // Step 3: Apply request interceptors (allows modifying config before request)
     config = await this.applyRequestInterceptors(config);
 
-    // Step 4: Make the request with timeout
-    const controller = new AbortController();
-    // Sync and diet write operations can legitimately take longer on
-    // serverless cold starts because they touch several related tables.
-    const isSyncOperation = endpoint.includes('/sync-measurements') || endpoint.includes('/sync');
+    const isSyncOperation = endpoint.includes("/sync");
     const isDietWrite =
       (config.method === "POST" && endpoint === "/diets") ||
       (config.method === "PUT" && /^\/diets\/\d+$/.test(endpoint));
-    const timeoutDuration = timeoutMs ?? (isSyncOperation || isDietWrite ? 60000 : 8000);
-    const timeoutId = setTimeout(() => {
-      console.error(
-        `⏰ [API Client] Request timeout after ${timeoutDuration}ms for ${endpoint}`
-      );
-      controller.abort();
-    }, timeoutDuration);
-    
-    try {
-      const url = `${this.baseURL}${endpoint}`;
-      console.log(`📡 [API Client] Making request to: ${url}`);
-      const requestStartTime = Date.now();
-      
-      const response = await fetch(url, {
-        ...config,
-        signal: controller.signal,
-      });
-      
-      const requestDuration = Date.now() - requestStartTime;
-      console.log(`📡 [API Client] Request completed in ${requestDuration}ms, status: ${response.status}`);
-      
-      clearTimeout(timeoutId);
-      return this.handleResponse(response, endpoint);
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error(`⏰ [API Client] Request aborted (timeout) for ${endpoint}`);
-        const timeoutError: ApiError = new Error(`Request timeout: ${endpoint}`);
-        timeoutError.status = 408;
-        timeoutError.endpoint = endpoint;
-        throw timeoutError;
-      }
-      console.error(`❌ [API Client] Request error for ${endpoint}:`, error);
-      throw error;
-    }
+    return requestJson<T>(`${this.baseURL}${endpoint}`, {
+      ...config,
+      timeoutMs: timeoutMs ?? (isSyncOperation || isDietWrite ? 60000 : 20000),
+    }, (response) => this.handleResponse<T>(response, endpoint));
   }
 
   private async readJsonBody(response: Response): Promise<unknown | null> {
@@ -339,7 +310,10 @@ class ApiClient {
     }
 
     if (body !== null) return body as T;
-    return {} as T;
+    if (interceptedResponse.status === 204) return {} as T;
+    const error: ApiError = new Error("Sunucudan geçerli bir yanıt alınamadı. Yeniden deneyin.");
+    error.code = "invalid_response";
+    throw error;
   }
 
   get<T = unknown>(endpoint: string, options?: ApiRequestInit): Promise<T> {

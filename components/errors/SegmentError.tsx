@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportClientError, flushClientErrors } from "@/lib/application-error-client";
 
 interface Props {
   error: Error & { digest?: string };
@@ -14,6 +15,8 @@ interface Props {
 
 export function SegmentError({ error, reset, scope, homeHref = "/" }: Props) {
   useEffect(() => {
+    reportClientError(error, { code: "javascript_error" });
+    void flushClientErrors();
     if (process.env.NODE_ENV !== "production") {
       console.error(`[${scope}] error boundary:`, error);
     }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { reportClientError, flushClientErrors } from "@/lib/application-error-client";
 
 export default function GlobalError({
   error,
@@ -12,6 +13,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    reportClientError(error, { code: "javascript_error" });
+    void flushClientErrors();
     console.error("Global error captured:", error);
   }, [error]);
 

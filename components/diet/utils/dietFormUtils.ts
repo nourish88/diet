@@ -1,3 +1,4 @@
+import { resolveClientName } from "@/lib/client-name";
 import { Diet, Ogun } from "@/types/types";
 import { OGUN } from "@/models/dietModels";
 import { sortMealsByTime, stripEmojis } from "@/lib/diet-utils";
@@ -52,7 +53,7 @@ export function convertDbDietToUiDiet(
 
     return {
       id: dbDiet.id,
-      AdSoyad: getClientFullName(selectedClientId),
+      AdSoyad: resolveClientName(dbDiet.client, getClientFullName(selectedClientId)),
       Tarih: dbDiet.tarih || dbDiet.createdAt || new Date().toISOString(),
       Hedef: dbDiet.hedef || "",
       Sonuc: dbDiet.sonuc || "",
@@ -69,7 +70,7 @@ export function convertDbDietToUiDiet(
     console.error("Error converting DB diet to UI diet:", error);
     return {
       id: 0,
-      AdSoyad: getClientFullName(selectedClientId),
+      AdSoyad: resolveClientName(dbDiet.client, getClientFullName(selectedClientId)),
       Tarih: new Date().toISOString(),
       Hedef: "",
       Sonuc: "",
@@ -94,8 +95,7 @@ export function getClientFullName(
   clientId: number | null,
   selectedClientName: string
 ): string {
-  if (!clientId) return "İsimsiz Danışan";
-  return selectedClientName || "İsimsiz Danışan";
+  return clientId ? resolveClientName(null, selectedClientName) : "";
 }
 
 /**
@@ -161,7 +161,7 @@ export function prepareDietDataForPDF(
   dietDate: string | Date
 ): any {
   return {
-    fullName,
+    fullName: resolveClientName(null, fullName, diet.AdSoyad),
     dietDate: typeof dietDate === "string" ? dietDate : dietDate.toString(),
     weeklyResult: diet.Sonuc,
     isBirthdayCelebration: diet.isBirthdayCelebration,

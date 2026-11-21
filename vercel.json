@@ -1,1 +1,6 @@
-{}
+{
+  "buildCommand": "npm run vercel-build",
+  "functions": {
+    "app/api/**/route.ts": { "maxDuration": 60 }
+  }
+}

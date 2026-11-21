@@ -9,6 +9,7 @@ export function useDietFormDraft(
   setDiet: React.Dispatch<React.SetStateAction<Diet>>,
   selectedClientId: number | null,
   isUpdateMode: boolean,
+  enabled = true,
 ) {
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
   const DRAFT_KEY = selectedClientId
@@ -16,7 +17,8 @@ export function useDietFormDraft(
     : "diet-draft-new";
 
   useEffect(() => {
-    if (!selectedClientId || isUpdateMode) return;
+    setShowDraftPrompt(false);
+    if (!enabled || !selectedClientId || isUpdateMode) return;
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
@@ -29,11 +31,10 @@ export function useDietFormDraft(
     } catch {
       /* ignore corrupt draft */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClientId]);
+  }, [selectedClientId, isUpdateMode, enabled, DRAFT_KEY]);
 
   useEffect(() => {
-    if (!selectedClientId || isUpdateMode) return;
+    if (!enabled || !selectedClientId || isUpdateMode || showDraftPrompt) return;
     const interval = setInterval(() => {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(diet));
@@ -42,8 +43,7 @@ export function useDietFormDraft(
       }
     }, 30000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diet, selectedClientId, isUpdateMode]);
+  }, [diet, selectedClientId, isUpdateMode, enabled, DRAFT_KEY, showDraftPrompt]);
 
   const clearDraft = useCallback(() => {
     try {
@@ -54,14 +54,15 @@ export function useDietFormDraft(
   }, [DRAFT_KEY]);
 
   const restoreDraft = useCallback(() => {
+    if (!enabled) return;
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) setDiet(JSON.parse(saved));
+      if (saved) setDiet({ ...JSON.parse(saved), AdSoyad: diet.AdSoyad, clientId: selectedClientId });
     } catch {
       /* ignore */
     }
     setShowDraftPrompt(false);
-  }, [DRAFT_KEY, setDiet]);
+  }, [DRAFT_KEY, setDiet, enabled, diet.AdSoyad, selectedClientId]);
 
   return {
     showDraftPrompt,

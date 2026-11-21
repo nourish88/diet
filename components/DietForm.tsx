@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Form } from "./ui/form";
 import DietHeader from "./DietHeader";
 import { NotificationTestPanel } from "./NotificationTestPanel";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { formSchema } from "../schemas/formSchema";
 import { Diet, BannedFood } from "../types/types";
@@ -27,6 +27,8 @@ import { useDietLogging } from "@/hooks/useDietLogging";
 import { sortMealsByTime } from "@/lib/diet-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { resolveClientName } from "@/lib/client-name";
+import { describeRequestError } from "@/lib/http-request";
 import {
   convertDbDietToUiDiet as convertDbDietToUiDietUtil,
   getClientFullName as getClientFullNameUtil,
@@ -63,6 +65,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     initialClientId || null
   );
   const [selectedClientName, setSelectedClientName] = useState<string>("");
+  const clientNamesRef = useRef(new Map<number, string>());
+  const editModeRef = useRef(false);
+  const [clientLoadError, setClientLoadError] = useState<string | null>(null);
+  const [clientRetry, setClientRetry] = useState(0);
   const [clientData, setClientData] = useState<{
     illness: string | null;
     bannedFoods: BannedFood[];
@@ -90,7 +96,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     if (clientId === selectedClientId) return;
     // Selecting another client starts a new program. Ownership corrections for
     // saved programs are handled explicitly on the program detail page.
+    editModeRef.current = false;
     setIsUpdateMode(false);
+    setSelectedClientName("");
     setSelectedClientId(clientId);
     if (dietLogging.isReady && clientId) {
       if (selectedClientId) {
@@ -143,9 +151,6 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     }
   }, [dietLogging.isReady]);
 
-  // Separate effect for initial client fetch if initialClientId is provided
-  // This must be after loadLatestDiet is defined
-
   // Load templates on mount
   useEffect(() => {
     const loadTemplates = async () => {
@@ -170,9 +175,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Wrapper for getClientFullName utility that has access to component state
   const getClientFullName = useCallback(
     (clientId: number | null) => {
-      return getClientFullNameUtil(clientId, selectedClientName);
+      return getClientFullNameUtil(clientId, clientId ? clientNamesRef.current.get(clientId) ?? "" : "");
     },
-    [selectedClientName]
+    []
   );
 
   // Wrapper for convertDbDietToUiDiet utility that has access to component state
@@ -189,7 +194,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
   // Function to load the latest diet for a selected client
   const loadLatestDiet = useCallback(
-    async (clientId?: number) => {
+    async (clientId?: number, signal?: AbortSignal) => {
       const targetClientId = clientId || selectedClientId;
       if (!targetClientId) return;
 
@@ -205,7 +210,8 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           createdAt?: string;
           tarih?: string | null;
         }
-        const data = await apiClient.get<LatestDietResponse>(`/diets/latest/${targetClientId}`);
+        const data = await apiClient.get<LatestDietResponse>(`/diets/latest/${targetClientId}`, { signal });
+        if (signal?.aborted) return;
 
         if (data && data.id) {
           // Create the UI diet with correct field mapping from API response
@@ -236,6 +242,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           }
         }
       } catch (error: any) {
+        if (signal?.aborted) return;
         // Handle 404 (no previous diet found)
         if (error?.status === 404 || error?.message?.includes("404")) {
           console.log("No previous diet found for client - starting fresh");
@@ -255,41 +262,12 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           setIsLoading(false);
           return;
         }
-        console.error("Error loading latest diet:", error);
-        // Initialize with empty diet on error (no ID, fresh start)
-        setDiet((prev) => ({
-          ...prev,
-          id: undefined, // Ensure no ID for new diet
-          Oguns: sortMealsByTime(
-            OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
-          ),
-          Su: "",
-          Fizik: "",
-          Sonuc: "",
-          Hedef: "",
-          dietitianNote: "",
-        }));
+        // Preserve the existing draft on transport errors. An error is not an empty diet.
+        setClientLoadError(describeRequestError(error));
+        toast({ title: "Diyet yüklenemedi", description: describeRequestError(error), variant: "destructive" });
 
-        // Check if it's a network error
-        if (error instanceof TypeError && error.message === "Failed to fetch") {
-          toast({
-            title: "Bağlantı Hatası",
-            description:
-              "Sunucuya bağlanırken bir hata oluştu. Lütfen internet bağlantınızı kontrol edin.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        toast({
-          title: "Hata",
-          description:
-            "Son diyet yüklenirken bir hata oluştu. Yeni bir diyet oluşturabilirsiniz.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
       } finally {
+        if (signal?.aborted) return;
         // Ensure loading is set to false even if there was an early return
         setIsLoading((prev) => {
           if (prev) return false;
@@ -300,120 +278,44 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     [selectedClientId, convertDbDietToUiDiet, dietLogging, toast, setDiet]
   );
 
-  // Separate effect for initial client fetch if initialClientId is provided
+  // Resolve identity before loading diet data; cancel responses for a previous selection.
   useEffect(() => {
-    const fetchInitialClient = async () => {
-      if (!initialClientId) return;
-
+    if (!selectedClientId) {
+      setIsLoading(false);
+      setClientLoadError(null);
+      setSelectedClientName("");
+      setClientPhoneNumber(undefined);
+      setClientData({ illness: null, bannedFoods: [] });
+      return;
+    }
+    const controller = new AbortController();
+    setIsLoading(true);
+    setClientLoadError(null);
+    const load = async () => {
       try {
-        setIsLoading(true);
-
-        // Get authentication token
-        const data = await apiClient.get<ClientResp>(`/clients/${initialClientId}`);
-
-        if (data && data.id) {
-          const oldClientId = selectedClientId;
-          setSelectedClientId(data.id);
-          setSelectedClientName(`${data.name} ${data.surname}`);
-
-          // Log client selection
-          if (dietLogging.isReady) {
-            if (oldClientId && oldClientId !== data.id) {
-              dietLogging.logClientChanged(oldClientId, data.id);
-            } else {
-              dietLogging.logClientSelected(data.id);
-            }
-          }
-
-          // Set client data here instead of in a separate effect
-          setClientData({
-            illness: data.illness ?? null,
-            bannedFoods: data.bannedFoods || [],
-          });
-          setClientPhoneNumber(data.phoneNumber || undefined);
-
-          // Load latest diet for this client
-          await loadLatestDiet(data.id);
-        }
+        const client = await apiClient.get<ClientResp>(`/clients/${selectedClientId}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        if (client.id !== selectedClientId) throw new Error("Danışan bilgileri eşleşmedi. Yeniden deneyin.");
+        const name = resolveClientName(client);
+        if (!name) throw new Error("Danışan adı alınamadı. Yeniden deneyin.");
+        clientNamesRef.current.set(client.id, name);
+        setSelectedClientName(name);
+        setClientData({ illness: client.illness ?? null, bannedFoods: client.bannedFoods ?? [] });
+        setClientPhoneNumber(client.phoneNumber ?? undefined);
+        setDiet((previous) => ({ ...previous, AdSoyad: name }));
+        if (dietLogging.isReady) dietLogging.logClientSelected(client.id);
+        if (!editModeRef.current) await loadLatestDiet(client.id, controller.signal);
       } catch (error) {
-        console.error("Error fetching initial client:", error);
-        toast({
-          title: "Hata",
-          description: "Danışan bilgileri yüklenirken bir hata oluştu.",
-          variant: "destructive",
-        });
+        if (!controller.signal.aborted) setClientLoadError(describeRequestError(error));
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
-
-    fetchInitialClient();
+    void load();
+    return () => controller.abort();
+    // Selection and explicit retry own this request; callbacks read identity by client ID.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialClientId]); // Only run when initialClientId changes
-
-  useEffect(() => {
-    const fetchClientData = async () => {
-      // Skip if this is the initial client fetch (it's handled separately)
-      if (initialClientId && selectedClientId === initialClientId) {
-        return;
-      }
-
-      if (selectedClientId) {
-        // Validate client ID first
-        if (isNaN(selectedClientId)) {
-          toast({
-            title: "Hata",
-            description: "Geçersiz danışan ID'si",
-            variant: "destructive",
-          });
-          setSelectedClientId(null);
-          return;
-        }
-
-        try {
-          // Fetch client details
-          const client = await apiClient.get<ClientResp>(`/clients/${selectedClientId}`);
-
-          if (!client || !client.id) return;
-
-          // Set client name for display
-          setSelectedClientName(`${client.name} ${client.surname}`);
-
-          // Set client data
-          setClientData({
-            illness: client.illness ?? null,
-            bannedFoods: client.bannedFoods || [],
-          });
-
-          setClientPhoneNumber(client.phoneNumber || undefined);
-
-          // Update diet with client name
-          setDiet((prev) => ({
-            ...prev,
-            AdSoyad: `${client.name} ${client.surname}`,
-          }));
-
-          // Log client selection
-          if (dietLogging.isReady) {
-            dietLogging.logClientSelected(client.id);
-          }
-
-          // Load latest diet for this client
-          await loadLatestDiet();
-        } catch (error) {
-          console.error("Error fetching client data:", error);
-        }
-      } else {
-        console.log("selected client id is null");
-        setClientPhoneNumber(undefined);
-        setClientData({ illness: null, bannedFoods: [] });
-        setSelectedClientName("");
-      }
-    };
-
-    fetchClientData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClientId]); // Only depend on selectedClientId, not loadLatestDiet
+  }, [selectedClientId, clientRetry]);
 
   // Load initial template if provided
   useEffect(() => {
@@ -463,6 +365,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   // Function to load a specific diet by ID for editing
   const loadDietById = async (dietId: number) => {
     if (!dietId) return;
+    editModeRef.current = true;
 
     try {
       setIsLoading(true);
@@ -476,6 +379,9 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         // Get client ID from diet
         const clientId = data.client?.id || selectedClientId;
         if (clientId) {
+          const name = resolveClientName(data.client);
+          if (name) clientNamesRef.current.set(clientId, name);
+          setSelectedClientName(name);
           setSelectedClientId(clientId);
         }
 
@@ -583,6 +489,10 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         description: "Lütfen önce bir müşteri seçin",
         variant: "destructive",
       });
+      return { ok: false };
+    }
+    if (isLoading || !selectedClientName || clientLoadError) {
+      toast({ title: "Danışan bilgileri hazır değil", description: "Bilgilerin yüklenmesini bekleyin veya yüklemeyi yeniden deneyin.", variant: "destructive" });
       return { ok: false };
     }
     const skipRedirect = options.skipRedirect === true;
@@ -767,7 +677,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
 
 
   // Add this helper function to check if form should be disabled
-  const isFormDisabled = !selectedClientId;
+  const isFormDisabled = !selectedClientId || isLoading || !selectedClientName || Boolean(clientLoadError);
 
   const [measurementWeight, setMeasurementWeight] = useState("");
   const [measurementBodyFat, setMeasurementBodyFat] = useState("");
@@ -777,20 +687,20 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
     setShowDraftPrompt,
     clearDraft,
     restoreDraft,
-  } = useDietFormDraft(diet, setDiet, selectedClientId, isUpdateMode);
+  } = useDietFormDraft(diet, setDiet, selectedClientId, isUpdateMode, !isFormDisabled);
 
   // ─── Keyboard shortcuts (Madde 1-A) ───
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (selectedClientId) handleSaveToDB();
+        if (!isFormDisabled) handleSaveToDB();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClientId, diet, isUpdateMode]);
+  }, [selectedClientId, diet, isUpdateMode, isFormDisabled]);
 
   return (
     <div className="container mx-auto px-2 sm:px-4 max-w-7xl">
@@ -898,7 +808,11 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
             )}
 
             {/* Show a message when no client is selected */}
-            {isFormDisabled && (
+            {clientLoadError && <div role="alert" className="my-3 rounded-lg border border-destructive/40 p-3">
+              <p>{clientLoadError}</p>
+              <Button type="button" variant="outline" className="mt-2" onClick={() => setClientRetry((value) => value + 1)}>Danışan bilgilerini yeniden yükle</Button>
+            </div>}
+            {!selectedClientId && (
               <div className="text-center p-4 bg-warning/10 border border-warning/30 rounded-md mb-4">
                 <p className="text-foreground">
                   Lütfen diyet programı oluşturmak için önce bir danışan seçin

@@ -1,5 +1,5 @@
 "use client";
-import { ProgressSummary as ProgressSummaryType } from "@/services/ProgressService";
+import { ProgressSummary as ProgressSummaryType } from "@/lib/progress";
 import { TrendingDown, TrendingUp, Minus, Target } from "lucide-react";
 
 interface ProgressSummaryProps {

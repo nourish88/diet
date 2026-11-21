@@ -8,6 +8,7 @@ import ConditionalLayout from "@/components/ConditionalLayout";
 import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
 import ServiceWorkerProvider from "@/components/providers/ServiceWorkerProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import ApplicationErrorProvider from "@/components/providers/ApplicationErrorProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -61,6 +62,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <ApplicationErrorProvider />
             <QueryProvider>
               <PushNotificationProvider />
               <ConditionalLayout>{children}</ConditionalLayout>

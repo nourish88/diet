@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { searchableNavigationItems } from "@/lib/dietitian-navigation";
-import { fetchClients } from "@/services/ClientService";
+import { fetchClients } from "@/lib/clients-api";
 
 function useDebouncedValue(value: string, delay = 250) {
   const [debounced, setDebounced] = useState(value);

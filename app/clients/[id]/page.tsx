@@ -73,12 +73,12 @@ import {
   ProgressEntry,
   calculateProgressSummary,
   getChartData,
-} from "@/services/ProgressService";
+} from "@/lib/progress";
 import {
   ExerciseLog,
   groupByExerciseType,
   getExerciseStats,
-} from "@/services/ExerciseService";
+} from "@/lib/exercise";
 import { useState, useMemo, useCallback } from "react";
 import {
   Dialog,

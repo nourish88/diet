@@ -1,6 +1,8 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { route, HttpError } from "@/lib/api/handler";
+import { PushDeviceReportSchema } from "@/lib/push-device";
+import { buildPushDeviceInfo } from "@/lib/push-device-server";
 
 const SubscribeBody = z.object({
   subscription: z.object({
@@ -11,6 +13,7 @@ const SubscribeBody = z.object({
     }),
   }),
   userId: z.number().int().positive(),
+  device: PushDeviceReportSchema.optional(),
 });
 
 const UnsubscribeBody = z.object({
@@ -23,7 +26,7 @@ export const POST = route({
   auth: "any",
   schema: SubscribeBody,
   scope: "push.subscribe",
-  handler: async ({ body, auth }) => {
+  handler: async ({ body, auth, request }) => {
     // Assistants must own their subscription under their own user id, not the
     // swapped parent dietitian id. callerId falls back to id for regular users.
     const realUserId = auth.user!.callerId ?? auth.user!.id;
@@ -31,14 +34,16 @@ export const POST = route({
       throw new HttpError("forbidden", "Forbidden");
     }
     const { endpoint, keys } = body.subscription;
+    const deviceInfo = buildPushDeviceInfo(request.headers.get("user-agent"), body.device);
     const subscription = await prisma.pushSubscription.upsert({
       where: { endpoint },
-      update: { p256dh: keys.p256dh, auth: keys.auth, userId: realUserId },
+      update: { p256dh: keys.p256dh, auth: keys.auth, userId: realUserId, deviceInfo },
       create: {
         endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
         userId: realUserId,
+        deviceInfo,
       },
     });
 

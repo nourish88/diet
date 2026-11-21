@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthSyncNotice } from "@/components/AuthSyncNotice";
 import { createClient } from "@/lib/supabase-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,9 @@ import {
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import InstallAppCard from "@/components/client/InstallAppCard";
+import { requestJson, describeRequestError } from "@/lib/http-request";
+import { ensureClientSession } from "@/lib/client-session";
+import { reportClientError, flushClientErrors } from "@/lib/application-error-client";
 
 interface PhoneLookupClient {
   id: number;
@@ -62,7 +66,7 @@ export default function LoginPage() {
   );
 
   useEffect(() => {
-    if (!loading && user && databaseUser) {
+    if (!loading && !isConfirmingClient && user && databaseUser) {
       if (databaseUser.role === "client") {
         if (databaseUser.isApproved) {
           window.location.href = "/client";
@@ -74,7 +78,7 @@ export default function LoginPage() {
         window.location.href = "/";
       }
     }
-  }, [user, databaseUser, loading]);
+  }, [user, databaseUser, loading, isConfirmingClient]);
 
   const resetClientFlow = () => {
     setLookupClients([]);
@@ -92,19 +96,14 @@ export default function LoginPage() {
     normalizedPhoneValue: string;
     skipConfirmStep: boolean;
   }) => {
-    const sessionResponse = await fetch("/api/client-auth/session", {
+    const sessionData = await requestJson<{ email: string; password: string }>("/api/client-auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phoneNumber: normalizedPhoneValue }),
     });
 
-    const sessionData = await sessionResponse.json();
-
-    if (!sessionResponse.ok) {
-      throw new Error(sessionData.error || "Danışan oturumu hazırlanamadı.");
-    }
-
     const { session, user: authUser } = await ensureClientSession(
+      supabase.auth,
       sessionData.email,
       sessionData.password
     );
@@ -114,7 +113,7 @@ export default function LoginPage() {
       throw new Error("Hesap e-posta bilgisi alınamadı.");
     }
 
-    const syncResponse = await fetch("/api/auth/sync", {
+    await requestJson("/api/auth/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -124,13 +123,8 @@ export default function LoginPage() {
       }),
     });
 
-    if (!syncResponse.ok) {
-      const syncError = await syncResponse.json();
-      throw new Error(syncError.error || "Hesap senkronizasyonu başarısız.");
-    }
-
     if (!skipConfirmStep) {
-      const confirmResponse = await fetch("/api/client-auth/confirm", {
+      await requestJson("/api/client-auth/confirm", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -142,13 +136,7 @@ export default function LoginPage() {
         }),
       });
 
-      const confirmData = await confirmResponse.json();
 
-      if (!confirmResponse.ok) {
-        throw new Error(
-          confirmData.error || "Eşleştirme onaylanırken bir hata oluştu."
-        );
-      }
     }
   };
 
@@ -156,19 +144,11 @@ export default function LoginPage() {
     setIsSearchingClient(true);
 
     try {
-      const response = await fetch("/api/client-auth/lookup", {
+      const data = await requestJson<{ clients: PhoneLookupClient[]; normalizedPhone: string; singleClientAutoLogin: boolean }>("/api/client-auth/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Telefon numarası sorgulanırken bir hata oluştu."
-        );
-      }
 
       const clients: PhoneLookupClient[] = data.clients || [];
       const firstClient = clients[0] || null;
@@ -210,59 +190,19 @@ export default function LoginPage() {
             : "Profil bulundu. Onaylayarak devam edebilirsiniz.",
       });
     } catch (error: any) {
+      reportClientError(error, { code: "auth_failed", path: "/login" });
+      void flushClientErrors();
       resetClientFlow();
       toast({
         title: "Telefon Doğrulama",
         description:
-          error.message ||
-          "Telefon numarası doğrulanamadı. Lütfen diyetisyeninizle iletişime geçin.",
+          describeRequestError(error),
         variant: "destructive",
       });
     } finally {
       setIsSearchingClient(false);
       setIsConfirmingClient(false);
     }
-  };
-
-  const ensureClientSession = async (emailValue: string, passwordValue: string) => {
-    const signedIn = await supabase.auth.signInWithPassword({
-      email: emailValue,
-      password: passwordValue,
-    });
-
-    if (!signedIn.error && signedIn.data.session && signedIn.data.user) {
-      return { session: signedIn.data.session, user: signedIn.data.user };
-    }
-
-    const signUpResult = await supabase.auth.signUp({
-      email: emailValue,
-      password: passwordValue,
-      options: { data: { role: "client" } },
-    });
-
-    if (signUpResult.error) {
-      const isAlreadyRegistered =
-        signUpResult.error.message?.toLowerCase().includes("already") ||
-        signUpResult.error.message?.toLowerCase().includes("registered");
-
-      if (!isAlreadyRegistered) {
-        throw new Error(signUpResult.error.message || "Danışan girişi başarısız.");
-      }
-    }
-
-    const retrySignIn = await supabase.auth.signInWithPassword({
-      email: emailValue,
-      password: passwordValue,
-    });
-
-    if (retrySignIn.error || !retrySignIn.data.session || !retrySignIn.data.user) {
-      throw new Error(
-        retrySignIn.error?.message ||
-          "Danışan oturumu açılamadı. Lütfen tekrar deneyin."
-      );
-    }
-
-    return { session: retrySignIn.data.session, user: retrySignIn.data.user };
   };
 
   const handleConfirmClient = async () => {
@@ -291,9 +231,11 @@ export default function LoginPage() {
 
       window.location.href = "/client";
     } catch (error: any) {
+      reportClientError(error, { code: "auth_failed", path: "/login" });
+      void flushClientErrors();
       toast({
         title: "Danışan Girişi",
-        description: error.message || "Danışan girişi başarısız.",
+        description: describeRequestError(error),
         variant: "destructive",
       });
     } finally {
@@ -317,6 +259,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <AuthSyncNotice />
           <InstallAppCard />
           <div className="space-y-4">
             <div className="space-y-2">

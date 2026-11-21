@@ -8,6 +8,9 @@ import {
 } from "../api-auth";
 import { addCorsHeaders } from "../cors";
 import { createLogger, type Logger } from "../logger";
+import prisma from "../prisma";
+import { scheduleApplicationError } from "../application-error-server";
+import { classifyError } from "../application-errors";
 import {
   fail,
   isApiEnvelope,
@@ -116,7 +119,10 @@ export function route<TSchema extends ZodTypeAny | undefined, TParams = Record<s
         return withCors(fail(err.code, err.message, err.details), opts.cors);
       }
       log.error("unhandled", err instanceof Error ? err.message : String(err));
-      return withCors(fail("internal", "Internal server error"), opts.cors);
+      const code = classifyError(err);
+      const status = code === "database_connection" ? 503 : 500;
+      scheduleApplicationError(prisma, { code, path: request.nextUrl.pathname, status });
+      return withCors(fail("internal", "Hizmete şu anda erişilemiyor. Lütfen yeniden deneyin.", undefined, { status }), opts.cors);
     }
   };
 }

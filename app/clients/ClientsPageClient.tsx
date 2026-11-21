@@ -7,7 +7,7 @@ import { Loader2, UserPlus, Pencil, Trash2, Search, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
-import { fetchClients } from "@/services/ClientService";
+import { fetchClients } from "@/lib/clients-api";
 import { apiClient } from "@/lib/api-client";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
+import { reportClientError, flushClientErrors } from "@/lib/application-error-client";
 
 export default function Error({
   error,
@@ -13,6 +14,8 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    reportClientError(error, { code: "javascript_error" });
+    void flushClientErrors();
     // Log error to console in development
     if (process.env.NODE_ENV === "development") {
       console.error("Error boundary caught:", error);

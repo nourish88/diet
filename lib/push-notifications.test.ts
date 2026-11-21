@@ -72,6 +72,14 @@ describe("push registration recovery", () => {
     expect(subscribe).toHaveBeenCalledWith({ userVisibleOnly: true, applicationServerKey: Uint8Array.from([1, 2, 3]) });
   });
 
+  it("renews the browser subscription on explicit repair even if the VAPID key is unchanged", async () => {
+    expect(await setupPushNotificationsForUser(7, { renewSubscription: true })).toEqual({ ok: true });
+    expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+    expect(subscribe).toHaveBeenCalledOnce();
+    const methods = fetchMock.mock.calls.filter(([url]) => url === "/api/push/subscribe").map(([, init]) => init.method);
+    expect(methods).toEqual(["DELETE", "POST"]);
+  });
+
   it("retires endpoints registered under a previous VAPID key", async () => {
     subscription.options.applicationServerKey = Uint8Array.from([9]).buffer;
     expect(await setupPushNotificationsForUser(7)).toEqual({ ok: true });
@@ -84,7 +92,7 @@ describe("push registration recovery", () => {
   it("does not claim success when persistence fails and retries on the next attempt", async () => {
     fetchMock.mockImplementationOnce(async () => Response.json({ configured: true, publicKey: key }))
       .mockImplementationOnce(async () => new Response(null, { status: 503 }));
-    await expect(setupPushNotificationsForUser(7)).rejects.toThrow("Cihaz bildirim kaydı");
+    await expect(setupPushNotificationsForUser(7)).rejects.toMatchObject({ status: 503 });
     expect(await setupPushNotificationsForUser(7)).toEqual({ ok: true });
   });
 

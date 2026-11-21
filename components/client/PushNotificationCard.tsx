@@ -24,11 +24,11 @@ export default function PushNotificationCard({ onReadyChange }: { onReadyChange?
   const [message, setMessage] = useState(messages.dismissed);
   const [unavailable, setUnavailable] = useState(false);
 
-  const setup = useCallback(async (requestPermissionIfDefault = false) => {
+  const setup = useCallback(async (requestPermissionIfDefault = false, renewSubscription = false) => {
     if (!userId) return;
     setBusy(true);
     try {
-      const result = await setupPushNotificationsForUser(userId, { requestPermissionIfDefault });
+      const result = await setupPushNotificationsForUser(userId, { requestPermissionIfDefault, renewSubscription });
       setReady(result.ok);
       onReadyChange?.(result.ok);
       setUnavailable(result.reason === "unsupported" || result.reason === "install-required");
@@ -57,7 +57,7 @@ export default function PushNotificationCard({ onReadyChange }: { onReadyChange?
     <section aria-label="Cihaz bildirimleri" className="rounded-xl border bg-card p-4 space-y-3">
       <h2 className="font-semibold flex items-center gap-2"><Bell className="h-5 w-5" /> {ready ? "Bildirimler hazır" : "Bildirimleri açın"}</h2>
       <p role="status" className="text-sm text-muted-foreground">{busy ? "Cihaz bildirim kaydı kontrol ediliyor…" : message}</p>
-      {!unavailable && <Button variant="outline" disabled={busy || !userId} onClick={() => setup(true)}>{ready ? "Bildirim kaydını yenile" : "Bildirimleri aç"}</Button>}
+      {!unavailable && <Button variant="outline" disabled={busy || !userId} onClick={() => setup(true, ready)}>{ready ? "Bildirim kaydını yenile" : "Bildirimleri aç"}</Button>}
     </section>
   );
 }

@@ -9,7 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { ChartDataPoint } from "@/services/ExerciseService";
+import { ChartDataPoint } from "@/lib/exercise";
 
 interface ExerciseChartProps {
   data: ChartDataPoint[];

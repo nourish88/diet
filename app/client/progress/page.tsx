@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ProgressForm from "@/components/progress/ProgressForm";
-import { ProgressEntry, calculateProgressSummary } from "@/services/ProgressService";
+import { ProgressEntry, calculateProgressSummary } from "@/lib/progress";
 import { Plus, TrendingDown, TrendingUp, Minus, Scale, Droplets } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -609,6 +609,26 @@ model SystemConfig {
   @@index([key])
 }
 
+// Operational failures only. No passwords, tokens, raw payloads or health data.
+model ApplicationError {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  code        String
+  message     String
+  source      String
+  path        String
+  subject     String?
+  status      Int?
+  device      String?
+  referenceId Int?
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([subject, createdAt])
+  @@index([code, createdAt])
+}
+
 model PushSubscription {
   id        Int      @id @default(autoincrement())
   endpoint  String   @unique
@@ -618,6 +638,7 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deviceInfo Json? // Last browser-reported diagnostics; no endpoint/key material
 
   @@index([userId])
 }
@@ -761,10 +782,13 @@ model NotificationLog {
   type         String // "meal_reminder", "manual_test" etc.
   title        String?
   body         String?
-  status       String // "success", "failed"
+  status       String // "pending", "success", "failed"
   errorMessage String?
   sentAt       DateTime  @default(now())
   receivedAt   DateTime? // Set when the device's service worker pings back acknowledging delivery
+  subscriptionId Int? // Historical identifier; retained after subscription deletion
+  deviceInfo Json? // Snapshot at send time, never backfilled from another device
+  pushStatusCode Int?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)

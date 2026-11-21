@@ -1,3 +1,4 @@
+import { resolveClientName } from "@/lib/client-name";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale/tr";
 
@@ -128,6 +129,7 @@ export const prepareDirectPdfData = (
   if (pdfData) {
     return {
       ...pdfData,
+      fullName: resolveClientName(null, pdfData.fullName, diet?.AdSoyad),
       ogunler: normalizePdfMeals(pdfData.ogunler || []),
       isBirthdayCelebration: pdfData.isBirthdayCelebration || false,
       isImportantDateCelebrated: pdfData.isImportantDateCelebrated || false,
@@ -147,7 +149,7 @@ export const prepareDirectPdfData = (
   }
 
   return {
-    fullName: (diet.AdSoyad || "İsimsiz Danışan").trim(),
+    fullName: resolveClientName(null, diet.AdSoyad),
     dietDate: diet.Tarih || new Date().toISOString(),
     weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
     target: diet.Hedef || "Hedef belirtilmemiş",
@@ -168,17 +170,7 @@ export const prepareDatabasePdfData = (diet: any): DietPdfData | null => {
     return null;
   }
 
-  const fallbackName = "İsimsiz Danışan";
-  let clientName = fallbackName;
-
-  if (diet.client) {
-    const client = diet.client;
-    const fromFull =
-      typeof client.fullName === "string" ? client.fullName.trim() : "";
-    const fromParts = `${client.name ?? ""} ${client.surname ?? ""}`.trim();
-    const resolved = fromFull || fromParts;
-    clientName = resolved || fallbackName;
-  }
+  const clientName = resolveClientName(diet.client, diet.AdSoyad, diet.fullName);
 
   return {
     fullName: clientName,

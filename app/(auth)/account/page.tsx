@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthSyncNotice } from "@/components/AuthSyncNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,7 @@ export default function AccountPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <AuthSyncNotice />
           <form onSubmit={handleSubmit} className="space-y-4 w-full">
             <div className="space-y-2 w-full">
               <Label htmlFor="email" className="block">

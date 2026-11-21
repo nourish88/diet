@@ -9,7 +9,7 @@ const ExerciseChart = dynamic(() => import("@/components/exercises/ExerciseChart
   loading: () => <div className="h-64 w-full bg-muted/30 rounded-md animate-pulse" />,
 });
 import DateRangePicker from "@/components/progress/DateRangePicker";
-import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/services/ExerciseService";
+import { ExerciseLog, groupByExerciseType, getExerciseStats } from "@/lib/exercise";
 import { Activity, Clock, Footprints, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/lib/api-client";

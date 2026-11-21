@@ -3,6 +3,9 @@
 import { createClient } from "@/lib/supabase-browser";
 import { isIOSDevice, isPushSupported, isStandalonePWA } from "@/lib/pwa";
 import { getActiveServiceWorker } from "@/lib/service-worker";
+import { collectPushDeviceReport } from "@/lib/push-device-client";
+import { requestJson } from "@/lib/http-request";
+import { reportClientError } from "@/lib/application-error-client";
 
 export type PushSetupResult = {
   ok: boolean;
@@ -20,21 +23,18 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
 async function subscriptionRequest(method: "POST" | "DELETE", body: unknown) {
   const { data: { session } } = await createClient().auth.getSession();
   if (!session) throw new Error("Bildirimler için tekrar giriş yapın.");
-  const response = await fetch("/api/push/subscribe", {
+  await requestJson("/api/push/subscribe", {
     method,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    timeoutMs: 20000,
   });
-  if (!response.ok) throw new Error("Cihaz bildirim kaydı kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.");
 }
 
-async function syncSubscription(userId: number): Promise<PushSetupResult> {
+async function syncSubscription(userId: number, renewSubscription = false): Promise<PushSetupResult> {
   // Use the sender's runtime key: build-time NEXT_PUBLIC values may be stale
   // or missing after deployments, causing subscriptions the server cannot use.
-  const response = await fetch("/api/push/config", { cache: "no-store", signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error("Bildirim ayarları alınamadı. Tekrar deneyin.");
-  const config: { publicKey?: string; configured: boolean } = await response.json();
+  const config = await requestJson<{ publicKey?: string; configured: boolean }>("/api/push/config", { timeoutMs: 20000 });
   if (!config.configured || !config.publicKey) return { ok: false, reason: "missing-configuration" };
   const applicationServerKey = urlBase64ToUint8Array(config.publicKey);
 
@@ -47,14 +47,13 @@ async function syncSubscription(userId: number): Promise<PushSetupResult> {
 
   let subscription = await registration.pushManager.getSubscription();
   const previousKey = subscription?.options.applicationServerKey;
-  if (subscription && previousKey) {
-    const bytes = new Uint8Array(previousKey);
-    if (bytes.length !== applicationServerKey.length || bytes.some((value, i) => value !== applicationServerKey[i])) {
-      // Retire the old endpoint before creating one for the rotated VAPID key.
-      await subscriptionRequest("DELETE", { endpoint: subscription.endpoint });
-      if (!await subscription.unsubscribe()) return { ok: false, reason: "missing-subscription" };
-      subscription = null;
-    }
+  const bytes = previousKey ? new Uint8Array(previousKey) : null;
+  const keyChanged = bytes && (bytes.length !== applicationServerKey.length || bytes.some((value, i) => value !== applicationServerKey[i]));
+  if (subscription && (renewSubscription || keyChanged)) {
+    // Explicit repair must obtain a new browser subscription, not merely re-save a stale endpoint.
+    await subscriptionRequest("DELETE", { endpoint: subscription.endpoint });
+    if (!await subscription.unsubscribe()) return { ok: false, reason: "missing-subscription" };
+    subscription = null;
   }
   if (!subscription) {
     try {
@@ -64,13 +63,13 @@ async function syncSubscription(userId: number): Promise<PushSetupResult> {
     }
   }
   // Granted permission alone is not success: the server must know this device.
-  await subscriptionRequest("POST", { subscription, userId });
+  await subscriptionRequest("POST", { subscription, userId, device: await collectPushDeviceReport() });
   return { ok: true };
 }
 
 export async function setupPushNotificationsForUser(
   userId: number,
-  options: { requestPermissionIfDefault?: boolean } = {},
+  options: { requestPermissionIfDefault?: boolean; renewSubscription?: boolean } = {},
 ): Promise<PushSetupResult> {
   if (isIOSDevice() && !isStandalonePWA()) return { ok: false, reason: "install-required" };
   if (!isPushSupported()) return { ok: false, reason: "unsupported" };
@@ -82,8 +81,18 @@ export async function setupPushNotificationsForUser(
     if (permission !== "granted") return { ok: false, reason: permission === "denied" ? "denied" : "dismissed" };
   }
   const existing = pendingSetups.get(userId);
-  if (existing) return existing;
-  const setup = syncSubscription(userId).finally(() => pendingSetups.delete(userId));
+  if (existing) {
+    if (!options.renewSubscription) return existing;
+    await existing.catch(() => undefined);
+    return setupPushNotificationsForUser(userId, options);
+  }
+  const setup = syncSubscription(userId, options.renewSubscription).then((result) => {
+    if (!result.ok) reportClientError(null, { code: "push_failed", path: "/api/push/subscribe" });
+    return result;
+  }).catch((error) => {
+    reportClientError(error, { code: "push_failed", path: "/api/push/subscribe" });
+    throw error;
+  }).finally(() => pendingSetups.delete(userId));
   pendingSetups.set(userId, setup);
   return setup;
 }
