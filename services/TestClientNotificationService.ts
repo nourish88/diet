@@ -177,9 +177,13 @@ export async function sendTestNotificationToClient(
       sentCount: sent,
       failedCount: failed,
       pushSentAt: sent ? new Date() : null,
-      deliveryStatus: sent ? (failed ? "partial" : "sent") : "failed",
       errorMessage: lastError,
     },
+  });
+
+  await prisma.broadcastRecipient.updateMany({
+    where: { id: recipient.id, deliveredAt: null },
+    data: { deliveryStatus: sent ? (failed ? "partial" : "sent") : "failed" },
   });
 
   return {

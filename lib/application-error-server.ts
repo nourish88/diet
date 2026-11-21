@@ -13,6 +13,7 @@ export interface ServerErrorInput {
   status?: number;
   device?: string;
   referenceId?: number;
+  bundlePosition?: string;
 }
 // Separate from Prisma imports so failed logging cannot recursively log itself.
 function errorData(input: ServerErrorInput) {
@@ -20,7 +21,10 @@ function errorData(input: ServerErrorInput) {
   const path = errorPath(input.path ?? "/");
   // Group server error storms per minute; browser retries use their stable event UUID.
   const eventId = input.eventId ?? createHash("sha256").update(JSON.stringify([input.code, path, input.subject, input.referenceId, Math.floor(occurredAt.getTime() / 60000)])).digest("hex");
-  return { id: randomUUID(), eventId, code: input.code, message: errorMessages[input.code], path,
+  const message = input.code === "javascript_error" && input.bundlePosition
+    ? `${errorMessages[input.code]} (JS ${input.bundlePosition})`
+    : errorMessages[input.code];
+  return { id: randomUUID(), eventId, code: input.code, message, path,
         source: input.source ?? "server", subject: input.subject ?? null, occurredAt,
         status: input.status, device: input.device?.slice(0, 160), referenceId: input.referenceId };
 }

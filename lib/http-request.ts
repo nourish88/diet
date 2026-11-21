@@ -20,6 +20,9 @@ export function describeRequestError(error: unknown): string {
 export interface HttpRequestOptions extends RequestInit {
   timeoutMs?: number;
   retries?: number;
+  retryDelayMs?: number;
+  /** For endpoints that use POST to keep lookup parameters out of URLs. */
+  readOnlyPost?: boolean;
 }
 
 /** Retries are limited to reads; a failed response must never repeat a write. */
@@ -28,8 +31,9 @@ export async function requestJson<T>(
   options: HttpRequestOptions = {},
   parseResponse: (response: Response) => Promise<T> = parseApiResponse<T>,
 ): Promise<T> {
-  const { timeoutMs = 20000, retries = 1, signal, ...init } = options;
-  const attempts = (init.method ?? "GET").toUpperCase() === "GET" ? retries + 1 : 1;
+  const { timeoutMs = 20000, retries = 1, retryDelayMs = 0, readOnlyPost = false, signal, ...init } = options;
+  const method = (init.method ?? "GET").toUpperCase();
+  const attempts = method === "GET" || (method === "POST" && readOnlyPost) ? retries + 1 : 1;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const controller = new AbortController();
     let timedOut = false;
@@ -54,13 +58,14 @@ export async function requestJson<T>(
         normalized.code === "timeout" || normalized.code === "network_error"
       );
       if (!retryable || attempt === attempts - 1) {
-        if (!status || status >= 500 || status === 401) reportClientError(normalized, { path: url, status, ...(status === 401 ? { code: "auth_failed" as const } : {}) });
+        if (!status || status >= 500 || status === 401 || status === 408) reportClientError(normalized, { path: url, status, ...(status === 401 ? { code: "auth_failed" as const } : {}) });
         throw normalized;
       }
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
     }
+    if (retryDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   }
   throw new RequestError("İstek tamamlanamadı.", "unknown");
 }

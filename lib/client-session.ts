@@ -18,6 +18,9 @@ export async function ensureClientSession(auth: ClientAuth, email: string, passw
   if (registration.error && !/already|registered/i.test(registration.error.message)) {
     throw new Error(describeRequestError(registration.error));
   }
+  if (!registration.error && registration.data?.session && registration.data.user) {
+    return { session: registration.data.session, user: registration.data.user };
+  }
   const retry = await auth.signInWithPassword(credentials);
   if (retry.error || !retry.data.session || !retry.data.user) {
     throw new Error(retry.error ? describeRequestError(retry.error) : "Danışan oturumu açılamadı. Lütfen tekrar deneyin.");

@@ -9,6 +9,13 @@ describe("resilient requests", () => {
     expect(await requestJson("/api/test")).toEqual({ ok: true });
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+  it("recovers a read-only login lookup after a temporary gateway error", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 503 })).mockResolvedValueOnce(Response.json({ clients: [] }));
+    vi.stubGlobal("fetch", fetch);
+    const options = { method: "POST", readOnlyPost: true, body: "{}" };
+    expect(await requestJson("/api/client-auth/lookup", options)).toEqual({ clients: [] });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
   it("never repeats a write after a network failure", async () => {
     const fetch = vi.fn().mockRejectedValue(new TypeError("Load failed"));
     vi.stubGlobal("fetch", fetch);

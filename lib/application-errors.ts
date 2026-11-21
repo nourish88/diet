@@ -24,6 +24,8 @@ export const ClientErrorSchema = z.object({
   eventId: z.string().uuid(), code: z.enum(errorCodes), path: z.string().max(180),
   occurredAt: z.string().datetime(), status: z.number().int().min(400).max(599).optional(),
   subject: z.string().uuid().nullable().optional(),
+  // Only the public build hash and generated line/column may leave the browser.
+  bundlePosition: z.string().regex(/^[a-f0-9]{16}:[1-9]\d{0,7}:[1-9]\d{0,7}$/).optional(),
 }).strict();
 export type ClientErrorEvent = z.infer<typeof ClientErrorSchema>;
 

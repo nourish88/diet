@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), upsert: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), upsert: vi.fn(), history: vi.fn(), retire: vi.fn(), transaction: vi.fn() }));
 vi.mock("@/lib/api-auth", () => ({ authenticateRequest: mocks.auth }));
 vi.mock("@/lib/env", () => ({ clientEnv: { NEXT_PUBLIC_DEBUG: "0" } }));
-vi.mock("@/lib/prisma", () => ({ default: { pushSubscription: { upsert: mocks.upsert } } }));
+vi.mock("@/lib/prisma", () => ({ default: { pushSubscription: { upsert: mocks.upsert, deleteMany: mocks.retire }, notificationLog: { findMany: mocks.history }, $transaction: mocks.transaction } }));
 import { POST } from "./route";
 
 const base = { userId: 7, subscription: { endpoint: "https://push.test/target", keys: { auth: "secret", p256dh: "secret" } } };
@@ -17,6 +17,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.auth.mockResolvedValue({ user: { id: 7, role: "client" } });
   mocks.upsert.mockResolvedValue({ id: 8 });
+  mocks.history.mockResolvedValue([]);
+  mocks.transaction.mockImplementation((queries) => Promise.all(queries));
 });
 describe("subscription diagnostics persistence", () => {
   it("writes normalized metadata on both create and refresh without copying secrets into diagnostics", async () => {
@@ -27,6 +29,27 @@ describe("subscription diagnostics persistence", () => {
     expect(saved.create.deviceInfo).toMatchObject({ model: "Pixel 9", osVersion: "15", browser: "Chrome" });
     expect(JSON.stringify(saved.create.deviceInfo)).not.toContain("secret");
   });
+  it("saves the replacement and retires only the signed-in user's old endpoint together", async () => {
+    expect((await send({ ...base, previousEndpoint: "https://push.test/old" })).status).toBe(200);
+    expect(mocks.transaction).toHaveBeenCalledOnce();
+    expect(mocks.retire).toHaveBeenCalledWith({ where: { endpoint: "https://push.test/old", userId: 7 } });
+  });
+
+  it("recommends repair only after three overdue receipts for the same subscription", async () => {
+    const overdue = { receivedAt: null, sentAt: new Date(Date.now() - 3600000) };
+    mocks.history.mockResolvedValue([overdue, overdue, overdue]);
+    expect((await (await send(base)).json()).data.needsDeliveryCheck).toBe(true);
+    expect(mocks.history).toHaveBeenCalledWith(expect.objectContaining({
+      take: 3, where: expect.objectContaining({ userId: 7, subscriptionId: 8, status: "success" }),
+    }));
+    for (const last of [{ ...overdue, receivedAt: new Date() }, { ...overdue, sentAt: new Date() }]) {
+      mocks.history.mockResolvedValue([last, overdue, overdue]);
+      expect((await (await send(base)).json()).data.needsDeliveryCheck).toBe(false);
+    }
+    mocks.history.mockRejectedValue(new Error("history unavailable"));
+    expect((await send(base)).status).toBe(200);
+  });
+
   it("accepts older clients without diagnostics", async () => {
     expect((await send(base)).status).toBe(200);
     expect(mocks.upsert.mock.calls[0][0].create.deviceInfo.permission).toBeNull();

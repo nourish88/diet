@@ -44,11 +44,12 @@ export function getWebPushPublicKey() {
 
 export function sendWebPushNotification(
   subscription: webpush.PushSubscription,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  options: { urgency?: "high" | "normal" } = {},
 ) {
   if (!isWebPushConfigured()) {
     return Promise.reject(new Error("Web push configuration is missing"));
   }
 
-  return webpush.sendNotification(subscription, JSON.stringify(payload), { timeout: 10000 });
+  return webpush.sendNotification(subscription, JSON.stringify(payload), { timeout: 10000, ...options });
 }

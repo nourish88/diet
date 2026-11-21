@@ -11,7 +11,7 @@ export default function ApplicationErrorProvider() {
   }, [session]);
   useEffect(() => {
     const flush = () => { if (document.visibilityState === "visible") void flushClientErrors(); };
-    const onError = (event: ErrorEvent) => reportClientError(event.error, { code: "javascript_error" });
+    const onError = (event: ErrorEvent) => reportClientError(event.error, { code: "javascript_error", event });
     const onRejection = (event: PromiseRejectionEvent) => {
       if (event.reason?.name !== "AbortError") reportClientError(event.reason, { code: "javascript_error" });
     };

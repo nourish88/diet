@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let handlers: Record<string, (event: any) => void>;
 let worker: any;
 let fetchMock: ReturnType<typeof vi.fn>;
-let cache: { match: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> };
+let entries: Map<string, Response>;
+let cache: { match: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; keys: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
 function dispatch<T = void>(type: string, data: Record<string, unknown> = {}) {
   let pending: Promise<T> = Promise.resolve(undefined as T);
   const respondWith = vi.fn((response) => { pending = Promise.resolve(response); });
@@ -14,7 +15,14 @@ function dispatch<T = void>(type: string, data: Record<string, unknown> = {}) {
 }
 beforeEach(() => {
   handlers = {};
-  cache = { match: vi.fn(), put: vi.fn() };
+  entries = new Map();
+  const keyUrl = (key: Request | string) => typeof key === "string" ? key : key.url;
+  cache = {
+    match: vi.fn(async (key) => entries.get(keyUrl(key))?.clone()),
+    put: vi.fn(async (key, response) => { entries.set(keyUrl(key), response); }),
+    keys: vi.fn(async () => Array.from(entries.keys(), (url) => new Request(url))),
+    delete: vi.fn(async (key) => entries.delete(keyUrl(key))),
+  };
   fetchMock = vi.fn().mockResolvedValue(new Response("online"));
   worker = {
     addEventListener: (type: string, handler: any) => { handlers[type] = handler; },
@@ -23,7 +31,7 @@ beforeEach(() => {
     clients: { matchAll: vi.fn().mockResolvedValue([]), openWindow: vi.fn().mockResolvedValue({}) },
   };
   runInNewContext(readFileSync(new URL("../public/sw.js", import.meta.url), "utf8"), {
-    self: worker, URL, Request, Response, console,
+    self: worker, URL, Request, Response, console, AbortController, setTimeout, clearTimeout,
     fetch: fetchMock,
     caches: { open: vi.fn().mockResolvedValue(cache) },
   });
@@ -37,13 +45,33 @@ describe("service worker runtime", () => {
   });
 
   it("acknowledges delivery only after displaying the notification", async () => {
+    fetchMock.mockResolvedValue(Response.json({ ok: true }));
     let show: () => void = () => {};
     worker.registration.showNotification.mockImplementation(() => new Promise<void>((resolve) => { show = resolve; }));
     const { pending } = dispatch("push", { data: { json: () => ({ title: "Mesaj", data: { logId: 3 } }) } });
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
     show();
     await pending;
     expect(fetchMock).toHaveBeenCalledWith("/api/push/ack", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("replays a stored receipt after network and server failures without redisplaying the notification", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("offline")).mockResolvedValueOnce(new Response(null, { status: 503 }));
+    await dispatch("push", { data: { json: () => ({ title: "Private", data: { logId: 12, broadcastRecipientId: 8 } }) } }).pending;
+    expect(entries.size).toBe(1);
+    fetchMock.mockResolvedValueOnce(Response.json({ ok: true }));
+    await dispatch("message", { data: { type: "RETRY_PUSH_ACKS" } }).pending;
+    expect(entries.size).toBe(0);
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ logId: 12, broadcastRecipientId: 8 });
+    expect(worker.registration.showNotification).toHaveBeenCalledOnce();
+  });
+
+  it("does not acknowledge a notification that failed to display", async () => {
+    worker.registration.showNotification.mockRejectedValue(new Error("permission revoked"));
+    await expect(dispatch("push", { data: { json: () => ({ data: { logId: 12 } }) } }).pending).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
   });
 
   it("leaves API and manifest freshness to the network", () => {

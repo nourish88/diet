@@ -13,36 +13,46 @@ export default function PushNotificationProvider() {
     if (!userId || !isPushSupported()) return;
     let disposed = false;
     let busy = false;
-    let lastAttempt = 0;
+    let nextAttempt = 0;
+    let retryDelay = 30000;
     const sync = async () => {
       if (disposed || busy || document.visibilityState !== "visible" ||
-          Notification.permission !== "granted" || !navigator.onLine || Date.now() - lastAttempt < 30000) return;
+          Notification.permission !== "granted" || !navigator.onLine || Date.now() < nextAttempt) return;
       busy = true;
-      lastAttempt = Date.now();
       try {
-        await setupPushNotificationsForUser(userId);
+        const result = await setupPushNotificationsForUser(userId);
+        if (result.ok) {
+          nextAttempt = Date.now() + 6 * 60 * 60 * 1000;
+          retryDelay = 30000;
+          return;
+        }
       } catch (error) {
         console.error("Push subscription sync failed:", error);
       } finally {
         busy = false;
       }
+      nextAttempt = Date.now() + retryDelay;
+      retryDelay = Math.min(2 * retryDelay, 15 * 60000);
+    };
+    const reconnect = () => {
+      nextAttempt = 0;
+      void sync();
     };
     void sync();
     const onMessage = (event: MessageEvent) => {
       if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGED") {
-        lastAttempt = 0;
-        void sync();
+        reconnect();
       }
     };
-    window.addEventListener("online", sync);
-    navigator.serviceWorker?.addEventListener("message", onMessage);
+    window.addEventListener("online", reconnect);
+    navigator.serviceWorker?.addEventListener?.("message", onMessage);
     document.addEventListener("visibilitychange", sync);
     const interval = setInterval(sync, 60000);
     return () => {
       disposed = true;
       clearInterval(interval);
-      window.removeEventListener("online", sync);
-      navigator.serviceWorker?.removeEventListener("message", onMessage);
+      window.removeEventListener("online", reconnect);
+      navigator.serviceWorker?.removeEventListener?.("message", onMessage);
       document.removeEventListener("visibilitychange", sync);
     };
   }, [userId]);

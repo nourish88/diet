@@ -26,16 +26,41 @@ function saveQueue(queue: ClientErrorEvent[]) {
 }
 export function setErrorReporterSession(id: string | null, token: string | null) { subject = id; accessToken = token; }
 
-export function reportClientError(error: unknown, options: { code?: ApplicationErrorCode; path?: string; status?: number } = {}) {
+function bundlePosition(error: unknown, event?: ErrorEvent): string | undefined {
+  function position(file: string, line: number, column: number) {
+    try {
+      const url = new URL(file);
+      if (url.origin !== window.location.origin || !url.pathname.startsWith("/_next/static/chunks/")) return;
+      const hash = url.pathname.match(/[-.]([a-f0-9]{16})\.js$/)?.[1];
+      if (hash && [line, column].every((n) => Number.isInteger(n) && n > 0 && n < 1e8)) {
+        return `${hash}:${line}:${column}`;
+      }
+    } catch { /* Ignore non-URL stack frames. */ }
+  }
+  if (event?.filename) {
+    const found = position(event.filename, event.lineno, event.colno);
+    if (found) return found;
+  }
+  if (error instanceof Error && typeof error.stack === "string") {
+    const frames = error.stack.slice(0, 8192).matchAll(/(https?:\/\/[^\s()@]+?\.js):(\d+):(\d+)/g);
+    for (const [, file, line, column] of frames) {
+      const found = position(file, Number(line), Number(column));
+      if (found) return found;
+    }
+  }
+}
+
+export function reportClientError(error: unknown, options: { code?: ApplicationErrorCode; path?: string; status?: number; event?: ErrorEvent } = {}) {
   if (typeof window === "undefined") return;
   try {
     const code = options.code ?? classifyError(error);
     const path = errorPath(options.path ?? window.location.pathname);
     if (path === "/api/application-errors") return; // Never report the reporter's own failures.
+    const position = code === "javascript_error" ? bundlePosition(error, options.event) : undefined;
     const queue = readQueue();
-    if (queue.some((item) => item.code === code && item.path === path && item.subject === subject && Date.parse(item.occurredAt) > Date.now() - 60000)) return;
+    if (queue.some((item) => item.code === code && item.path === path && item.bundlePosition === position && item.subject === subject && Date.parse(item.occurredAt) > Date.now() - 60000)) return;
     const eventId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (Number(c) ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> Number(c) / 4).toString(16));
-    saveQueue([...queue, { eventId, code, path, occurredAt: new Date().toISOString(), subject, ...(options.status && options.status >= 400 && options.status <= 599 ? { status: options.status } : {}) }]);
+    saveQueue([...queue, { eventId, code, path, bundlePosition: position, occurredAt: new Date().toISOString(), subject, ...(options.status && options.status >= 400 && options.status <= 599 ? { status: options.status } : {}) }]);
     // Flushed by the provider, after the active user request has completed.
   } catch { /* Reporting must never break the application. */ }
 }

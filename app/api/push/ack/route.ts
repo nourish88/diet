@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
@@ -14,13 +13,6 @@ const AckBody = z
   .refine((value) => value.logId || value.broadcastRecipientId, {
     message: "An acknowledgement id is required",
   });
-
-function isMissingNotificationLogTable(err: unknown): boolean {
-  return (
-    err instanceof Prisma.PrismaClientKnownRequestError &&
-    (err.code === "P2021" || err.code === "P2022")
-  );
-}
 
 export const OPTIONS = async (request: NextRequest) => {
   const corsResponse = handleCors(request);
@@ -44,23 +36,19 @@ export async function POST(request: NextRequest) {
       );
     }
     if (parsed.data.logId) {
-      await prisma.notificationLog.update({
-        where: { id: parsed.data.logId },
+      await prisma.notificationLog.updateMany({
+        where: { id: parsed.data.logId, receivedAt: null },
         data: { receivedAt: new Date() },
       });
     }
     if (parsed.data.broadcastRecipientId) {
-      await prisma.broadcastRecipient.update({
-        where: { id: parsed.data.broadcastRecipientId },
+      await prisma.broadcastRecipient.updateMany({
+        where: { id: parsed.data.broadcastRecipientId, deliveredAt: null },
         data: { deliveredAt: new Date(), deliveryStatus: "delivered" },
       });
     }
     return addCorsHeaders(NextResponse.json({ ok: true }));
-  } catch (err: any) {
-    // P2025 = record not found; treat as no-op so SW retries don't error loudly.
-    if (err?.code === "P2025" || isMissingNotificationLogTable(err)) {
-      return addCorsHeaders(NextResponse.json({ ok: true, skipped: true }));
-    }
+  } catch {
     return addCorsHeaders(
       NextResponse.json({ ok: false, error: "ack failed" }, { status: 500 })
     );

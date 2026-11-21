@@ -17,11 +17,25 @@ export default function ServiceWorkerProvider() {
       return stopObserving;
     }
 
+    const retryAcks = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        navigator.serviceWorker?.controller?.postMessage({ type: "RETRY_PUSH_ACKS" });
+      }
+    };
+    window.addEventListener("online", retryAcks);
+    document.addEventListener("visibilitychange", retryAcks);
+    navigator.serviceWorker?.addEventListener?.("controllerchange", retryAcks);
+    retryAcks();
     registerAppServiceWorker()
       .catch((error) => {
         console.error("❌ Service worker registration failed:", error);
       });
-    return stopObserving;
+    return () => {
+      stopObserving();
+      window.removeEventListener("online", retryAcks);
+      document.removeEventListener("visibilitychange", retryAcks);
+      navigator.serviceWorker?.removeEventListener?.("controllerchange", retryAcks);
+    };
   }, []);
 
   return null;

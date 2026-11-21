@@ -98,6 +98,8 @@ export default function LoginPage() {
   }) => {
     const sessionData = await requestJson<{ email: string; password: string }>("/api/client-auth/session", {
       method: "POST",
+      readOnlyPost: true,
+      retryDelayMs: 1000,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phoneNumber: normalizedPhoneValue }),
     });
@@ -146,6 +148,8 @@ export default function LoginPage() {
     try {
       const data = await requestJson<{ clients: PhoneLookupClient[]; normalizedPhone: string; singleClientAutoLogin: boolean }>("/api/client-auth/lookup", {
         method: "POST",
+        readOnlyPost: true,
+        retryDelayMs: 1000,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber }),
       });
@@ -269,6 +273,7 @@ export default function LoginPage() {
                 type="tel"
                 placeholder="05XXXXXXXXX"
                 value={phoneNumber}
+                disabled={isSearchingClient || isConfirmingClient}
                 onChange={(e) => {
                   setPhoneNumber(e.target.value);
                   resetClientFlow();
@@ -283,7 +288,7 @@ export default function LoginPage() {
               type="button"
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
               onClick={handleLookupClients}
-              disabled={isSearchingClient || !phoneNumber.trim()}
+              disabled={isSearchingClient || isConfirmingClient || !phoneNumber.trim()}
             >
               {isSearchingClient ? (
                 <>
@@ -314,6 +319,7 @@ export default function LoginPage() {
                       <button
                         key={client.id}
                         type="button"
+                        disabled={isSearchingClient || isConfirmingClient}
                         onClick={() => setSelectedClientId(client.id)}
                         className={`w-full text-left rounded-lg border px-3 py-3 transition-colors ${
                           isSelected
@@ -342,7 +348,7 @@ export default function LoginPage() {
                     <Button
                       type="button"
                       onClick={handleConfirmClient}
-                      disabled={isConfirmingClient}
+                      disabled={isSearchingClient || isConfirmingClient}
                       className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
                     >
                       {isConfirmingClient ? (

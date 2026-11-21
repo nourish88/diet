@@ -18,6 +18,15 @@ describe("persistent browser error outbox", () => {
     const bodies = vi.mocked(fetch).mock.calls.map(([, args]) => JSON.parse(args!.body as string));
     expect(bodies[0].events[0].eventId).toBe(bodies[2].events[0].eventId);
   });
+  it("records only a same-origin build hash and position for otherwise anonymous JavaScript errors", async () => {
+    const { reportClientError } = await import("./application-error-client");
+    const error = new Error("private");
+    error.stack = `render@https://other.test/_next/static/chunks/1-0000000000000000.js:1:3\nrender@${location.origin}/_next/static/chunks/app/client/page-1234567890abcdef.js:1:420`;
+    reportClientError(error, { code: "javascript_error", path: "/client" });
+    const stored = localStorage.getItem("application-error-outbox-v1")!;
+    expect(JSON.parse(stored)[0].bundlePosition).toBe("1234567890abcdef:1:420");
+    expect(stored).not.toMatch(/private|other.test|chunks|render/);
+  });
   it("bounds repeated errors and never logs intentional cancellation or its own requests", async () => {
     const { reportClientError } = await import("./application-error-client");
     reportClientError(null, { code: "network_error", path: "/api/test" });

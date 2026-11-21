@@ -32,7 +32,11 @@ export default function PushNotificationCard({ onReadyChange }: { onReadyChange?
       setReady(result.ok);
       onReadyChange?.(result.ok);
       setUnavailable(result.reason === "unsupported" || result.reason === "install-required");
-      setMessage(result.ok ? "Bu cihazın bildirim kaydı tamamlandı. Bildirim alabilirsiniz." : messages[result.reason ?? "missing-subscription"]);
+      if (result.needsDeliveryCheck) {
+        setMessage("Bu cihaz son üç bildirime teslim onayı vermedi. Bildirimleri göremiyorsanız aşağıdan kaydınızı yenileyin.");
+      } else {
+        setMessage(result.ok ? "Bu cihazın bildirim kaydı tamamlandı." : messages[result.reason ?? "missing-subscription"]);
+      }
     } catch (error) {
       setReady(false);
       onReadyChange?.(false);
@@ -55,7 +59,7 @@ export default function PushNotificationCard({ onReadyChange }: { onReadyChange?
 
   return (
     <section aria-label="Cihaz bildirimleri" className="rounded-xl border bg-card p-4 space-y-3">
-      <h2 className="font-semibold flex items-center gap-2"><Bell className="h-5 w-5" /> {ready ? "Bildirimler hazır" : "Bildirimleri açın"}</h2>
+      <h2 className="font-semibold flex items-center gap-2"><Bell className="h-5 w-5" /> {ready ? "Cihaz bildirimleri" : "Bildirimleri açın"}</h2>
       <p role="status" className="text-sm text-muted-foreground">{busy ? "Cihaz bildirim kaydı kontrol ediliyor…" : message}</p>
       {!unavailable && <Button variant="outline" disabled={busy || !userId} onClick={() => setup(true, ready)}>{ready ? "Bildirim kaydını yenile" : "Bildirimleri aç"}</Button>}
     </section>

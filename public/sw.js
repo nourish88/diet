@@ -1,6 +1,8 @@
 const SW_VERSION = "diet-pwa-v8";
 const PUSH_CACHE = `${SW_VERSION}-static`;
 const BLOB_CACHE = "diet-blob-v2";
+const ACK_CACHE = "diet-delivery-acks-v1";
+const ACK_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 
 // Never precache authenticated pages: cached HTML can retain old bundles and
@@ -33,7 +35,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const cacheNames = await caches.keys();
-      const currentCaches = new Set([PUSH_CACHE, BLOB_CACHE, SHELL_CACHE]);
+      const currentCaches = new Set([PUSH_CACHE, BLOB_CACHE, SHELL_CACHE, ACK_CACHE]);
       await Promise.all(
         cacheNames
           .filter((cacheName) => cacheName.startsWith("diet-") && !currentCaches.has(cacheName))
@@ -106,27 +108,91 @@ self.addEventListener("push", (event) => {
     requireInteraction: payload.requireInteraction || false, // Auto-dismiss after a few seconds
   };
 
-  // Acknowledge delivery so the server knows the device actually received it,
-  // not just that FCM accepted the push. Acknowledge only after displaying
-  // the notification; an acknowledgement failure must not prevent display.
-  const ackLogId = payload.data?.logId;
-  const broadcastRecipientId = payload.data?.broadcastRecipientId;
-  const acknowledge = () =>
-    typeof ackLogId === "number" || typeof broadcastRecipientId === "number"
-      ? fetch("/api/push/ack", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...(typeof ackLogId === "number" ? { logId: ackLogId } : {}),
-            ...(typeof broadcastRecipientId === "number" ? { broadcastRecipientId } : {}),
-          }),
-          keepalive: true,
-        }).catch(() => undefined)
-      : Promise.resolve();
+  event.waitUntil(self.registration.showNotification(title, options).then(async () => {
+    const receipt = {};
+    for (const field of ["logId", "broadcastRecipientId"]) {
+      const id = payload.data?.[field];
+      if (Number.isSafeInteger(id) && id > 0) receipt[field] = id;
+    }
+    if (Object.keys(receipt).length) await acknowledgeDelivery(receipt);
+    else await retryPendingAcks();
+  }));
+});
 
-  event.waitUntil(
-    self.registration.showNotification(title, options).then(acknowledge)
-  );
+// Store only the receipt IDs. Keeping one cache entry per receipt avoids lost
+// updates when multiple push events arrive or the worker restarts.
+async function acknowledgeDelivery(receipt) {
+  const key = new URL("/api/push/ack", self.location.origin);
+  for (const [field, id] of Object.entries(receipt)) key.searchParams.set(field, id);
+  let cache;
+  try {
+    cache = await caches.open(ACK_CACHE);
+    await cache.put(key.href, new Response(JSON.stringify({ receipt, queuedAt: Date.now() })));
+  } catch {
+    // Storage may be unavailable even while the acknowledgement API is online.
+  }
+  let complete = await postReceipt(receipt);
+  if (!complete) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    complete = await postReceipt(receipt);
+  }
+  if (complete && cache) await cache.delete(key.href).catch(() => {});
+  await retryPendingAcks(key.href);
+}
+
+async function postReceipt(receipt) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch("/api/push/ack", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(receipt),
+      signal: controller.signal,
+    });
+    return response.status === 400 || (response.ok && (await response.json()).ok === true);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+let pendingAckFlush;
+function retryPendingAcks(excludeUrl) {
+  if (!pendingAckFlush) {
+    pendingAckFlush = flushAckCache(excludeUrl).finally(() => { pendingAckFlush = undefined; });
+  }
+  return pendingAckFlush;
+}
+
+async function flushAckCache(excludeUrl) {
+  try {
+    const cache = await caches.open(ACK_CACHE);
+    const keys = await cache.keys();
+    const excess = Math.max(0, keys.length - 100);
+    await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)));
+    const pending = keys.slice(excess).filter((key) => key.url !== excludeUrl);
+    for (let start = 0; start < pending.length; start += 8) {
+      const results = await Promise.all(pending.slice(start, start + 8).map(async (key) => {
+        const entry = await cache.match(key);
+        if (!entry) return true;
+        const { queuedAt, receipt } = await entry.json();
+        if (queuedAt < Date.now() - ACK_RETENTION_MS || await postReceipt(receipt)) {
+          await cache.delete(key);
+          return true;
+        }
+        return false;
+      }));
+      if (results.every((complete) => !complete)) break;
+    }
+  } catch {
+    // A failed flush must never interrupt display or navigation.
+  }
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "RETRY_PUSH_ACKS") event.waitUntil(retryPendingAcks());
 });
 
 self.addEventListener("notificationclick", (event) => {

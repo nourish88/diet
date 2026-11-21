@@ -7,6 +7,16 @@ describe("client phone session", () => {
     await expect(ensureClientSession(auth as never, "test@example.com", "test-password")).rejects.toThrow("Sunucuya bağlantı");
     expect(auth.signUp).not.toHaveBeenCalled();
   });
+  it("uses the authenticated session returned by registration without requiring a second login", async () => {
+    const data = { session: { access_token: "test" }, user: { id: "user-1" } };
+    const auth = {
+      signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: { code: "invalid_credentials" } }),
+      signUp: vi.fn().mockResolvedValue({ data, error: null }),
+    };
+    expect(await ensureClientSession(auth as never, "test@example.com", "test-password")).toEqual(data);
+    expect(auth.signInWithPassword).toHaveBeenCalledOnce();
+  });
+
   it("retains first-time registration for invalid credentials only", async () => {
     const data = { session: { access_token: "test" }, user: { id: "user-1" } };
     const auth = { signInWithPassword: vi.fn().mockResolvedValueOnce({ data: {}, error: { code: "invalid_credentials" } }).mockResolvedValueOnce({ data, error: null }), signUp: vi.fn().mockResolvedValue({ error: null }) };

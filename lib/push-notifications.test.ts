@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), activeWorker: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), activeWorker: vi.fn(), report: vi.fn() }));
 vi.mock("@/lib/supabase-browser", () => ({ createClient: () => ({ auth: { getSession: mocks.getSession } }) }));
+vi.mock("@/lib/application-error-client", () => ({ reportClientError: mocks.report }));
 vi.mock("@/lib/service-worker", () => ({ getActiveServiceWorker: mocks.activeWorker }));
 import { removePushNotificationsForCurrentBrowser, setupPushNotificationsForUser } from "./push-notifications";
 
@@ -77,16 +78,32 @@ describe("push registration recovery", () => {
     expect(subscription.unsubscribe).toHaveBeenCalledOnce();
     expect(subscribe).toHaveBeenCalledOnce();
     const methods = fetchMock.mock.calls.filter(([url]) => url === "/api/push/subscribe").map(([, init]) => init.method);
-    expect(methods).toEqual(["DELETE", "POST"]);
+    expect(methods).toEqual(["POST"]);
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).previousEndpoint).toBe(subscription.endpoint);
   });
 
   it("retires endpoints registered under a previous VAPID key", async () => {
     subscription.options.applicationServerKey = Uint8Array.from([9]).buffer;
     expect(await setupPushNotificationsForUser(7)).toEqual({ ok: true });
     const methods = fetchMock.mock.calls.filter(([url]) => url === "/api/push/subscribe").map(([, init]) => init.method);
-    expect(methods).toEqual(["DELETE", "POST"]);
+    expect(methods).toEqual(["POST"]);
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body).previousEndpoint).toBe(subscription.endpoint);
     expect(subscription.unsubscribe).toHaveBeenCalledOnce();
     expect(subscribe).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the server registration when browser renewal fails", async () => {
+    subscription.unsubscribe.mockResolvedValue(false);
+    expect(await setupPushNotificationsForUser(7, { renewSubscription: true })).toMatchObject({ reason: "missing-subscription" });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(["/api/push/config"]);
+  });
+
+  it("reports a config network failure once at its actual endpoint and recovers on the next sync", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Load failed")).mockRejectedValueOnce(new TypeError("Load failed"));
+    await expect(setupPushNotificationsForUser(7)).rejects.toMatchObject({ code: "network_error" });
+    expect(mocks.report).toHaveBeenCalledTimes(1);
+    expect(mocks.report).toHaveBeenCalledWith(expect.objectContaining({ code: "network_error" }), expect.objectContaining({ path: "/api/push/config" }));
+    expect(await setupPushNotificationsForUser(7)).toEqual({ ok: true });
   });
 
   it("does not claim success when persistence fails and retries on the next attempt", async () => {

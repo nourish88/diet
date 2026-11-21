@@ -398,7 +398,10 @@ export async function getClientsEligibleForReminders(): Promise<
  * Get meals that need reminders in the current time window
  */
 export async function getMealsForReminderWindow(): Promise<MealReminder[]> {
-  const eligibleClients = await getClientsEligibleForReminders();
+  return remindersForClients(await getClientsEligibleForReminders());
+}
+
+function remindersForClients(eligibleClients: Awaited<ReturnType<typeof getClientsEligibleForReminders>>): MealReminder[] {
   const reminders: MealReminder[] = [];
   // Use current UTC time for reminder checks (will be converted to Turkey time in shouldSendReminder)
   const now = new Date();
@@ -414,7 +417,7 @@ export async function getMealsForReminderWindow(): Promise<MealReminder[]> {
         continue;
       }
 
-      const kind = getActiveReminderKind(ogun.time);
+      const kind = getActiveReminderKind(ogun.time, now);
       if (kind) {
         const menuItems = ogun.items.map((item) => ({
           miktar: item.miktar,
@@ -451,13 +454,11 @@ export async function sendMealReminders(): Promise<{
   failed: number;
   reminders: MealReminder[];
 }> {
-  // Get reminders (this includes client data with push subscriptions)
-  const reminders = await getMealsForReminderWindow();
+  const eligibleClients = await getClientsEligibleForReminders();
+  const reminders = remindersForClients(eligibleClients);
   let sent = 0;
   let failed = 0;
 
-  // Get eligible clients to access push subscriptions
-  const eligibleClients = await getClientsEligibleForReminders();
   const clientMap = new Map(
     eligibleClients.map((c) => [
       c.userId,
@@ -494,9 +495,6 @@ export async function sendMealReminders(): Promise<{
 
     remindersByUser.get(reminder.userId)!.reminders.push(reminder);
   }
-
-  // Send notifications
-  const { sendWebPushNotification, isWebPushConfigured } = await import("@/lib/web-push");
 
   if (!isWebPushConfigured()) {
     console.warn("⚠️ Web push is not configured, skipping meal reminders");
@@ -550,7 +548,8 @@ export async function sendMealReminders(): Promise<{
                 ogunId: reminder.ogunId,
                 logId: logEntry.id,
               },
-            }
+            },
+            { urgency: "high" },
           );
           sent++;
           console.log(
@@ -740,7 +739,8 @@ export async function sendMealReminderForOgun(
             manual: true,
             logId: logEntry.id,
           },
-        }
+        },
+        { urgency: "high" },
       );
       sent++;
     } catch (error: any) {

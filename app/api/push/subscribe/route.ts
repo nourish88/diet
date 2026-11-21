@@ -14,6 +14,7 @@ const SubscribeBody = z.object({
   }),
   userId: z.number().int().positive(),
   device: PushDeviceReportSchema.optional(),
+  previousEndpoint: z.string().min(1).optional(),
 });
 
 const UnsubscribeBody = z.object({
@@ -35,8 +36,9 @@ export const POST = route({
     }
     const { endpoint, keys } = body.subscription;
     const deviceInfo = buildPushDeviceInfo(request.headers.get("user-agent"), body.device);
-    const subscription = await prisma.pushSubscription.upsert({
+    const save = prisma.pushSubscription.upsert({
       where: { endpoint },
+      select: { id: true },
       update: { p256dh: keys.p256dh, auth: keys.auth, userId: realUserId, deviceInfo },
       create: {
         endpoint,
@@ -47,7 +49,27 @@ export const POST = route({
       },
     });
 
-    return { success: true, subscriptionId: subscription.id };
+    const subscription = body.previousEndpoint && body.previousEndpoint !== endpoint
+      ? (await prisma.$transaction([
+          save,
+          prisma.pushSubscription.deleteMany({ where: { endpoint: body.previousEndpoint, userId: realUserId } }),
+        ]))[0]
+      : await save;
+    // Only this account and endpoint's recent accepted sends are relevant.
+    const recent: { sentAt: Date; receivedAt: Date | null }[] = await prisma.notificationLog.findMany({
+      where: {
+        userId: realUserId, subscriptionId: subscription.id, status: "success",
+        sentAt: { gte: new Date(Date.now() - 3 * 86400000) },
+      },
+      select: { receivedAt: true, sentAt: true },
+      orderBy: [{ sentAt: "desc" }, { id: "desc" }],
+      take: 3,
+    }).catch(() => []); // Optional diagnostics must not fail an already saved registration.
+    const cutoff = Date.now() - 15 * 60000;
+    const needsDeliveryCheck = recent.length === 3 && recent.every(
+      (log) => !log.receivedAt && log.sentAt.getTime() <= cutoff,
+    );
+    return { success: true, subscriptionId: subscription.id, needsDeliveryCheck };
   },
 });
 

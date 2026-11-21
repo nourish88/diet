@@ -44,6 +44,8 @@ describe("notification target snapshots", () => {
     }]);
     mocks.deleteLogs.mockResolvedValue({ count: 0 });
     await expect(sendMealReminders()).resolves.toMatchObject({ sent: 2, failed: 0 });
+    expect(mocks.send.mock.calls.map((call) => call[2])).toEqual([{ urgency: "high" }, { urgency: "high" }]);
+    expect(mocks.findClients).toHaveBeenCalledTimes(1);
     const rows = mocks.createLog.mock.calls.map(([args]) => args.data);
     expect(rows.map((row) => row.subscriptionId)).toEqual([7, 8]);
     expect(rows.map((row) => row.deviceInfo.model)).toEqual(["Pixel 8", "iPhone"]);
@@ -54,6 +56,7 @@ describe("notification target snapshots", () => {
     expect(data).toMatchObject({ status: "pending", subscriptionId: 7, deviceInfo });
     expect(JSON.stringify(data)).not.toContain("secret");
     expect(JSON.stringify(data)).not.toContain("private-endpoint");
+    expect(mocks.send.mock.calls[0][2]).toEqual({ urgency: "high" });
     expect(mocks.send.mock.calls[0][1].data.logId).toBe(91);
     expect(mocks.updateLog).toHaveBeenCalledWith({ where: { id: 91 }, data: { status: "success" } });
   });
