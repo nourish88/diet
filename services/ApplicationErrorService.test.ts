@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ logs: vi.fn(), broadcasts: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), recorded: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ default: {
+  systemConfig: { findUnique: async () => null },
   notificationLog: { findMany: mocks.logs }, broadcastRecipient: { findMany: mocks.broadcasts },
   applicationError: { createMany: mocks.createMany, deleteMany: mocks.deleteMany, findMany: mocks.recorded },
 } }));

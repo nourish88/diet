@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { route, HttpError } from "@/lib/api/handler";
 import { PushDeviceReportSchema } from "@/lib/push-device";
 import { buildPushDeviceInfo } from "@/lib/push-device-server";
+import { isLoggingEnabled } from "@/lib/logging-settings";
 
 const SubscribeBody = z.object({
   subscription: z.object({
@@ -36,9 +37,9 @@ export const POST = route({
     }
     const { endpoint, keys } = body.subscription;
     const deviceInfo = buildPushDeviceInfo(request.headers.get("user-agent"), body.device);
-    const save = prisma.pushSubscription.upsert({
+    const registration = {
       where: { endpoint },
-      select: { id: true },
+      select: { id: true } as const,
       update: { p256dh: keys.p256dh, auth: keys.auth, userId: realUserId, deviceInfo },
       create: {
         endpoint,
@@ -47,14 +48,26 @@ export const POST = route({
         userId: realUserId,
         deviceInfo,
       },
-    });
+    };
 
-    const subscription = body.previousEndpoint && body.previousEndpoint !== endpoint
-      ? (await prisma.$transaction([
-          save,
-          prisma.pushSubscription.deleteMany({ where: { endpoint: body.previousEndpoint, userId: realUserId } }),
-        ]))[0]
-      : await save;
+    const previousEndpoint = body.previousEndpoint;
+    const recordDelivery = await isLoggingEnabled(prisma, "notification_logging_enabled");
+    const subscription = previousEndpoint && previousEndpoint !== endpoint
+      ? await prisma.$transaction(async tx => {
+          const saved = await tx.pushSubscription.upsert(registration);
+          const where = { endpoint: previousEndpoint, userId: realUserId };
+          const previous = await tx.pushSubscription.findFirst({ where, select: { id: true } });
+          if (previous) {
+            if (recordDelivery) await tx.notificationLog.updateMany({
+              where: { userId: realUserId, OR: [{ subscriptionId: previous.id, replacementSubscriptionId: null }, { replacementSubscriptionId: previous.id }] },
+              data: { replacementSubscriptionId: saved.id },
+            });
+            await tx.pushSubscription.deleteMany({ where });
+          }
+          return saved;
+        })
+      : await prisma.pushSubscription.upsert(registration);
+    if (!recordDelivery) return { success: true, subscriptionId: subscription.id, needsDeliveryCheck: false };
     // Only this account and endpoint's recent accepted sends are relevant.
     const recent: { sentAt: Date; receivedAt: Date | null }[] = await prisma.notificationLog.findMany({
       where: {

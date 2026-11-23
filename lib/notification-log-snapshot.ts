@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { readPushDeviceInfo } from "./push-device";
 
+export const retryAttemptSelect = { id: true, status: true, sentAt: true, receivedAt: true } as const;
+export const latestRetry = { orderBy: { id: "desc" }, take: 1, select: retryAttemptSelect } as const;
+export const retrySourceSelect = { id: true, subscriptionId: true, receivedAt: true, retries: latestRetry } as const;
+
 export function notificationDeviceSnapshot(subscription: { id: number; deviceInfo: unknown }) {
   return {
     subscriptionId: subscription.id,

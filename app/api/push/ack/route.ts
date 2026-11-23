@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { getLoggingEnabled } from "@/lib/logging-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
         NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 })
       );
     }
-    if (parsed.data.logId) {
+    if (parsed.data.logId && await getLoggingEnabled(prisma, "notification_logging_enabled")) {
       await prisma.notificationLog.updateMany({
         where: { id: parsed.data.logId, receivedAt: null },
         data: { receivedAt: new Date() },

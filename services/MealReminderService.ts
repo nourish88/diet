@@ -1,3 +1,4 @@
+import { isLoggingEnabled } from "@/lib/logging-settings";
 import prisma from "@/lib/prisma";
 import type { PushSubscription } from "@prisma/client";
 import { notificationDeviceSnapshot, pushErrorStatusCode } from "@/lib/notification-log-snapshot";
@@ -501,6 +502,7 @@ export async function sendMealReminders(): Promise<{
     return { sent: 0, failed: reminders.length, reminders };
   }
 
+  const recordDelivery = reminders.length > 0 && await isLoggingEnabled(prisma, "notification_logging_enabled");
   for (const [userId, userData] of remindersByUser.entries()) {
     // For now, send one notification per meal (can be optimized to send grouped notification)
     for (const reminder of userData.reminders) {
@@ -515,7 +517,7 @@ export async function sendMealReminders(): Promise<{
       const notificationTag = `${logType}-${reminder.ogunId}`;
 
       for (const subscription of userData.pushSubscriptions) {
-        const logEntry = await prisma.notificationLog.create({
+        const logEntry = recordDelivery ? await prisma.notificationLog.create({
           data: {
             userId,
             clientId: reminder.clientId,
@@ -526,7 +528,7 @@ export async function sendMealReminders(): Promise<{
             status: "pending",
             ...notificationDeviceSnapshot(subscription),
           },
-        });
+        }) : null;
         try {
           await sendWebPushNotification(
             {
@@ -546,7 +548,7 @@ export async function sendMealReminders(): Promise<{
                 type: logType,
                 dietId: reminder.dietId,
                 ogunId: reminder.ogunId,
-                logId: logEntry.id,
+                logId: logEntry?.id,
               },
             },
             { urgency: "high" },
@@ -560,7 +562,7 @@ export async function sendMealReminders(): Promise<{
             `❌ Failed to send reminder to user ${userId} for meal ${reminder.ogunName}:`,
             error
           );
-          await prisma.notificationLog.update({
+          if (logEntry) await prisma.notificationLog.update({
             where: { id: logEntry.id },
             data: {
               status: "failed",
@@ -586,7 +588,7 @@ export async function sendMealReminders(): Promise<{
           continue;
         }
         // A log persistence failure is not a push-provider rejection.
-        await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
+        if (logEntry) await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
       }
     }
   }
@@ -703,9 +705,10 @@ export async function sendMealReminderForOgun(
   let sent = 0;
   let failed = 0;
 
+  const recordDelivery = await isLoggingEnabled(prisma, "notification_logging_enabled");
   for (const subscription of user.pushSubscriptions) {
     // Create the log row up front so the service worker can ping back with the id.
-    const logEntry = await prisma.notificationLog.create({
+    const logEntry = recordDelivery ? await prisma.notificationLog.create({
       data: {
         userId: reminder.userId,
         clientId: reminder.clientId,
@@ -716,7 +719,7 @@ export async function sendMealReminderForOgun(
         status: "pending",
         ...notificationDeviceSnapshot(subscription),
       },
-    });
+    }) : null;
     try {
       await sendWebPushNotification(
         {
@@ -737,7 +740,7 @@ export async function sendMealReminderForOgun(
             dietId: reminder.dietId,
             ogunId: reminder.ogunId,
             manual: true,
-            logId: logEntry.id,
+            logId: logEntry?.id,
           },
         },
         { urgency: "high" },
@@ -748,7 +751,7 @@ export async function sendMealReminderForOgun(
         `Failed to send manual meal reminder to ${subscription.endpoint}:`,
         error
       );
-      await prisma.notificationLog.update({
+      if (logEntry) await prisma.notificationLog.update({
         where: { id: logEntry.id },
         data: {
           status: "failed",
@@ -769,7 +772,7 @@ export async function sendMealReminderForOgun(
       }
       continue;
     }
-    await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
+    if (logEntry) await prisma.notificationLog.update({ where: { id: logEntry.id }, data: { status: "success" } });
   }
 
   return { ok: sent > 0 || failed === 0, sent, failed };

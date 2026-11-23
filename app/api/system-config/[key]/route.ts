@@ -1,7 +1,8 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getCachedSystemConfig, invalidate } from "@/lib/cache";
-import { route } from "@/lib/api/handler";
+import { HttpError, route } from "@/lib/api/handler";
+import { isLogSetting, logSettings, rememberLoggingSetting } from "@/lib/logging-settings";
 
 type Params = { key: string };
 
@@ -21,7 +22,7 @@ export const GET = route<undefined, Params>({
     if (!config) {
       return {
         key,
-        value: key === "diet_form_logging_enabled" ? "false" : "",
+        value: isLogSetting(key) ? String(logSettings[key].defaultEnabled) : "",
         exists: false,
       };
     }
@@ -35,8 +36,12 @@ export const PUT = route<typeof UpdateConfigBody, Params>({
   auth: "dietitian",
   schema: UpdateConfigBody,
   scope: "system-config.update",
-  handler: async ({ body, params }) => {
+  handler: async ({ body, params, user }) => {
     const { key } = params;
+    if (isLogSetting(key)) {
+      if (user?.isAssistant) throw new HttpError("forbidden", "Kayıt ayarlarını yalnızca diyetisyen değiştirebilir.");
+      if (body.value !== "true" && body.value !== "false") throw new HttpError("bad_request", "Geçersiz kayıt ayarı.");
+    }
     const config = await prisma.systemConfig.upsert({
       where: { key },
       update: {
@@ -49,6 +54,7 @@ export const PUT = route<typeof UpdateConfigBody, Params>({
         description: body.description || "System configuration",
       },
     });
+    if (isLogSetting(key)) rememberLoggingSetting(key, config.value === "true");
     invalidate.systemConfig(key);
     return config;
   },

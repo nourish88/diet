@@ -122,12 +122,12 @@ export default function SettingsPage() {
         const reg = await getActiveServiceWorker();
         const sub = await reg?.pushManager.getSubscription();
         if (!sub) {
-          toast({ title: "Abonelik bulunamadı", description: "Bildirim alabilmek için push aboneliği gerekli.", variant: "destructive" });
+          toast({ title: "Bildirimler kapalı", description: "Önce yukarıdaki düğmeden bildirimleri açın.", variant: "destructive" });
           setCheckingReminders(false);
           return;
         }
       } catch {
-        throw new Error("Cihaz bildirim kaydı kontrol edilemedi. Bildirim kaydını yenileyip tekrar deneyin.");
+        throw new Error("Bildirim ayarları açılamadı. Biraz sonra tekrar deneyin.");
       }
 
       const data = await apiClient.get<{ success: boolean; reminders: unknown[]; sent?: number; failed?: number }>("/notifications/check-meal-reminders");

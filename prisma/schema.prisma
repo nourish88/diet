@@ -622,6 +622,7 @@ model ApplicationError {
   device      String?
   referenceId Int?
   occurredAt  DateTime
+  recoveredAt DateTime? // A later successful operation reported by the same browser
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
@@ -787,6 +788,11 @@ model NotificationLog {
   sentAt       DateTime  @default(now())
   receivedAt   DateTime? // Set when the device's service worker pings back acknowledging delivery
   subscriptionId Int? // Historical identifier; retained after subscription deletion
+  replacementSubscriptionId Int? // Same browser explicitly renewed its subscription
+  retryOfId Int?
+  retryAfterId Int? // Previous attempt seen by the operator, or 0 for the first
+  retryOf NotificationLog? @relation("NotificationRetry", fields: [retryOfId], references: [id], onDelete: SetNull)
+  retries NotificationLog[] @relation("NotificationRetry")
   deviceInfo Json? // Snapshot at send time, never backfilled from another device
   pushStatusCode Int?
 
@@ -798,6 +804,7 @@ model NotificationLog {
   @@index([clientId])
   @@index([sentAt])
   @@index([receivedAt])
+  @@unique([retryOfId, retryAfterId])
 }
 
 // Fatura İşlemleri

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ getSession: vi.fn(), activeWorker: vi.fn(), report: vi.fn() }));
 vi.mock("@/lib/supabase-browser", () => ({ createClient: () => ({ auth: { getSession: mocks.getSession } }) }));
-vi.mock("@/lib/application-error-client", () => ({ reportClientError: mocks.report }));
+vi.mock("@/lib/application-error-client", () => ({ reportClientError: mocks.report, observeRequestSuccess: vi.fn() }));
 vi.mock("@/lib/service-worker", () => ({ getActiveServiceWorker: mocks.activeWorker }));
 import { removePushNotificationsForCurrentBrowser, setupPushNotificationsForUser } from "./push-notifications";
 

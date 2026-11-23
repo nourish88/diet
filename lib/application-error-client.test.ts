@@ -4,6 +4,27 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 beforeEach(() => { vi.resetModules(); localStorage.clear(); vi.stubGlobal("fetch", vi.fn()); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("persistent browser error outbox", () => {
+  it("links a later successful operation on this browser to the original signed-in account and event", async () => {
+    const owner = "22222222-2222-4222-8222-222222222222";
+    const path = "/api/push/subscribe";
+    const reporter = await import("./application-error-client");
+    reporter.setErrorReporterSession(owner, "token");
+    reporter.reportClientError(null, { code: "timeout", path, method: "POST" });
+    vi.mocked(fetch).mockImplementation(async () => Response.json({ ok: true }));
+    await reporter.flushClientErrors();
+    vi.resetModules();
+    const next = await import("./application-error-client");
+    next.setErrorReporterSession("33333333-3333-4333-8333-333333333333", "other");
+    next.observeRequestSuccess(path, "POST", Date.now());
+    next.setErrorReporterSession(owner, "token");
+    next.observeRequestSuccess(path, "DELETE", Date.now());
+    await next.flushClientErrors();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    next.observeRequestSuccess(path, "POST", Date.now());
+    await next.flushClientErrors();
+    const events = vi.mocked(fetch).mock.calls.map(([, opts]) => JSON.parse(opts!.body as string).events[0]);
+    expect(events[1]).toEqual({ ...events[0], recoveredAt: expect.any(String) });
+  });
   it("keeps an offline failure across reloads and retries after a database outage without leaking secrets", async () => {
     let reporter = await import("./application-error-client");
     reporter.reportClientError(new Error("password=private token=secret"), { path: "/api/clients/123?token=secret", code: "network_error" });

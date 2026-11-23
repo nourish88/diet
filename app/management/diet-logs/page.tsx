@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase-browser";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,16 +18,20 @@ import { useToast } from "@/components/ui/use-toast";
 import { DietFormLogsTable } from "./_components/DietFormLogsTable";
 import { NotificationLogsTable } from "./_components/NotificationLogsTable";
 import { ApplicationErrorsTable } from "./_components/ApplicationErrorsTable";
+import { ClientLoginIssuesTable } from "./_components/ClientLoginIssuesTable";
+import { logSettings, type LogSetting } from "@/lib/logging-settings";
 import type { DietFormLog, NotificationLog } from "./_components/types";
+
+const settingKeys = Object.keys(logSettings) as LogSetting[];
 
 export default function DietLogsManagementPage() {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = useMemo(() => createClient(), []);
 
-  const [isLoggingEnabled, setIsLoggingEnabled] = useState(false);
+  const [settings, setSettings] = useState<Partial<Record<LogSetting, boolean>>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isToggling, setIsToggling] = useState(false);
+  const [updatingSetting, setUpdatingSetting] = useState<LogSetting | null>(null);
   const [logs, setLogs] = useState<DietFormLog[]>([]);
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -76,12 +79,16 @@ export default function DietLogsManagementPage() {
           return;
         }
 
-        const data = await apiClient.get<{ value: string }>(
-          "/system-config/diet_form_logging_enabled"
-        );
-        setIsLoggingEnabled(data.value === "true");
-
-        await Promise.all([loadLogs(), loadNotificationLogs()]);
+        const results = await Promise.allSettled(settingKeys.map(async (key) => {
+          const data = await apiClient.get<{ value: string }>(`/system-config/${key}`);
+          return [key, data.value === "true"] as const;
+        }));
+        setSettings(Object.fromEntries(results.flatMap((result) => result.status === "fulfilled" ? [result.value] : [])));
+        if (results.some((result) => result.status === "rejected")) {
+          toast({ title: "Hata", description: "Bazı kayıt ayarları yüklenemedi.", variant: "destructive" });
+        }
+        void loadLogs();
+        void loadNotificationLogs();
       } catch (error) {
         console.error("Error loading config:", error);
         toast({
@@ -97,37 +104,20 @@ export default function DietLogsManagementPage() {
     loadConfig();
   }, [router, supabase, toast]);
 
-  const handleToggleLogging = async () => {
+  const handleToggleLogging = async (key: LogSetting, enabled: boolean) => {
     try {
-      setIsToggling(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        toast({
-          title: "Hata",
-          description: "Oturum bulunamadı",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const newValue = !isLoggingEnabled;
-      await apiClient.put("/system-config/diet_form_logging_enabled", {
-        value: newValue ? "true" : "false",
-        description: "Enable/disable diet form logging",
+      setUpdatingSetting(key);
+      const saved = await apiClient.put<{ value: string }>(`/system-config/${key}`, {
+        value: String(enabled),
+        description: logSettings[key].description,
       });
-
-      setIsLoggingEnabled(newValue);
+      const value = saved.value === "true";
+      setSettings((current) => ({ ...current, [key]: value }));
       toast({
-        title: "Başarılı",
-        description: newValue
-          ? "Diyet formu loglama etkinleştirildi"
-          : "Diyet formu loglama devre dışı bırakıldı",
+        title: "Ayar kaydedildi",
+        description: `${logSettings[key].label} ${value ? "açıldı" : "kapatıldı"}.`,
       });
-
-      if (newValue) await loadLogs();
+      if (key === "diet_form_logging_enabled" && value) void loadLogs();
     } catch (error) {
       console.error("Error toggling logging:", error);
       toast({
@@ -136,7 +126,7 @@ export default function DietLogsManagementPage() {
         variant: "destructive",
       });
     } finally {
-      setIsToggling(false);
+      setUpdatingSetting(null);
     }
   };
 
@@ -151,55 +141,51 @@ export default function DietLogsManagementPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Log Yönetimi</h1>
-        <p className="text-muted-foreground">
-          Diyet formu aktivitelerini ve bildirim teslim durumlarını izleyin
-        </p>
+        <h1 className="text-3xl font-bold">Log Yönetimi</h1>
       </div>
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Loglama Ayarları</CardTitle>
-          <CardDescription>
-            Diyet formu loglamasını etkinleştirin veya devre dışı bırakın
-          </CardDescription>
+          <CardTitle>Kayıt Ayarları</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="logging-toggle" className="text-base">
-                Diyet Formu Loglama
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Form açıldığında, danışan seçildiğinde ve tüm değişikliklerde
-                otomatik olarak log oluşturulur
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
+        <CardContent className="divide-y">
+          {settingKeys.map((key) => (
+            <div key={key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+              <div className="space-y-0.5">
+                <Label htmlFor={key} className="text-base">{logSettings[key].label}</Label>
+                <p id={`${key}-description`} className="text-sm text-muted-foreground">
+                  {settings[key] === undefined ? "Ayar yüklenemedi." : logSettings[key].description}
+                </p>
+              </div>
+              {updatingSetting === key && <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin" aria-hidden />}
               <Switch
-                id="logging-toggle"
-                checked={isLoggingEnabled}
-                onCheckedChange={handleToggleLogging}
-                disabled={isToggling}
+                id={key}
+                aria-describedby={`${key}-description`}
+                checked={settings[key] ?? false}
+                onCheckedChange={(value) => void handleToggleLogging(key, value)}
+                disabled={updatingSetting !== null || settings[key] === undefined}
               />
-              {isToggling && <Loader2 className="h-4 w-4 animate-spin" />}
             </div>
-          </div>
+          ))}
         </CardContent>
       </Card>
 
       <Tabs defaultValue="errors" className="space-y-4">
-        <TabsList>
+        <TabsList className="h-auto max-w-full flex-wrap justify-start">
           <TabsTrigger value="errors">Uygulama Hataları</TabsTrigger>
+          <TabsTrigger value="client-login">Danışan Giriş Sorunları</TabsTrigger>
           <TabsTrigger value="diet-form">Diyet Formu Logları</TabsTrigger>
           <TabsTrigger value="notifications">Bildirim Logları</TabsTrigger>
         </TabsList>
 
         <TabsContent value="errors"><ApplicationErrorsTable /></TabsContent>
+        <TabsContent value="client-login">
+          <ClientLoginIssuesTable enabled={settings.application_error_logging_enabled} />
+        </TabsContent>
 
         <TabsContent value="diet-form">
           <DietFormLogsTable
-            isEnabled={isLoggingEnabled}
+            isEnabled={settings.diet_form_logging_enabled === true}
             isLoading={isLoadingLogs}
             logs={logs}
             total={totalLogs}

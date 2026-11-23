@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), upsert: vi.fn(), history: vi.fn(), retire: vi.fn(), transaction: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), upsert: vi.fn(), history: vi.fn(), retire: vi.fn(), transaction: vi.fn(), link: vi.fn() }));
 vi.mock("@/lib/api-auth", () => ({ authenticateRequest: mocks.auth }));
 vi.mock("@/lib/env", () => ({ clientEnv: { NEXT_PUBLIC_DEBUG: "0" } }));
-vi.mock("@/lib/prisma", () => ({ default: { pushSubscription: { upsert: mocks.upsert, deleteMany: mocks.retire }, notificationLog: { findMany: mocks.history }, $transaction: mocks.transaction } }));
+vi.mock("@/lib/prisma", () => ({ default: {
+  systemConfig: { findUnique: async () => null },
+  pushSubscription: { upsert: mocks.upsert, deleteMany: mocks.retire },
+  notificationLog: { findMany: mocks.history }, $transaction: mocks.transaction,
+} }));
 import { POST } from "./route";
 
 const base = { userId: 7, subscription: { endpoint: "https://push.test/target", keys: { auth: "secret", p256dh: "secret" } } };
@@ -18,7 +22,10 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ user: { id: 7, role: "client" } });
   mocks.upsert.mockResolvedValue({ id: 8 });
   mocks.history.mockResolvedValue([]);
-  mocks.transaction.mockImplementation((queries) => Promise.all(queries));
+  mocks.transaction.mockImplementation(run => run({
+    pushSubscription: { upsert: mocks.upsert, findFirst: async () => ({ id: 4 }), deleteMany: mocks.retire },
+    notificationLog: { updateMany: mocks.link },
+  }));
 });
 describe("subscription diagnostics persistence", () => {
   it("writes normalized metadata on both create and refresh without copying secrets into diagnostics", async () => {
@@ -32,6 +39,10 @@ describe("subscription diagnostics persistence", () => {
   it("saves the replacement and retires only the signed-in user's old endpoint together", async () => {
     expect((await send({ ...base, previousEndpoint: "https://push.test/old" })).status).toBe(200);
     expect(mocks.transaction).toHaveBeenCalledOnce();
+    expect(mocks.link).toHaveBeenCalledWith({
+      where: { userId: 7, OR: [{ subscriptionId: 4, replacementSubscriptionId: null }, { replacementSubscriptionId: 4 }] },
+      data: { replacementSubscriptionId: 8 },
+    });
     expect(mocks.retire).toHaveBeenCalledWith({ where: { endpoint: "https://push.test/old", userId: 7 } });
   });
 

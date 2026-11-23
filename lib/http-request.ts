@@ -1,5 +1,5 @@
 import { parseApiResponse } from "./api/parse-response";
-import { reportClientError } from "./application-error-client";
+import { observeRequestSuccess, reportClientError } from "./application-error-client";
 
 export class RequestError extends Error {
   constructor(message: string, public code: string, public status?: number) {
@@ -23,6 +23,8 @@ export interface HttpRequestOptions extends RequestInit {
   retryDelayMs?: number;
   /** For endpoints that use POST to keep lookup parameters out of URLs. */
   readOnlyPost?: boolean;
+  /** Disable generic reporting when the caller records a more specific error. */
+  reportErrors?: boolean;
 }
 
 /** Retries are limited to reads; a failed response must never repeat a write. */
@@ -31,8 +33,9 @@ export async function requestJson<T>(
   options: HttpRequestOptions = {},
   parseResponse: (response: Response) => Promise<T> = parseApiResponse<T>,
 ): Promise<T> {
-  const { timeoutMs = 20000, retries = 1, retryDelayMs = 0, readOnlyPost = false, signal, ...init } = options;
+  const { timeoutMs = 20000, retries = 1, retryDelayMs = 0, readOnlyPost = false, reportErrors = true, signal, ...init } = options;
   const method = (init.method ?? "GET").toUpperCase();
+  const startedAt = Date.now();
   const attempts = method === "GET" || (method === "POST" && readOnlyPost) ? retries + 1 : 1;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const controller = new AbortController();
@@ -45,6 +48,7 @@ export async function requestJson<T>(
       const response = await fetch(url, { cache: "no-store", ...init, signal: controller.signal });
       const data = await parseResponse(response);
       if (data === undefined) throw new RequestError("Sunucudan geçerli bir yanıt alınamadı. Yeniden deneyin.", "invalid_response");
+      observeRequestSuccess(url, method, startedAt);
       return data;
     } catch (error) {
       if (signal?.aborted) throw error;
@@ -58,7 +62,9 @@ export async function requestJson<T>(
         normalized.code === "timeout" || normalized.code === "network_error"
       );
       if (!retryable || attempt === attempts - 1) {
-        if (!status || status >= 500 || status === 401 || status === 408) reportClientError(normalized, { path: url, status, ...(status === 401 ? { code: "auth_failed" as const } : {}) });
+        if (reportErrors && (!status || status >= 500 || status === 401 || status === 408)) {
+          reportClientError(normalized, { path: url, method, status, ...(status === 401 ? { code: "auth_failed" as const } : {}) });
+        }
         throw normalized;
       }
     } finally {

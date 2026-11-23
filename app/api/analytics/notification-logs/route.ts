@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { route } from "@/lib/api/handler";
+import { latestRetry } from "@/lib/notification-log-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +16,14 @@ function isMissingNotificationLogTable(err: unknown): boolean {
 export const GET = route({
   auth: "dietitian",
   scope: "analytics.notification-logs",
-  handler: async ({ log }) => {
+  handler: async ({ log, user }) => {
     try {
       const logs = await prisma.notificationLog.findMany({
+        where: { client: { dietitianId: user!.id }, type: { not: "delivery_test" } },
         orderBy: { sentAt: "desc" },
         take: 100,
         include: {
+          retries: latestRetry,
           client: { select: { name: true, surname: true } },
           ogun: { select: { name: true, time: true } },
         },

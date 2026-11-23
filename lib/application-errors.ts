@@ -23,11 +23,29 @@ export function errorPath(value: string): string {
 export const ClientErrorSchema = z.object({
   eventId: z.string().uuid(), code: z.enum(errorCodes), path: z.string().max(180),
   occurredAt: z.string().datetime(), status: z.number().int().min(400).max(599).optional(),
+  recoveredAt: z.string().datetime().optional(),
+  loginLogToken: z.string().max(125).optional(),
   subject: z.string().uuid().nullable().optional(),
   // Only the public build hash and generated line/column may leave the browser.
   bundlePosition: z.string().regex(/^[a-f0-9]{16}:[1-9]\d{0,7}:[1-9]\d{0,7}$/).optional(),
 }).strict();
 export type ClientErrorEvent = z.infer<typeof ClientErrorSchema>;
+
+const recoveryMethods: ReadonlyMap<string, string> = new Map([
+  ["/api/client/portal/notifications", "GET"],
+  ["/api/notifications/check-meal-reminders", "GET"],
+  ["/api/push/subscribe", "POST"],
+  ["/api/diets/:id/track", "POST"],
+]);
+
+// Recovery is reported when the user completes the same type of operation again.
+export function tracksRecovery(path: string, method: string) {
+  return recoveryMethods.get(path) === method;
+}
+
+export function canReportRecovery(path: string, code: ApplicationErrorCode) {
+  return (code === "timeout" || code === "network_error") && recoveryMethods.has(path);
+}
 
 export function classifyError(error: unknown, fallback: ApplicationErrorCode = "http_error"): ApplicationErrorCode {
   const value = error as { code?: string; message?: string; status?: number } | null;

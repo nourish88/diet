@@ -2,6 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { after } from "next/server";
 import { classifyError, errorMessages, errorPath, type ApplicationErrorCode } from "./application-errors";
+import { getLoggingEnabled } from "./logging-settings";
+
+type ErrorStore = Pick<PrismaClient, "applicationError" | "systemConfig">;
 
 export interface ServerErrorInput {
   code: ApplicationErrorCode;
@@ -28,10 +31,11 @@ function errorData(input: ServerErrorInput) {
         source: input.source ?? "server", subject: input.subject ?? null, occurredAt,
         status: input.status, device: input.device?.slice(0, 160), referenceId: input.referenceId };
 }
-export async function persistApplicationErrors(db: Pick<PrismaClient, "applicationError">, inputs: ServerErrorInput[]): Promise<boolean> {
+export async function persistApplicationErrors(db: ErrorStore, inputs: ServerErrorInput[]): Promise<boolean> {
   if (!inputs.length) return true;
-  const data = inputs.map(errorData);
   try {
+    if (!await getLoggingEnabled(db, "application_error_logging_enabled")) return true;
+    const data = inputs.map(errorData);
     // A single write keeps error collection from delaying notification delivery.
     await db.applicationError.createMany({ data, skipDuplicates: true });
     return true;
@@ -41,11 +45,11 @@ export async function persistApplicationErrors(db: Pick<PrismaClient, "applicati
   }
 }
 
-export function persistApplicationError(db: Pick<PrismaClient, "applicationError">, input: ServerErrorInput) {
+export function persistApplicationError(db: ErrorStore, input: ServerErrorInput) {
   return persistApplicationErrors(db, [input]);
 }
 
-export function scheduleApplicationError(db: Pick<PrismaClient, "applicationError">, input: ServerErrorInput) {
+export function scheduleApplicationError(db: ErrorStore, input: ServerErrorInput) {
   const write = () => persistApplicationError(db, input).then(() => undefined);
   try { after(write); } catch { void write(); }
 }

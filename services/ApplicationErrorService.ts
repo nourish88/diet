@@ -1,8 +1,12 @@
 import prisma from "@/lib/prisma";
 import { persistApplicationErrors, type ServerErrorInput } from "@/lib/application-error-server";
+import { isLoggingEnabled } from "@/lib/logging-settings";
 
 /** Snapshot before short-lived delivery logs expire. An absent ack is an uncertainty, not proof of loss. */
 export async function collectNotificationErrors() {
+  // Retention also applies while collection is paused.
+  await prisma.applicationError.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86400000) } } });
+  if (!await isLoggingEnabled(prisma, "application_error_logging_enabled")) return;
   const cutoff = new Date(Date.now() - 15 * 60000);
   const since = new Date(Date.now() - 3 * 86400000);
   const recorded = await prisma.applicationError.findMany({
@@ -14,7 +18,7 @@ export async function collectNotificationErrors() {
     return kind === prefix && state === status && /^\d+$/.test(id) ? [Number(id)] : [];
   });
   const logs = await prisma.notificationLog.findMany({
-    where: { sentAt: { gte: since, lt: cutoff }, OR: [
+    where: { type: { not: "delivery_test" }, sentAt: { gte: since, lt: cutoff }, OR: [
       { status: "failed", id: { notIn: knownIds("notification", "failed") } },
       { status: "pending", receivedAt: null, id: { notIn: knownIds("notification", "pending") } },
       { status: "success", receivedAt: null, id: { notIn: knownIds("notification", "unconfirmed") } },
@@ -43,6 +47,4 @@ export async function collectNotificationErrors() {
     path: "/api/notifications/broadcast", subject: item.client?.user?.supabaseId,
     occurredAt: item.pushSentAt ?? item.createdAt,
   })));
-  // Technical incidents have a separate retention period from notification history.
-  await prisma.applicationError.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86400000) } } });
 }

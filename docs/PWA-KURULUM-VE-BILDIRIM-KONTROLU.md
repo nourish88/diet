@@ -88,7 +88,7 @@ Bildirim Geçmişi ve yönetim panelindeki Bildirim Logları aynı tabloyu kulla
 
 - **Hedef cihaz:** Abonelik numarası, tarayıcının bildirdiği işletim sistemi/sürümü, tarayıcı/sürümü, paylaşılmışsa model, ana ekran/sekme açılışı, kayıt anındaki bildirim izni ve son cihaz kayıt zamanı.
 - **Neden / bulgu:** HTTP 404/410 için geçersiz abonelik; 401/403 için gönderim yetkilendirmesinin reddi; 413 için içerik boyutu; 429 ve 5xx için servis hatası. Başarılı gönderimde teslim onayı yoksa kesin neden bilinmiyor olarak gösterilir. Pil kısıtlaması veya kapalı izin ölçülmüş gibi sunulmaz.
-- **Bu cihazda yapılacaklar:** Android, iPhone/iPad veya diğer işletim sistemleri için açılır kontrol listesi. Sunucu hatalarında teknik ekibe yönelik adımlar gösterilir.
+- **Danışana öneri:** Android, iPhone/iPad veya diğer işletim sistemleri için açılır kontrol listesi. Sunucu hatalarında teknik ekibe yönelik adımlar gösterilir.
 
 Cihaz bilgisi `/api/push/subscribe` üzerinden oturum sahibi abonelik kaydına yazılır. Her öğün veya öğün test bildirimi oluşturulurken hedef abonelik numarası ve cihaz bilgisinin kopyası loga kaydedilir. Abonelik sonradan silinse veya yenilense de eski gönderimin cihaz bilgisi değişmez. Eski kayıtlara kullanıcının başka aboneliğinden bilgi eklenmez; bunlar “cihaz özellikleri kaydedilmemiş” gösterir. Son kayıt zamanı bir çevrimiçi durum ölçümü değildir; bildirim izni ve cihaz ayarları sonradan değişmiş olabilir.
 
@@ -98,7 +98,7 @@ Model bilgisi her tarayıcıda alınamaz. Android Client Hints destekleniyorsa y
 
 Bu ekleme **veritabanı geçişi gerektirir**: `20261117000000_notification_device_diagnostics`. `PushSubscription.deviceInfo`, `NotificationLog.subscriptionId`, `NotificationLog.deviceInfo` ve `NotificationLog.pushStatusCode` nullable olarak eklenir; mevcut kayıtlar korunur. Geçiş yeni uygulama sürümü çalışmadan önce uygulanmalıdır. Projenin `vercel-build` komutu `prisma migrate deploy` adımını içerir. Buradaki geliştirme çalışması üretim veritabanına geçiş uygulamaz.
 
-1. Yeni sürüm ve geçiş yayımlandıktan sonra sorunlu cihazda giriş yapın, Ayarlar → Bildirim kaydını yenile adımını tamamlayın.
+1. Yeni sürüm ve geçiş yayımlandıktan sonra sorunlu cihazda giriş yapın, Ayarlar → Bildirimleri yeniden aç adımını tamamlayın.
 2. Öğün test bildirimi gönderin; hedef abonelik numarası ve cihaz alanlarının doğru olduğunu kontrol edin.
 3. Aynı danışanın iki farklı tarayıcı/cihazında test edin; satırların kendi cihaz bilgilerini taşıdığını doğrulayın.
 4. Uygulama kapalıyken bildirimin görünmesini ayrıca doğrulayın. Bu tablo iyileştirmesi teslim garantisi sağlamaz.
@@ -120,7 +120,7 @@ Salt okunur canlı incelemede 20 Kasım 00:00'dan kontrol anına kadar 1.044 gö
 - Prisma istemcisi çalışma süreci boyunca paylaşılır. Tanınan geçici bağlantı hatalarında yalnızca okumalar bir kez yeniden denenir; yazmalar tekrarlanmaz. Veritabanı sorgusunun başarısız olması artık kimlik doğrulama katmanında geçersiz oturum gibi yutulmaz. API hata durumunu döndürür; istemci geçici 5xx hatasında oturumu kapatmaz.
 - Vercel API işlevleri için 60 saniye sınırı tanımlanır; öğün görevi ayrıca `maxDuration = 60` bildirir. Bu değişiklik yayımlandığında önceki 10 saniyelik sınırın görevi kesmesi önlenir; 60 saniyede bitirme veya kesintisiz teslim garantisi değildir. Kaynak: [Vercel işlev süresi yapılandırması](https://vercel.com/docs/functions/configuring-functions/duration).
 - Supabase oturum olayında beklenen ağ işlemi çalıştırılmaz; profil ayrı etkiyle yüklenir. Üç saniyelik profil zaman aşımı kaldırılmıştır. Giriş ve KVKK sorgu hatalarında oturum korunur, yeniden deneme sunulur. Kaynak: [Supabase oturum olayı kilitlenmesi](https://supabase.com/kb/troubleshooting/why-is-my-supabase-api-call-not-returning-PGzXw0).
-- “Bildirim kaydını yenile” mevcut sunucu kaydını tekrar yazmanın yanında tarayıcı aboneliğini de yeniler. Gerçek cihazda uygulama kapalıyken test hâlâ gereklidir.
+- “Bildirimleri yeniden aç” mevcut sunucu kaydını tekrar yazmanın yanında tarayıcı aboneliğini de yeniler. Gerçek cihazda uygulama kapalıyken test hâlâ gereklidir.
 - PDF adı önce kaydın gerçek danışanından çözülür. Ad yüklenmeden kaydetme/indirme engellenir; eksik adla “İsimsiz Danışan” raporu üretilmez. Her iki PDF yolunda arka plan logosunun yüklenmesi beklenir ve her sayfaya eklenir. Logo yüklenemiyorsa kullanıcıya hata gösterilir. Danışan yüklenirken otomatik taslak yazımı durur; eski taslak geri yüklenirken doğrulanmış güncel ad korunur.
 
 ### Uygulama Hataları tablosu
@@ -141,3 +141,12 @@ Bu değişiklik **`20261121000000_application_errors` migration'ını** gerektir
 Yayın kabulü: sorunlu cihazda giriş ve yeniden deneme; geçici bağlantı hatasının bağlantı döndükten sonra tek olay olarak görünmesi; diyetisyen dışındaki hesapların hata listesini alamaması; yeni ve kayıtlı diyetten doğru ad/logolu PDF; kapalı uygulamaya test bildirimi ve teslim onayı; Vercel öğün işinin 10 saniyede kesilmemesi ayrı ayrı doğrulanmalıdır.
 
 21 Kasım yerel doğrulaması: **46 dosyada 285 test başarılı**; Prisma şeması geçerli, TypeScript kontrolü ve üretim derlemesi başarılı. Üretilen iki örnek PDF görsel olarak incelendi; doğru ad ve arka plan logosu görüldü. Son üretim derlemesi yerelde çalıştırıldığında `/login` ve logo 200; hata listesine oturumsuz erişim 401; aynı alan adından geçersiz kayıt 400; başka alan adından kayıt 403 döndü. Bu HTTP kontrolü canlı veritabanına hata kaydı yazmadı. Tarayıcı otomasyonu ortam bağlantı hatasıyla açılamadığı için gerçek cihaz girişi ve bildirim teslimi doğrulanmadı.
+
+### Danışan giriş sorunları ve bildirim denemeleri
+
+- **Log Yönetimi → Danışan Giriş Sorunları** son 24 saatin en yeni 30 olayını, olay zamanını ve danışana iletilebilecek öneriyi gösterir. Girişte profil seçildiyse ve sunucu profil bağlantısını doğrulayabiliyorsa diyetisyen kendi danışanının adını görür. Profil belirlenemeyen olaylar anonim görünür. Telefon numarası ve doğrulama belirteci hata tablosuna yazılmaz.
+- **Kayıt Ayarları** altında diyet formu, hata ve giriş, bildirim kayıtları ayrı ayrı açılıp kapatılabilir. Bildirim kaydı kapalıyken öğün hatırlatıcıları gönderilmeye devam eder. Deneme bildiriminin sonucunu izlemek için bildirim kaydı açık olmalıdır. Mevcut kayıtlar kendi saklama süreleri boyunca görülebilir.
+- **Tekrar dene** düğmesi hedef aboneliğe ayrı bir deneme bildirimi gönderir ve teslim onayını aynı satırda gösterir. Danışan **Bildirimleri yeniden aç** adımıyla sunucuda kayıtlı aboneliğini değiştirmişse deneme yeni aboneliğe gider. Hedef abonelik bulunamazsa danışandan bildirimleri açması istenir. İlk bildirimin sonucu ve deneme sonucu ayrı kaydedilir.
+- Desteklenen işlemlerde aynı tarayıcı ve hesap yeniden başarılı bir istek tamamladığında bağlantı veya zaman aşımı kaydında başarı zamanı görünür.
+
+Yayın sırasında `20261122000000_notification_retries` migration’ı uygulanmalıdır. Yeni alanlar eski kayıtları korur. Cihazda uygulama kapalıyken deneme bildirimi ve gecikmiş teslim onayı yayın kabulünde kontrol edilmelidir.

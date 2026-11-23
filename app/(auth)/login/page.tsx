@@ -27,6 +27,7 @@ import Logo from "@/components/Logo";
 import InstallAppCard from "@/components/client/InstallAppCard";
 import { requestJson, describeRequestError } from "@/lib/http-request";
 import { ensureClientSession } from "@/lib/client-session";
+import { clientLoginIssuePath, type LoginStage } from "@/lib/client-login-issues";
 import { reportClientError, flushClientErrors } from "@/lib/application-error-client";
 
 interface PhoneLookupClient {
@@ -34,6 +35,7 @@ interface PhoneLookupClient {
   name: string;
   surname: string;
   birthdate: string | null;
+  loginLogToken?: string;
 }
 
 function formatBirthdate(value: string | null): string {
@@ -96,64 +98,81 @@ export default function LoginPage() {
     normalizedPhoneValue: string;
     skipConfirmStep: boolean;
   }) => {
-    const sessionData = await requestJson<{ email: string; password: string }>("/api/client-auth/session", {
-      method: "POST",
-      readOnlyPost: true,
-      retryDelayMs: 1000,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phoneNumber: normalizedPhoneValue }),
-    });
-
-    const { session, user: authUser } = await ensureClientSession(
-      supabase.auth,
-      sessionData.email,
-      sessionData.password
-    );
-
-    const syncEmail = authUser.email || sessionData.email;
-    if (!syncEmail) {
-      throw new Error("Hesap e-posta bilgisi alınamadı.");
-    }
-
-    await requestJson("/api/auth/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        supabaseId: authUser.id,
-        email: syncEmail,
-        role: "client",
-      }),
-    });
-
-    if (!skipConfirmStep) {
-      await requestJson("/api/client-auth/confirm", {
+    let stage: LoginStage = "session";
+    try {
+      const sessionData = await requestJson<{ email: string; password: string }>("/api/client-auth/session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        readOnlyPost: true,
+        reportErrors: false,
+        retryDelayMs: 1000,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: normalizedPhoneValue }),
+      });
+
+      const { session, user: authUser } = await ensureClientSession(
+        supabase.auth,
+        sessionData.email,
+        sessionData.password
+      );
+
+      stage = "account";
+      const syncEmail = authUser.email || sessionData.email;
+      if (!syncEmail) {
+        throw new Error("Hesap e-posta bilgisi alınamadı.");
+      }
+
+      await requestJson("/api/auth/sync", {
+        method: "POST",
+        reportErrors: false,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phoneNumber: normalizedPhoneValue,
-          clientId: selectedClientValue.id,
+          supabaseId: authUser.id,
+          email: syncEmail,
+          role: "client",
         }),
       });
 
-
+      if (!skipConfirmStep) {
+        stage = "profile";
+        await requestJson("/api/client-auth/confirm", {
+          method: "POST",
+          reportErrors: false,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            phoneNumber: normalizedPhoneValue,
+            clientId: selectedClientValue.id,
+          }),
+        });
+      }
+    } catch (error) {
+      reportClientError(error, {
+        code: "auth_failed",
+        path: clientLoginIssuePath(error, stage),
+        loginLogToken: selectedClientValue.loginLogToken,
+      });
+      void flushClientErrors();
+      throw error;
     }
   };
 
   const handleLookupClients = async () => {
     setIsSearchingClient(true);
+    let lookupComplete = false;
 
     try {
       const data = await requestJson<{ clients: PhoneLookupClient[]; normalizedPhone: string; singleClientAutoLogin: boolean }>("/api/client-auth/lookup", {
         method: "POST",
         readOnlyPost: true,
+        reportErrors: false,
         retryDelayMs: 1000,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber }),
       });
 
+      lookupComplete = true;
       const clients: PhoneLookupClient[] = data.clients || [];
       const firstClient = clients[0] || null;
       const shouldAutoLogin =
@@ -194,8 +213,10 @@ export default function LoginPage() {
             : "Profil bulundu. Onaylayarak devam edebilirsiniz.",
       });
     } catch (error: any) {
-      reportClientError(error, { code: "auth_failed", path: "/login" });
-      void flushClientErrors();
+      if (!lookupComplete) {
+        reportClientError(error, { code: "auth_failed", path: clientLoginIssuePath(error, "lookup") });
+        void flushClientErrors();
+      }
       resetClientFlow();
       toast({
         title: "Telefon Doğrulama",
@@ -235,8 +256,6 @@ export default function LoginPage() {
 
       window.location.href = "/client";
     } catch (error: any) {
-      reportClientError(error, { code: "auth_failed", path: "/login" });
-      void flushClientErrors();
       toast({
         title: "Danışan Girişi",
         description: describeRequestError(error),

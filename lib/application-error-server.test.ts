@@ -3,10 +3,14 @@ import type { PrismaClient } from "@prisma/client";
 import { persistApplicationErrors } from "./application-error-server";
 import { classifyError, errorPath } from "./application-errors";
 
+function errorStore(createMany: ReturnType<typeof vi.fn>) {
+  return { applicationError: { createMany }, systemConfig: { findUnique: async () => null } } as unknown as PrismaClient;
+}
+
 describe("sanitized persistent server errors", () => {
   it("writes fixed messages in one deduplicated batch", async () => {
     const createMany = vi.fn().mockResolvedValue({ count: 1 });
-    const db = { applicationError: { createMany } } as unknown as PrismaClient;
+    const db = errorStore(createMany);
     const input = { code: "database_connection" as const, path: "/api/auth/sync?password=secret", occurredAt: new Date("2026-11-21T15:00:00Z") };
     expect(await persistApplicationErrors(db, [input, input])).toBe(true);
     const args = createMany.mock.calls[0][0];
@@ -17,7 +21,7 @@ describe("sanitized persistent server errors", () => {
     const createMany = vi.fn().mockRejectedValue(new Error("private connection string"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      expect(await persistApplicationErrors({ applicationError: { createMany } } as unknown as PrismaClient, [{ code: "database_connection" }])).toBe(false);
+      expect(await persistApplicationErrors(errorStore(createMany), [{ code: "database_connection" }])).toBe(false);
       expect(createMany).toHaveBeenCalledOnce(); expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private");
     } finally { consoleError.mockRestore(); }
   });

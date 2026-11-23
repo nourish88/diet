@@ -15,8 +15,8 @@ const deviceInfo = {
 describe("notification diagnosis", () => {
   it("never treats a missing acknowledgement as proof of a disabled permission or battery restriction", () => {
     const result = diagnoseNotification({ ...base, deviceInfo }, now);
-    expect(result.label).toBe("Ulaşmama nedeni belirlenemedi");
-    expect(result.detail).toContain("ayırt edilemiyor");
+    expect(result.label).toBe("Ulaşıp ulaşmadığı bilinmiyor");
+    expect(result.detail).toContain("görünüp görünmediğini bilmiyoruz");
     expect(result.steps.join(" ")).toContain("Samsung Internet");
   });
   it("keeps legacy targets unknown instead of borrowing another device", () => {
@@ -25,13 +25,13 @@ describe("notification diagnosis", () => {
   it("gives iOS-specific instructions without calling them a proven failure", () => {
     const result = diagnoseNotification({ ...base, deviceInfo: { ...deviceInfo, os: "iOS / iPadOS" } }, now);
     expect(result.steps[0]).toContain("ana ekran simgesinden");
-    expect(result.label).toContain("belirlenemedi");
+    expect(result.label).toContain("bilinmiyor");
     expect(result.steps.join(" ")).not.toContain("pil");
   });
   it.each([404, 410])("diagnoses invalid subscriptions from actual HTTP %i", (pushStatusCode) => {
     const result = diagnoseNotification({ ...base, status: "failed", pushStatusCode }, now);
-    expect(result.label).toBe("Bildirim aboneliği geçersiz");
-    expect(result.steps.join(" ")).toContain("kaydını yenile");
+    expect(result.label).toBe("Bu cihaza artık bildirim gönderilemiyor");
+    expect(result.steps.join(" ")).toContain("Bildirimleri yeniden aç");
   });
   it.each([401, 403, 413, 429, 503])("routes HTTP %i to server remediation", (pushStatusCode) => {
     const result = diagnoseNotification({ ...base, status: "failed", pushStatusCode }, now);
@@ -39,8 +39,8 @@ describe("notification diagnosis", () => {
     expect(result.steps.join(" ")).not.toContain("pil");
   });
   it("reads historical structured error prefixes but does not infer codes from arbitrary message text", () => {
-    expect(diagnoseNotification({ ...base, status: "failed", errorMessage: "[410] Gone" }, now).label).toBe("Bildirim aboneliği geçersiz");
-    expect(diagnoseNotification({ ...base, status: "failed", errorMessage: "endpoint-410-other" }, now).label).toBe("Sunucu gönderimi tamamlayamadı");
+    expect(diagnoseNotification({ ...base, status: "failed", errorMessage: "[410] Gone" }, now).label).toBe("Bu cihaza artık bildirim gönderilemiyor");
+    expect(diagnoseNotification({ ...base, status: "failed", errorMessage: "endpoint-410-other" }, now).label).toBe("Bildirim gönderilemedi");
   });
   it("separates sending, waiting, untracked and acknowledged states", () => {
     expect(getDeviceDeliveryStatus({ ...base, status: "pending" }, now)).toBe("sending");

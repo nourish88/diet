@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { addCorsHeaders, handleCors } from "@/lib/cors";
+import { createClientLoginLogToken } from "@/lib/client-login-log-token";
 import {
   buildClientPhoneCredentials,
   normalizeClientPhoneNumber,
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
             name: mapping.client.name,
             surname: mapping.client.surname,
             birthdate: mapping.client.birthdate,
+            loginLogToken: createClientLoginLogToken(mapping.client.id),
           }))
           .sort((a, b) => a.id - b.id),
       })

@@ -3,6 +3,7 @@ const mocks = vi.hoisted(() => ({
   findOgun: vi.fn(), findClients: vi.fn(), deleteLogs: vi.fn(), createLog: vi.fn(), updateLog: vi.fn(), deleteSubscription: vi.fn(), send: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({ default: {
+  systemConfig: { findUnique: async () => null },
   ogun: { findUnique: mocks.findOgun },
   client: { findMany: mocks.findClients },
   notificationLog: { create: mocks.createLog, update: mocks.updateLog, deleteMany: mocks.deleteLogs },
@@ -10,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({ default: {
 } }));
 vi.mock("@/lib/web-push", () => ({ isWebPushConfigured: () => true, sendWebPushNotification: mocks.send }));
 import { sendMealReminderForOgun, sendMealReminders } from "./MealReminderService";
+import { rememberLoggingSetting } from "@/lib/logging-settings";
 
 const deviceInfo = {
   os: "Android", osVersion: "14", browser: "Chrome", browserVersion: "142", model: "Pixel 8",
@@ -66,6 +68,17 @@ describe("notification target snapshots", () => {
     expect(mocks.updateLog).toHaveBeenCalledOnce();
     expect(mocks.updateLog.mock.calls[0][0].data.status).toBe("success");
     expect(mocks.deleteSubscription).not.toHaveBeenCalled();
+  });
+  it("sends a reminder without creating a delivery record when notification logging is disabled", async () => {
+    rememberLoggingSetting("notification_logging_enabled", false);
+    try {
+      await expect(sendMealReminderForOgun(3)).resolves.toMatchObject({ sent: 1, failed: 0 });
+      expect(mocks.send.mock.calls[0][1].data.logId).toBeUndefined();
+      expect(mocks.createLog).not.toHaveBeenCalled();
+      expect(mocks.updateLog).not.toHaveBeenCalled();
+    } finally {
+      rememberLoggingSetting("notification_logging_enabled", true);
+    }
   });
   it("retains device evidence and the provider code when an expired subscription is deleted", async () => {
     mocks.send.mockRejectedValue({ statusCode: 410, message: "Gone" });

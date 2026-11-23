@@ -110,10 +110,10 @@ function DeviceStatus({ log }: { log: NotificationLog }) {
     <Badge
       variant="outline"
       className="bg-amber-50 text-amber-800 border-amber-300"
-      title="Sunucu gönderdi ancak cihaz service worker onayı gelmedi. Bu tek başına bildirimin ekranda görünmediğini kanıtlamaz."
+      title="Bildirim gönderildi. Cihazdan henüz yanıt gelmedi."
     >
       <AlertCircle className="h-3.5 w-3.5 mr-1" />
-      Cihaz onaylamadı
+      Ulaştığı doğrulanamadı
     </Badge>
   );
 }
@@ -166,7 +166,7 @@ export function NotificationLogsTable({
                   <TableHead>Teslim</TableHead>
                   <TableHead>Hedef cihaz</TableHead>
                   <TableHead>Neden / bulgu</TableHead>
-                  <TableHead>Bu cihazda yapılacaklar</TableHead>
+                  <TableHead>Danışana öneri</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

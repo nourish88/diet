@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
+  systemConfig: { findUnique: vi.fn().mockResolvedValue(null) },
   notificationLog: { updateMany: vi.fn() },
   broadcastRecipient: { updateMany: vi.fn() },
 }));
@@ -30,4 +31,16 @@ it("allows the device to retry a failed database write", async () => {
   expect((await post({ logId: 5 })).status).toBe(500);
   db.notificationLog.updateMany.mockResolvedValueOnce({ count: 1 });
   expect(await (await post({ logId: 5 })).json()).toEqual({ ok: true });
+});
+
+it("allows the device to retry when the logging setting cannot be read", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.now() + 11_000);
+  db.systemConfig.findUnique.mockRejectedValueOnce(new Error("connection closed"));
+  try {
+    expect((await post({ logId: 5 })).status).toBe(500);
+    expect(db.notificationLog.updateMany).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
 });

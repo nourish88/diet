@@ -45,7 +45,7 @@ const createPrisma = () => {
   const readOperations = new Set(['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy']);
   const extended = base.$extends({
     query: { $allModels: { async $allOperations({ model, operation, args, query }) {
-      if (model === 'ApplicationError') return query(args);
+      if (model === 'ApplicationError' || model === 'SystemConfig') return query(args);
       try {
         const result = await query(args);
         flush();
