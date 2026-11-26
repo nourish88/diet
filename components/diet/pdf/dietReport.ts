@@ -1,4 +1,5 @@
 import type { Column, Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
+import type { DietPdfAssets } from "./pdfAssets";
 import { formatDateTR, type DietPdfData } from "./pdfData";
 
 const accent = "#913461";
@@ -7,7 +8,7 @@ const muted = "#685F65";
 
 export function createDietReport(
   diet: DietPdfData,
-  assets: { logo: string; nazar: string },
+  assets: DietPdfAssets,
 ): TDocumentDefinitions {
   const hasMealNotes = diet.ogunler.some((meal) => meal.notes.trim() && meal.notes.trim() !== "-");
   const headings = ["Öğün", "Saat", "Menü", ...(hasMealNotes ? ["Notlar"] : [])];
@@ -24,13 +25,13 @@ export function createDietReport(
     {
       columns: [
         { width: 102, image: assets.logo, fit: [102, 47] },
-        { width: "*", stack: [
-          { text: "Kişiye özel beslenme planı", fontSize: 18, bold: true, color: accent },
+        { width: "*", marginTop: 11, stack: [
+          { text: "Kişiye Özel Beslenme Planı", fontSize: 18, bold: true, color: accent },
           { text: diet.fullName, fontSize: 13, marginTop: 3 },
         ] },
-        { width: "auto", text: formatDateTR(diet.dietDate), alignment: "right", fontSize: 10, color: muted, marginTop: 5 },
+        { width: "auto", text: formatDateTR(diet.dietDate), alignment: "right", fontSize: 10, color: muted, marginTop: 16 },
       ],
-      columnGap: 14,
+      columnGap: 7,
       marginBottom: 14,
     },
   ];
@@ -60,7 +61,8 @@ export function createDietReport(
       body: meals,
     },
     layout: {
-      fillColor: (row) => row === 0 ? accent : row % 2 ? "#FAF6F8" : "#FFFFFF",
+      fillColor: (row) => row === 0 ? accent : row % 2 ? "#F4ECF0" : null,
+      fillOpacity: (row) => row === 0 ? 1 : 0.5,
       hLineWidth: () => 0,
       vLineWidth: () => 0,
       paddingLeft: () => 7,
@@ -94,6 +96,17 @@ export function createDietReport(
   return {
     pageSize: "A4",
     pageMargins: [32, 24, 32, 48],
+    images: { brandSymbol: assets.symbol },
+    background: (_page, size) => {
+      const width = size.width * 0.66;
+      const height = width * (630 / 560); // Native aspect ratio of the standalone symbol.
+      return {
+        image: "brandSymbol",
+        width,
+        opacity: 0.075,
+        absolutePosition: { x: (size.width - width) / 2, y: (size.height - height) / 2 },
+      };
+    },
     content,
     styles: { label: { bold: true, color: accent, fontSize: 10 } },
     defaultStyle: { font: "Roboto", fontSize: 10.5, lineHeight: 1.13, color: ink },

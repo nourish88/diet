@@ -17,7 +17,9 @@ import DatabasePDFButton from "@/components/DatabasePDFButton";
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.createPdf.mockReturnValue({ download: mocks.download });
-  mocks.assets.mockResolvedValue({ logo: `data:image/png;base64,${readFileSync(join(process.cwd(), "public/ezgi_evgin.png")).toString("base64")}`, nazar: "" });
+  const imageData = (file: string) =>
+    `data:image/png;base64,${readFileSync(join(process.cwd(), "public", file)).toString("base64")}`;
+  mocks.assets.mockResolvedValue({ logo: imageData("ezgi_evgin.png"), symbol: imageData("image.png"), nazar: "" });
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -43,7 +45,9 @@ describe("diet PDF export", () => {
     expect(JSON.stringify(definition.content)).toContain(fullName);
     expect(definition.content[0].columns[0].image).toMatch(/^data:image\/png;base64,/);
     expect(definition.content[0].columns[1].stack).toContainEqual(expect.objectContaining({ text: fullName }));
-    expect(definition.background).toBeUndefined();
+    expect(definition.content[0].columns[1].stack[0].text).toBe("Kişiye Özel Beslenme Planı");
+    expect(definition.background(2, { width: 595, height: 842 })).toMatchObject({ image: "brandSymbol", opacity: 0.075 });
+    expect(definition.images.brandSymbol).toBe((await mocks.assets.mock.results[0].value).symbol);
     const table = definition.content.find((item: { table?: object }) => item.table).table;
     expect(table.body[0].map((cell: { text: string }) => cell.text).includes("Notlar")).toBe(kind === "database");
     // Render the actual component definition through pdfmake, including bundled fonts.

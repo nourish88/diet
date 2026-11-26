@@ -1,4 +1,10 @@
-let assetsPromise: Promise<{ logo: string; nazar: string }> | undefined;
+export interface DietPdfAssets {
+  logo: string;
+  symbol: string;
+  nazar: string;
+}
+
+let assetsPromise: Promise<DietPdfAssets> | undefined;
 
 async function loadImage(path: string): Promise<string> {
   const controller = new AbortController();
@@ -23,8 +29,9 @@ export function loadDietPdfAssets() {
   if (!assetsPromise) {
     assetsPromise = Promise.all([
       loadImage("/ezgi_evgin.png"),
+      loadImage("/image.png"),
       loadImage("/nazar-boncugu.png").catch(() => ""),
-    ]).then(([logo, nazar]) => ({ logo, nazar })).catch(() => {
+    ]).then(([logo, symbol, nazar]) => ({ logo, symbol, nazar })).catch(() => {
       assetsPromise = undefined;
       throw new Error("Rapor logosu yüklenemedi. Lütfen PDF indirmeyi yeniden deneyin.");
     });
