@@ -5,6 +5,7 @@ import { formatDateTR, type DietPdfData } from "./pdfData";
 const accent = "#913461";
 const ink = "#342832";
 const muted = "#685F65";
+const headerSideWidth = 102;
 
 export function createDietReport(
   diet: DietPdfData,
@@ -24,12 +25,12 @@ export function createDietReport(
   const content: Content[] = [
     {
       columns: [
-        { width: 102, image: assets.logo, fit: [102, 47] },
-        { width: "*", marginTop: 11, stack: [
+        { width: headerSideWidth, image: assets.logo, fit: [headerSideWidth, 47] },
+        { width: "*", alignment: "center", marginTop: 11, stack: [
           { text: "Kişiye Özel Beslenme Planı", fontSize: 18, bold: true, color: accent },
           { text: diet.fullName, fontSize: 13, marginTop: 3 },
         ] },
-        { width: "auto", text: formatDateTR(diet.dietDate), alignment: "right", fontSize: 10, color: muted, marginTop: 16 },
+        { width: headerSideWidth, text: formatDateTR(diet.dietDate), alignment: "right", fontSize: 10, color: muted, marginTop: 16 },
       ],
       columnGap: 7,
       marginBottom: 14,
@@ -112,12 +113,18 @@ export function createDietReport(
     defaultStyle: { font: "Roboto", fontSize: 10.5, lineHeight: 1.13, color: ink },
     footer: (page, pages) => ({
       columns: [
-        { width: "*", text: "Eryaman Altay Mah. Atayıldız Plaza No:70 Etimesgut/ANKARA\n0546 265 04 40  •  ezgievgin_dytsyn@hotmail.com" },
-        { width: "auto", text: `${page} / ${pages}`, alignment: "right" },
+        { width: 36, text: "" },
+        {
+          width: "*",
+          alignment: "center",
+          text: "Eryaman Altay Mah. Atayıldız Plaza No:70 Etimesgut/ANKARA\n" +
+            "Tel: 0546 265 04 40 • E-posta: ezgievgin_dytsyn@hotmail.com",
+        },
+        { width: 36, text: `${page} / ${pages}`, alignment: "right", fontSize: 8 },
       ],
-      fontSize: 8,
-      color: muted,
-      margin: [32, 9, 32, 0],
+      fontSize: 9,
+      color: "#64748b",
+      margin: [32, 10, 32, 0],
     }),
   };
 }
