@@ -56,6 +56,7 @@ export function createDietReport(
   }
 
   content.push({
+    fontSize: 11,
     table: {
       headerRows: 1,
       widths: hasMealNotes ? [81, 36, "*", "32%"] : [81, 36, "*"],
@@ -68,8 +69,8 @@ export function createDietReport(
       vLineWidth: () => 0,
       paddingLeft: () => 7,
       paddingRight: () => 7,
-      paddingTop: () => 5,
-      paddingBottom: () => 5,
+      paddingTop: () => 7,
+      paddingBottom: () => 7,
     },
   });
 
