@@ -1,4 +1,4 @@
-const SW_VERSION = "diet-pwa-v8";
+const SW_VERSION = "diet-pwa-v9";
 const PUSH_CACHE = `${SW_VERSION}-static`;
 const BLOB_CACHE = "diet-blob-v2";
 const ACK_CACHE = "diet-delivery-acks-v1";
@@ -57,7 +57,7 @@ self.addEventListener("fetch", (event) => {
 
   // Cache public meal photos from Vercel Blob (cross-origin)
   if (url.hostname.endsWith(".blob.vercel-storage.com")) {
-    event.respondWith(blobCacheFirst(request));
+    event.respondWith(cacheFirst(request, BLOB_CACHE));
     return;
   }
 
@@ -78,7 +78,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isCacheFirstPath(url.pathname)) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(cacheFirst(request, PUSH_CACHE));
     return;
   }
 
@@ -99,8 +99,8 @@ self.addEventListener("push", (event) => {
     icon: payload.icon || "/icon-192x192.png",
     badge: payload.badge || "/icon-192x192.png",
     data: {
-      url: payload.url,
       ...payload.data,
+      url: payload.data?.url || payload.url,
     },
     vibrate: [100, 50, 100],
     actions: payload.actions || [],
@@ -197,86 +197,72 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  
-  // Get URL from notification data, fallback to "/"
-  // Supports both meal_reminder and birthday_reminder notification types
-  const notificationType = event.notification.data?.type;
-  const destination = event.notification.data?.url || "/";
-  
-  console.log("Notification clicked:", { type: notificationType, destination });
-  
-  // For PWA, ensure we use the correct base URL
-  const baseUrl = self.location.origin;
-  let fullUrl = `${baseUrl}/client`;
-  try {
-    const target = new URL(destination, baseUrl);
-    if (target.origin === baseUrl) fullUrl = target.href;
-  } catch {
-    // Invalid destinations fall back to the client dashboard.
-  }
 
-  event.waitUntil(
-    (async () => {
-      try {
-        // Get all open windows/tabs
-        const allClients = await self.clients.matchAll({
-          type: "window",
-          includeUncontrolled: true,
-        });
-
-        // Check if we have any open client on the same origin
-        const sameOriginClient = allClients.find((client) => {
-          if (!("url" in client)) return false;
-          try {
-            const clientUrl = new URL(client.url);
-            return clientUrl.origin === baseUrl;
-          } catch {
-            return false;
-          }
-        });
-
-        if (sameOriginClient && self.clients.openWindow) {
-          // Focus the existing window and navigate to the URL
-          // For meal reminders, this includes ogunId query param
-          // For birthday reminders, this navigates to /birthdays
-          // Keep navigation within waitUntil so the worker cannot stop early.
-          if ("navigate" in sameOriginClient && typeof sameOriginClient.navigate === "function") {
-            const navigated = await sameOriginClient.navigate(fullUrl);
-            if (navigated) await navigated.focus();
-            else await self.clients.openWindow(fullUrl);
-          } else {
-            // Fallback: open new window/tab with the URL
-            // This ensures the URL with query params is loaded
-            await self.clients.openWindow(fullUrl);
-          }
-        } else if (self.clients.openWindow) {
-          // No existing window, open new one
-          const newWindow = await self.clients.openWindow(fullUrl);
-          if (!newWindow) {
-            console.error("Failed to open window. User may have blocked popups.");
-          }
-        }
-      } catch (error) {
-        console.error("Error handling notification click:", error);
-        // Fallback: try to open the URL
-        if (self.clients.openWindow) {
-          await self.clients.openWindow(fullUrl);
-        }
-      }
-    })()
-  );
+  event.waitUntil(openNotification(event.notification.data?.url));
 });
+
+async function openNotification(destination) {
+  const origin = self.location.origin;
+  let target = new URL("/client", origin);
+  try {
+    const url = new URL(destination || "/client", origin);
+    if (url.origin === origin && /^https?:$/.test(url.protocol)) target = url;
+  } catch {
+    // Older notifications may lack a usable destination.
+  }
+  let windows = [];
+  try {
+    windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = windows.find((client) => client.url === target.href);
+    if (existing) {
+      await existing.focus();
+      existing.postMessage({ type: "NOTIFICATION_FOCUSED" });
+      return;
+    }
+  } catch {
+    // A suspended or closed window can disappear between lookup and focus.
+  }
+  // Open the deep link while the click is active, without waiting for another
+  // tab to navigate over the network or replacing an in-progress diet form.
+  try {
+    await self.clients.openWindow(target.href);
+  } catch (error) {
+    // Some browsers refuse a new window but still allow navigation in an
+    // existing portal window. Leave other tabs (including diet editors) alone.
+    const portalPrefix = origin + "/client";
+    const isPortal = (url) => url === portalPrefix || url.startsWith(portalPrefix + "/");
+    const portal = isPortal(target.origin + target.pathname) && windows.find((client) => isPortal(client.url));
+    if (!portal) throw error;
+    await portal.focus();
+    await portal.navigate(target.href);
+  }
+}
 
 async function navigationHandler(request) {
   try {
-    // Slow mobile connections must not be aborted into an outdated app shell.
     return await fetch(request);
-  } catch {
-    const cache = await caches.open(SHELL_CACHE);
-    const offline = await cache.match("/offline.html");
-    return offline || new Response("İnternet bağlantınızı kontrol edip tekrar deneyin.", {
+  } catch (error) {
+    if (request.signal?.aborted) throw error;
+    if (self.navigator?.onLine !== false) {
+      // On resume the network may need a moment before its first request succeeds.
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      if (request.signal?.aborted) throw error;
+      try {
+        return await fetch(request);
+      } catch (retryError) {
+        if (request.signal?.aborted) throw retryError;
+      }
+    }
+    try {
+      const cache = await caches.open(SHELL_CACHE);
+      const offline = await cache.match("/offline.html");
+      if (offline) return offline;
+    } catch {
+      // Private browsing and storage quotas can make Cache Storage unavailable.
+    }
+    return new Response("Uygulamaya şu anda ulaşılamıyor. Sayfayı yeniden yükleyin.", {
       status: 503,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
     });
   }
 }
@@ -293,31 +279,18 @@ function isCacheFirstPath(pathname) {
   );
 }
 
-async function cacheFirst(request) {
-  const cache = await caches.open(PUSH_CACHE);
-  const cached = await cache.match(request);
-  if (cached) {
-    return cached;
+async function cacheFirst(request, cacheName) {
+  let cache;
+  try {
+    cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+  } catch {
+    // A cache read failure should still allow an online launch.
   }
-
   const response = await fetch(request);
-  if (response && response.ok) {
-    await cache.put(request, response.clone());
-  }
-  return response;
-}
-
-// Cache Vercel Blob photo URLs indefinitely (they are content-addressed by UUID)
-async function blobCacheFirst(request) {
-  const cache = await caches.open(BLOB_CACHE);
-  const cached = await cache.match(request);
-  if (cached) {
-    return cached;
-  }
-
-  const response = await fetch(request);
-  if (response && response.ok) {
-    await cache.put(request, response.clone());
+  if (cache && response.ok) {
+    await cache.put(request, response.clone()).catch(() => {});
   }
   return response;
 }

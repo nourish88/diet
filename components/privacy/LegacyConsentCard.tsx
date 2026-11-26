@@ -1,5 +1,7 @@
 "use client";
 
+import { clientDestination } from "@/lib/client-return-path";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,7 +23,7 @@ export function LegacyConsentCard({ accepted }: { accepted: boolean }) {
     try {
       await apiClient.post("/client/consent/kvkk", { consentVersion: KVKK_PORTAL_CONSENT_VERSION, channel: "web" });
       await queryClient.invalidateQueries({ queryKey: ["privacy-status"] });
-      router.replace("/client");
+      router.replace(clientDestination());
     } catch (e) { setError(e instanceof Error ? e.message : "Onay kaydedilemedi."); }
     finally { setBusy(false); }
   };
@@ -31,7 +33,7 @@ export function LegacyConsentCard({ accepted }: { accepted: boolean }) {
       {KVKK_PORTAL_SUMMARY_PARAGRAPHS.map(text => <p key={text} className="text-sm leading-relaxed">{text}</p>)}
       <a href={getKvkkInfoPageUrl()} target="_blank" rel="noopener noreferrer" className="text-brand underline">KVKK aydınlatma metnini oku</a>
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      {accepted ? <><p>Mevcut onayınız kayıtlı.</p><Button asChild><Link href="/client">Portala devam et</Link></Button></> : <>
+      {accepted ? <><p>Mevcut onayınız kayıtlı.</p><Button asChild><Link href={clientDestination()}>Portala devam et</Link></Button></> : <>
         <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1" checked={checked} onChange={e => setChecked(e.target.checked)} />KVKK bilgilendirmesini okudum ve sağlık verilerimin belirtilen amaçlarla işlenmesini kabul ediyorum.</label>
         <Button disabled={!checked || busy} onClick={submit}>{busy ? "Kaydediliyor…" : "Onayla ve devam et"}</Button>
       </>}

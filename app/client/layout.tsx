@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { clientGateUrl } from "@/lib/client-return-path";
 import { apiClient } from "@/lib/api-client";
 import { describeRequestError } from "@/lib/http-request";
 import InstallAppCard from "@/components/client/InstallAppCard";
@@ -27,7 +28,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     setCheckedPath(null);
     setPrivacyError(null);
     if (authLoading || syncError) return;
-    if (!user) { router.replace("/login"); return; }
+    if (!user) { router.replace(clientGateUrl("/login", window.location)); return; }
     if (!userId) return;
     if (role !== "client") { router.replace("/"); return; }
     if (!approved) { router.replace("/pending-approval"); return; }
@@ -36,7 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       if (controller.signal.aborted) return;
       setPrivacy(result);
       if (!result.noticeAcknowledged && pathname !== KVKK_PATH && pathname !== "/client/settings") {
-        router.replace(KVKK_PATH);
+        router.replace(clientGateUrl(KVKK_PATH, window.location));
         return;
       }
       setCheckedPath(pathname);

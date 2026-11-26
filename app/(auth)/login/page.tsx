@@ -1,5 +1,7 @@
 "use client";
 
+import { clientDestination } from "@/lib/client-return-path";
+
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { AuthSyncNotice } from "@/components/AuthSyncNotice";
@@ -71,7 +73,7 @@ export default function LoginPage() {
     if (!loading && !isConfirmingClient && user && databaseUser) {
       if (databaseUser.role === "client") {
         if (databaseUser.isApproved) {
-          window.location.href = "/client";
+          window.location.replace(clientDestination());
         }
       } else if (
         databaseUser.role === "dietitian" ||
@@ -201,7 +203,7 @@ export default function LoginPage() {
           description: `${firstClient.name} ${firstClient.surname} profiliyle giriş yapıldı.`,
         });
 
-        window.location.href = "/client";
+        window.location.replace(clientDestination());
         return;
       }
 
@@ -254,7 +256,7 @@ export default function LoginPage() {
         description: `${selectedClient.name} ${selectedClient.surname} profiline yönlendiriliyorsunuz.`,
       });
 
-      window.location.href = "/client";
+      window.location.replace(clientDestination());
     } catch (error: any) {
       toast({
         title: "Danışan Girişi",

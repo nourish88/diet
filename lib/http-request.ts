@@ -33,7 +33,7 @@ export async function requestJson<T>(
   options: HttpRequestOptions = {},
   parseResponse: (response: Response) => Promise<T> = parseApiResponse<T>,
 ): Promise<T> {
-  const { timeoutMs = 20000, retries = 1, retryDelayMs = 0, readOnlyPost = false, reportErrors = true, signal, ...init } = options;
+  const { timeoutMs = 20000, retries = 1, retryDelayMs = 600, readOnlyPost = false, reportErrors = true, signal, ...init } = options;
   const method = (init.method ?? "GET").toUpperCase();
   const startedAt = Date.now();
   const attempts = method === "GET" || (method === "POST" && readOnlyPost) ? retries + 1 : 1;
@@ -41,7 +41,7 @@ export async function requestJson<T>(
     const controller = new AbortController();
     let timedOut = false;
     const abort = () => controller.abort();
-    if (signal?.aborted) abort();
+    if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
     signal?.addEventListener("abort", abort, { once: true });
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
     try {

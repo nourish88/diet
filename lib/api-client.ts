@@ -1,3 +1,4 @@
+import { clientGateUrl } from "./client-return-path";
 import { createClient } from "./supabase-browser";
 import { requestJson } from "./http-request";
 import { reportClientError } from "./application-error-client";
@@ -197,7 +198,7 @@ class ApiClient {
           console.log(
             `[API Client] Redirecting to login due to ${response.status}`
           );
-          window.location.href = "/login";
+          window.location.href = clientGateUrl("/login", window.location);
         }
       }
     }

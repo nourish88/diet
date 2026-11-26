@@ -1,5 +1,7 @@
 "use client";
 
+import { clientDestination } from "@/lib/client-return-path";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,7 +79,7 @@ export default function ClientKvkkOnayPage() {
             </>}
           </CardContent>
         </Card> : <Card><CardContent className="pt-6 text-sm">Sağlık verilerinin işlenmesi, aydınlatma metninde açıklanan KVKK m.6/3(e) hukuki sebebine dayanır. Bu faaliyet için açık rıza istenmez. Haklarınıza ilişkin başvurularınızı aşağıdan iletebilirsiniz.</CardContent></Card>}
-        {data?.noticeAcknowledged && <Button asChild variant="outline"><Link href="/client">Portala devam et</Link></Button>}
+        {data?.noticeAcknowledged && <Button asChild variant="outline"><Link href={clientDestination()}>Portala devam et</Link></Button>}
       </>}
       <ClientPrivacyRequests contactEmail={policy?.document.contactEmail} controllerAddress={policy?.document.controllerAddress} />
       {!!data?.records.length && <Card>

@@ -29,10 +29,11 @@ describe("portal access recovery", () => {
     expect(screen.queryByText("Danışan programı")).toBeNull();
     expect(mocks.get).not.toHaveBeenCalled();
   });
-  it("still enforces notice acknowledgement", async () => {
+  it("retains the meal link through notice acknowledgement", async () => {
+    window.history.replaceState(null, "", "/client/diets/42?ogunId=5");
     mocks.get.mockResolvedValue({ noticeAcknowledged: false, canProcessHealth: false });
     render(<ClientLayout><p>Danışan programı</p></ClientLayout>);
-    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/client/kvkk-onay"));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/client/kvkk-onay?next=%2Fclient%2Fdiets%2F42%3FogunId%3D5"));
     expect(screen.queryByText("Danışan programı")).toBeNull();
   });
 });

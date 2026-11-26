@@ -26,6 +26,7 @@ beforeEach(() => {
   fetchMock = vi.fn().mockResolvedValue(new Response("online"));
   worker = {
     addEventListener: (type: string, handler: any) => { handlers[type] = handler; },
+    navigator: { onLine: true },
     location: { origin: "https://diet.test" },
     registration: { showNotification: vi.fn().mockResolvedValue(undefined) },
     clients: { matchAll: vi.fn().mockResolvedValue([]), openWindow: vi.fn().mockResolvedValue({}) },
@@ -87,6 +88,7 @@ describe("service worker runtime", () => {
   });
 
   it("shows a public offline screen instead of a stale authenticated shell", async () => {
+    worker.navigator.onLine = false;
     fetchMock.mockRejectedValue(new Error("offline"));
     cache.match.mockResolvedValue(new Response("offline page"));
     const { pending } = dispatch<Response>("fetch", { request: { method: "GET", mode: "navigate", url: "https://diet.test/client" } });
@@ -94,15 +96,67 @@ describe("service worker runtime", () => {
     expect(cache.match).toHaveBeenCalledWith("/offline.html");
   });
 
-  it("waits for click navigation before finishing the event", async () => {
-    let navigate: (client: unknown) => void = () => {};
-    const client = { url: "https://diet.test/client", navigate: vi.fn(() => new Promise((resolve) => { navigate = resolve; })), focus: vi.fn() };
-    worker.clients.matchAll.mockResolvedValue([client]);
-    const { pending } = dispatch("notificationclick", { notification: { close: vi.fn(), data: { url: "/client/diets/42?ogunId=5" } } });
-    await vi.waitFor(() => expect(client.navigate).toHaveBeenCalledWith("https://diet.test/client/diets/42?ogunId=5"));
-    navigate(client);
+  it.each(["/client/diets/42?ogunId=5", "/diets/new"])("recovers %s after a transient navigation failure", async (path) => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Load failed"));
+    const { pending } = dispatch<Response>("fetch", { request: { method: "GET", mode: "navigate", url: worker.location.origin + path } });
+    expect(await (await pending).text()).toBe("online");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(cache.match).not.toHaveBeenCalled();
+  });
+
+  it("serves online assets even when cache storage fails", async () => {
+    cache.match.mockRejectedValueOnce(new Error("storage unavailable"));
+    cache.put.mockRejectedValueOnce(new Error("quota exceeded"));
+    const { pending } = dispatch<Response>("fetch", { request: { method: "GET", url: "https://diet.test/_next/static/app.js" } });
+    expect(await (await pending).text()).toBe("online");
+  });
+
+  const destination = "https://diet.test/client/diets/42?ogunId=5";
+  function click(url?: string) {
+    return dispatch("notificationclick", { notification: { close: vi.fn(), data: { url } } }).pending;
+  }
+
+  it("focuses an exact match even with a more recently used dietitian tab", async () => {
+    const tab = { url: "https://diet.test/diets/new", focus: vi.fn() };
+    const target = { url: destination, focus: vi.fn(), postMessage: vi.fn() };
+    worker.clients.matchAll.mockResolvedValue([tab, target]);
+    await click(destination);
+    expect(target.focus).toHaveBeenCalledOnce();
+    expect(tab.focus).not.toHaveBeenCalled();
+    expect(worker.clients.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("opens the full deep link when an exact window cannot be focused", async () => {
+    worker.clients.matchAll.mockResolvedValue([{ url: destination, focus: vi.fn().mockRejectedValue(new Error("suspended")) }]);
+    await click(destination);
+    expect(worker.clients.openWindow).toHaveBeenCalledWith(destination);
+  });
+
+  it("uses an existing portal window if the browser refuses to open another", async () => {
+    const editor = { url: "https://diet.test/diets/new", navigate: vi.fn() };
+    const portal = { url: "https://diet.test/client", focus: vi.fn(), navigate: vi.fn() };
+    worker.clients.matchAll.mockResolvedValue([editor, portal]);
+    worker.clients.openWindow.mockRejectedValue(new Error("window refused"));
+    await click(destination);
+    expect(portal.focus).toHaveBeenCalledOnce();
+    expect(portal.navigate).toHaveBeenCalledWith(destination);
+    expect(editor.navigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the worker alive until a cold launch with the meal query completes", async () => {
+    let finish!: () => void;
+    worker.clients.openWindow.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const done = vi.fn();
+    const pending = click(destination).then(done);
+    await vi.waitFor(() => expect(worker.clients.openWindow).toHaveBeenCalledWith(destination));
+    expect(done).not.toHaveBeenCalled();
+    finish();
     await pending;
-    expect(client.focus).toHaveBeenCalledOnce();
+  });
+
+  it("opens the portal for older notifications without a destination", async () => {
+    await click();
+    expect(worker.clients.openWindow).toHaveBeenCalledWith("https://diet.test/client");
   });
 
   it("keeps notification destinations on the application origin", async () => {

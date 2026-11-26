@@ -8,9 +8,18 @@
 </head>
 <body>
   <main>
-    <h1>İnternet bağlantınızı kontrol edin</h1>
-    <p>Uygulamayı açmak için bağlantı gerekiyor. İnternete bağlandıktan sonra tekrar deneyin.</p>
+    <h1>Uygulamaya şu anda ulaşılamıyor</h1>
+    <p id="status" role="status">Sayfayı yeniden açmayı deneyebilirsiniz.</p>
     <button type="button" onclick="location.reload()">Tekrar dene</button>
   </main>
+  <script>
+    if (navigator.onLine === false) {
+      document.getElementById("status").textContent = "Cihazınız çevrimdışı. Bağlantı geri geldiğinde sayfa yeniden açılacak.";
+    }
+    navigator.serviceWorker?.addEventListener("message", (event) => {
+      if (event.data?.type === "NOTIFICATION_FOCUSED" && navigator.onLine !== false) location.reload();
+    });
+    window.addEventListener("online", () => location.reload(), { once: true });
+  </script>
 </body>
 </html>

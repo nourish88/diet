@@ -1,4 +1,7 @@
 "use client";
+
+import { PortalLoadError } from "@/components/client/PortalLoadError";
+import type { ApiError } from "@/lib/api-client";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -61,6 +64,7 @@ export default function ClientDietDetailPage() {
   const {
     data,
     isLoading,
+    error,
     isFetching,
     refetch,
   } = useQuery({
@@ -190,6 +194,9 @@ export default function ClientDietDetailPage() {
     );
   }
 
+  if (!diet && error && ![403, 404].includes((error as ApiError).status ?? 0)) {
+    return <PortalLoadError error={error} retry={() => void refetch()} retrying={isFetching} />;
+  }
   if (!diet) {
     return (
       <div className="text-center py-12">

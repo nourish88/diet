@@ -1,5 +1,8 @@
 "use client";
 
+import { PortalLoadError } from "@/components/client/PortalLoadError";
+import type { ApiError } from "@/lib/api-client";
+
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,7 +33,7 @@ export default function ClientNotificationDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["client-notification", params.id],
     queryFn: () => apiClient.get<{ notification: NotificationDetail }>(`/client/portal/notifications/${params.id}`),
     enabled: Boolean(params.id),
@@ -55,7 +58,10 @@ export default function ClientNotificationDetailPage() {
   });
 
   if (isLoading) return <div className="min-h-[50vh] flex justify-center items-center"><Loader2 className="h-8 w-8 animate-spin text-brand" /></div>;
-  if (isError || !data) return <div className="max-w-xl mx-auto rounded-2xl border bg-card p-8 text-center"><h1 className="font-semibold text-lg">Bildirim bulunamadı</h1><p className="text-sm text-muted-foreground mt-2">Bu bildirim kaldırılmış veya size ait olmayabilir.</p><Link href="/client/notifications" className="inline-flex items-center text-brand font-medium mt-5"><ArrowLeft className="h-4 w-4 mr-2" />Bildirimlere dön</Link></div>;
+  if (!data && error && ![403, 404].includes((error as ApiError).status ?? 0)) {
+    return <PortalLoadError error={error} retry={() => void refetch()} retrying={isFetching} />;
+  }
+  if (!data) return <div className="max-w-xl mx-auto rounded-2xl border bg-card p-8 text-center"><h1 className="font-semibold text-lg">Bildirim bulunamadı</h1><p className="text-sm text-muted-foreground mt-2">Bu bildirim kaldırılmış veya size ait olmayabilir.</p><Link href="/client/notifications" className="inline-flex items-center text-brand font-medium mt-5"><ArrowLeft className="h-4 w-4 mr-2" />Bildirimlere dön</Link></div>;
 
   const item = data.notification.broadcastMessage;
   return (
