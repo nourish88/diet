@@ -218,7 +218,7 @@ export default function DietDetailPage() {
                   : "İsimsiz Danışan",
                 dietDate:
                   diet.tarih || diet.createdAt || new Date().toISOString(),
-                weeklyResult: diet.sonuc || "Sonuç belirtilmemiş",
+                weeklyResult: diet.sonuc || "",
                 target: diet.hedef || "",
                 ogunler: (diet.oguns || []).map((ogun: any) => ({
                   name: ogun.name || "",

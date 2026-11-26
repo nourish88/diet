@@ -65,37 +65,6 @@ export const buildDietPdfFileName = (pdfData: DietPdfData) =>
     "_"
   )}_${formatDateForFileName(pdfData.dietDate)}.pdf`;
 
-export const buildInlineColumns = (
-  parts: Array<{
-    text?: string;
-    image?: string;
-    width?: number;
-    height?: number;
-  }>,
-  options?: { textStyle?: string; imageMarginTop?: number }
-) => {
-  const columnGap = 3;
-  return {
-    columns: parts.map((part) => {
-      if (part.image) {
-        return {
-          image: part.image,
-          width: part.width || 12,
-          height: part.height || 12,
-          margin: [0, options?.imageMarginTop ?? -1, 0, 0],
-        };
-      }
-
-      return {
-        text: part.text ?? "",
-        width: "auto",
-        style: options?.textStyle,
-      };
-    }),
-    columnGap,
-  } as any;
-};
-
 export const normalizePdfMeals = (
   meals: any[],
   options: { fromDiet?: boolean; defaultName?: string } = {}
@@ -151,11 +120,11 @@ export const prepareDirectPdfData = (
   return {
     fullName: resolveClientName(null, diet.AdSoyad),
     dietDate: diet.Tarih || new Date().toISOString(),
-    weeklyResult: diet.Sonuc || "Sonuç belirtilmemiş",
-    target: diet.Hedef || "Hedef belirtilmemiş",
+    weeklyResult: diet.Sonuc || "",
+    target: diet.Hedef || "",
     ogunler: normalizePdfMeals(diet.Oguns || [], { fromDiet: true }),
-    waterConsumption: diet.Su || "Belirtilmemiş",
-    physicalActivity: diet.Fizik || "Belirtilmemiş",
+    waterConsumption: diet.Su || "",
+    physicalActivity: diet.Fizik || "",
     dietitianNote: diet.dietitianNote || "",
     isBirthdayCelebration: diet.isBirthdayCelebration || false,
     isImportantDateCelebrated: diet.isImportantDateCelebrated || false,
@@ -175,15 +144,17 @@ export const prepareDatabasePdfData = (diet: any): DietPdfData | null => {
   return {
     fullName: clientName,
     dietDate: diet.tarih || diet.createdAt || new Date().toISOString(),
-    weeklyResult: diet.sonuc || "Sonuç belirtilmemiş",
-    target: diet.hedef || "Hedef belirtilmemiş",
+    weeklyResult: diet.sonuc || "",
+    target: diet.hedef || "",
     ogunler: normalizePdfMeals(diet.oguns || [], {
       fromDiet: true,
       defaultName: "Belirtilmemiş",
     }),
-    waterConsumption: diet.su || "Belirtilmemiş",
-    physicalActivity: diet.fizik || "Belirtilmemiş",
+    waterConsumption: diet.su || "",
+    physicalActivity: diet.fizik || "",
     isBirthdayCelebration: diet.isBirthdayCelebration || false,
     dietitianNote: diet.dietitianNote || "",
+    isImportantDateCelebrated: diet.isImportantDateCelebrated,
+    importantDate: diet.importantDate,
   };
 };

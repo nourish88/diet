@@ -24,16 +24,28 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("diet PDF export", () => {
-  it.each(["direct", "database"])("includes the correct name and background logo in the %s PDF", async (kind) => {
+  it.each(["direct", "database"])("includes the correct name and header logo in the %s PDF", async (kind) => {
     const fullName = "Deneme Danışanı";
     if (kind === "direct") render(<DirectPDFButton pdfData={{ fullName, dietDate: "2026-11-21", weeklyResult: "", target: "", ogunler: [{ name: "Öğle", time: "12:00", menuItems: ["1 kase çorba"], notes: "" }], waterConsumption: "", physicalActivity: "" }} />);
-    else render(<DatabasePDFButton diet={{ client: { name: "Deneme", surname: "Danışanı" }, tarih: "2026-11-21", sonuc: "", oguns: [{ name: "Öğle", time: "12:00", items: [{ besin: "Çorba", miktar: "1", birim: "kase" }] }] }} />);
+    else render(<DatabasePDFButton diet={{
+      client: { name: "Deneme", surname: "Danışanı" }, tarih: "2026-11-21",
+      hedef: "Öğün düzeni", sonuc: "Planlanan öğünler tamamlandı",
+      su: "Gün içine yayılacak", fizik: "Yürüyüş", dietitianNote: "Bir sonraki görüşmede birlikte değerlendirelim.",
+      oguns: [
+        { name: "Kahvaltı", time: "08:30", items: [{ besin: "Yumurta", miktar: "1", birim: "adet" }] },
+        { name: "Öğle", time: "12:30", detail: "Evde veya işte", items: [{ besin: "Çorba", miktar: "1", birim: "kase" }] },
+        { name: "Akşam", time: "19:00", items: [{ besin: "Sebze yemeği", miktar: "1", birim: "porsiyon" }] },
+      ],
+    }} />);
     fireEvent.click(screen.getByRole("button"));
     await waitFor(() => expect(mocks.download).toHaveBeenCalledOnce());
     const definition = mocks.createPdf.mock.calls[0][0];
     expect(JSON.stringify(definition.content)).toContain(fullName);
-    expect(definition.background(1, { width: 595.28, height: 841.89 })).toMatchObject({ opacity: 0.1, image: expect.stringMatching(/^data:image\/png;base64,/) });
-    expect(definition.background(2, { width: 595.28, height: 841.89 })).toBeTruthy();
+    expect(definition.content[0].columns[0].image).toMatch(/^data:image\/png;base64,/);
+    expect(definition.content[0].columns[1].stack).toContainEqual(expect.objectContaining({ text: fullName }));
+    expect(definition.background).toBeUndefined();
+    const table = definition.content.find((item: { table?: object }) => item.table).table;
+    expect(table.body[0].map((cell: { text: string }) => cell.text).includes("Notlar")).toBe(kind === "database");
     // Render the actual component definition through pdfmake, including bundled fonts.
     const require = createRequire(import.meta.url);
     const Printer = require("pdfmake");

@@ -54,7 +54,7 @@ export function convertDbDietToUiDiet(
     return {
       id: dbDiet.id,
       AdSoyad: resolveClientName(dbDiet.client, getClientFullName(selectedClientId)),
-      Tarih: dbDiet.tarih || dbDiet.createdAt || new Date().toISOString(),
+      Tarih: new Date().toISOString(),
       Hedef: dbDiet.hedef || "",
       Sonuc: dbDiet.sonuc || "",
       Su: dbDiet.su || "",
@@ -63,7 +63,7 @@ export function convertDbDietToUiDiet(
       isBirthdayCelebration: dbDiet.isBirthdayCelebration || false,
       isImportantDateCelebrated: dbDiet.isImportantDateCelebrated || false,
       importantDateId: dbDiet.importantDateId || null,
-      importantDateName: dbDiet.importantDateName || null,
+      importantDateName: dbDiet.importantDate?.message || dbDiet.importantDateName || null,
       Oguns: sortMealsByTime(mappedOguns),
     };
   } catch (error) {

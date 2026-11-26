@@ -1,5 +1,3 @@
-import type { Content, ContextPageSize } from "pdfmake/interfaces";
-
 let assetsPromise: Promise<{ logo: string; nazar: string }> | undefined;
 
 async function loadImage(path: string): Promise<string> {
@@ -32,13 +30,4 @@ export function loadDietPdfAssets() {
     });
   }
   return assetsPromise;
-}
-
-export function dietPdfBackground(logo: string) {
-  return (_page: number, pageSize: ContextPageSize): Content => ({
-    image: logo,
-    fit: [300, 300],
-    opacity: 0.1,
-    absolutePosition: { x: (pageSize.width - 300) / 2, y: (pageSize.height - 300) / 2 },
-  });
 }

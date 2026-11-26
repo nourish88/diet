@@ -64,17 +64,17 @@ export const OGUN: Ogun[] = [
   },
 ];
 
-export const initialDiet: Diet = {
+export const createInitialDiet = (): Diet => ({
   AdSoyad: "",
   Tarih: new Date().toISOString(),
   Sonuc: "",
   Hedef: "",
   Su: "",
   Fizik: "",
-  Oguns: OGUN,
+  Oguns: OGUN.map((meal) => ({ ...meal, items: meal.items.map((item) => ({ ...item })) })),
   dietitianNote: "",
   isBirthdayCelebration: false,
   isImportantDateCelebrated: false,
   importantDateId: null,
   importantDateName: null,
-};
+});

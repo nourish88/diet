@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { formSchema } from "../schemas/formSchema";
 import { Diet, BannedFood } from "../types/types";
-import { OGUN, initialDiet } from "../models/dietModels";
+import { createInitialDiet } from "../models/dietModels";
 import DietTable from "./DietTable";
 import DietFormActions from "./DietFormActions";
 import DietFormBasicFields from "./DietFormBasicFields";
@@ -58,9 +58,7 @@ interface DietFormProps {
 
 const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
   const router = useRouter();
-  const [diet, setDiet] = useState<Diet>({
-    ...initialDiet,
-  });
+  const [diet, setDiet] = useState<Diet>(createInitialDiet);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(
     initialClientId || null
   );
@@ -214,27 +212,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         if (signal?.aborted) return;
 
         if (data && data.id) {
-          // Create the UI diet with correct field mapping from API response
-          // NOTE: In new diet mode (loadLatestDiet), we keep the ID for logging/reference but won't update
-          // IMPORTANT: Set date to today - old diet date should not be used for new diet
-          const uiDiet = {
-            ...convertDbDietToUiDiet(data, targetClientId),
-            // Use the correct field names from API response
-            Su: data.su || "",
-            Fizik: data.fizik || "",
-            Sonuc: data.sonuc || "",
-            Hedef: data.hedef || "",
-            dietitianNote: data.dietitianNote || "",
-            Tarih: new Date().toISOString(), // Always use today's date for new diet
-          };
-
-          console.log(
-            `📋 Loaded latest diet (ID: ${data.id}) for display/reference only`
-          );
-          setDiet({
-            ...uiDiet,
-            Oguns: sortMealsByTime(uiDiet.Oguns),
-          });
+          setDiet(convertDbDietToUiDiet(data, targetClientId));
 
           // Log diet loaded (for reference/tracking)
           if (dietLogging.isReady) {
@@ -247,18 +225,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         if (error?.status === 404 || error?.message?.includes("404")) {
           console.log("No previous diet found for client - starting fresh");
           // Initialize with empty diet when no previous diet exists
-          setDiet((prev) => ({
-            ...prev,
-            id: undefined, // Ensure no ID for new diet
-            Oguns: sortMealsByTime(
-              OGUN.map((ogun) => ({ ...ogun, items: [...ogun.items] }))
-            ),
-            Su: "",
-            Fizik: "",
-            Sonuc: "",
-            Hedef: "",
-            dietitianNote: "",
-          }));
+          setDiet({ ...createInitialDiet(), AdSoyad: getClientFullName(targetClientId) });
           setIsLoading(false);
           return;
         }
@@ -275,7 +242,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
         });
       }
     },
-    [selectedClientId, convertDbDietToUiDiet, dietLogging, toast, setDiet]
+    [selectedClientId, convertDbDietToUiDiet, getClientFullName, dietLogging, toast]
   );
 
   // Resolve identity before loading diet data; cancel responses for a previous selection.
@@ -385,23 +352,7 @@ const DietForm = ({ initialClientId, initialTemplateId }: DietFormProps) => {
           setSelectedClientId(clientId);
         }
 
-        // Create the UI diet with correct field mapping from API response
-        // Keep the original date when editing
-        const uiDiet = {
-          ...convertDbDietToUiDiet(data, clientId),
-          Su: data.su || "",
-          Fizik: data.fizik || "",
-          Sonuc: data.sonuc || "",
-          Hedef: data.hedef || "",
-          dietitianNote: data.dietitianNote || "",
-          Tarih: data.tarih || data.createdAt || new Date().toISOString(), // Keep original date
-          isBirthdayCelebration: data.isBirthdayCelebration || false,
-          isImportantDateCelebrated: data.isImportantDateCelebrated || false,
-          importantDateId: data.importantDateId || null,
-          importantDateName: data.importantDate?.message || null,
-        };
-
-        setDiet(uiDiet);
+        setDiet(convertDbDietToUiDiet(data, clientId));
 
         // Log diet loaded for editing
         if (dietLogging.isReady) {
