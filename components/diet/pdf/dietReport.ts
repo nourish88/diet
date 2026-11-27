@@ -33,6 +33,7 @@ export function createDietReport(
         { width: headerSideWidth, text: formatDateTR(diet.dietDate), alignment: "right", fontSize: 10, color: muted, marginTop: 16 },
       ],
       columnGap: 7,
+      marginTop: 14,
       marginBottom: 14,
     },
   ];
